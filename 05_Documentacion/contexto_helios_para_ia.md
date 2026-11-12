@@ -66,7 +66,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
 - **Cómo verificar la base desde la consola de D1** (una línea, solo lee): `SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type = 'view') AS vistas, (SELECT COUNT(*) FROM sqlite_master WHERE name = 'ix_perfil_comportamiento_franja') AS indice_perfil, (SELECT COUNT(*) FROM feriados) AS feriados, (SELECT ahora FROM alerta_parametros WHERE id = 1) AS reloj;` → 0, 1, 23 o más, y el reloj de la demo.
-- **Código fuente:** no hay repositorio Git todavía. El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 25) y se prueba con la demo de 19 escenas y 8 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
+- **Código fuente:** repositorio privado en GitHub `Zettita/Monitoreo` (rama `main`, desde el 12/11), compartido con Ale; cada cambio probado se sube ahí junto con este archivo actualizado. El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 27) y se prueba con la demo de 19 escenas y 8 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
 
 ---
 
@@ -519,7 +519,8 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - [x] Modelo de largo plazo: perfil por día de la semana × franja × tercio del mes con 12 meses de historia (11/11).
 - [ ] Perfil genérico para clientes nuevos; reentrenar el perfil cada tanto (por ejemplo, una vez por mes) con la historia real.
 - [ ] Retención: avisos leídos de más de 30 días, métricas viejas resumidas.
-- [ ] Ambientes QA y producción, código en Git, copias de seguridad.
+- [x] Código en Git: GitHub privado `Zettita/Monitoreo` (12/11).
+- [ ] Ambientes QA y producción, copias de seguridad.
 - [x] Avisos push con Helios cerrado e instalar como app (12/11, parche 26; publicado).
 - [ ] Avisos por Teams con webhook (etapa 5). Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
 - [x] Perfiles: Gerente de lectura con Panorama, Analista deriva y avisa pre-alertas, Soporte solo con sus tickets, Administrador orientado a la configuración (11/11).

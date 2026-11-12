@@ -13,6 +13,12 @@ Mapa de carpetas y para qué sirve cada archivo: @LEEME.md
 - **Nada de tablas de demo**: los datos entran por `core_metricas_observadas` y todo lo demás se calcula.
 - **Sin Power BI** (decidido el 11/11): el análisis es solo el tablero HTML. Lo de Power BI quedó en `99_Archivo_viejo/power_bi/`.
 
+## Repositorio compartido (12/11)
+- GitHub privado `Zettita/Monitoreo` (rama `main`), compartido con Ale Maggiolo (`alejandramaggiolo`) para que su IA y la nuestra trabajen sobre lo mismo.
+- **Después de cada cambio probado** (build + pruebas en verde, Worker copiado a `01_Worker/`, documentación actualizada): `git add -A`, commit en español que diga qué cambió y por qué, y `git push`. Uriel ya lo autorizó: no hace falta preguntar para este repositorio. Antes de empezar a trabajar: `git pull`.
+- Cada cambio actualiza en el mismo commit `05_Documentacion/contexto_helios_para_ia.md` (sección 16 y lo que corresponda) y este archivo.
+- Nunca subir claves ni tokens (el `.gitignore` deja afuera `clave_push_*.txt`, `*.sqlite` salvo `pruebas/base.sqlite`, y `w.mjs`). Revisar `git status` antes de cada commit.
+
 ## Entorno real
 - Cloudflare, plan gratuito. Base D1 `helios-monitoring-dev`; Worker `worker-alertas-cron` (todo el sistema). `worker-api-bi` (Power BI) ya no se usa: borrarlo del panel.
 - **El Cron Trigger está apagado** (se quitó hace tiempo para no gastar lecturas): hoy las revisiones solo corren a mano (botón "Revisar alertas ahora" o escenas de la demo). Lo que figure en el uso de D1 viene de cargas manuales o del tablero.
