@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helios · Mis alertas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&display=swap" rel="stylesheet">
+<style>
+/*ESTILOS_BASE*/
+/* Mis alertas */
+.resumen-mis { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.resumen-mis a { display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; }
+.resumen-mis a b { font-size: 20px; font-weight: 750; font-stretch: 108%; }
+.resumen-mis a.hay b { color: var(--accent); }
+.bloque-mis { margin-top: 30px; }
+.bloque-mis > h2 { margin: 0; font-size: 20px; font-weight: 700; font-stretch: 108%; }
+.bloque-mis > .bajada { font-size: 14px; margin-bottom: 12px; }
+.casos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; }
+.caso { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--baja); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.caso.CRITICA { border-left-color: var(--critica); }
+.caso.ALTA { border-left-color: var(--alta); }
+.caso.MEDIA { border-left-color: var(--media); }
+.caso.resuelto { border-left-color: var(--ok); }
+.caso-cab { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.caso-cab b { font-size: 16px; font-weight: 700; }
+.caso-sub { color: var(--ink-2); font-size: 14px; margin-top: -4px; }
+.caso-datos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 2px 0 0; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.caso-datos dt { font-size: 12px; color: var(--ink-3); }
+.caso-datos dd { margin: 0; font-weight: 650; font-size: 14px; }
+.caso-asig { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+.caso-asig b { color: var(--ink); font-weight: 600; }
+.caso-nota { margin: 0; font-size: 13.5px; padding: 8px 10px; border-radius: 8px; background: var(--track); }
+.caso-nota.devuelta { background: var(--media-bg); }
+.caso-acc { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+.caso details summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
+.historial { list-style: none; margin: 8px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--line); }
+.historial li { font-size: 13px; padding: 3px 0; color: var(--ink-2); }
+.historial li b { color: var(--ink); font-weight: 600; }
+.historial li q { display: block; color: var(--ink); quotes: "“" "”"; }
+.historial li time { color: var(--ink-3); font-size: 12px; margin-right: 6px; }
+.vacio-caja { background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--ink-2); font-size: 14px; }
+.campo textarea { min-height: 96px; resize: vertical; font: inherit; color: inherit; }
+.badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--critica); color: #fff; font-size: 12px; font-weight: 700; margin-left: 4px; }
+/* Prioridad (gravedad x criticidad del servicio) */
+.prio { display: inline-block; min-width: 30px; padding: 0 6px; border-radius: 3px; border: 1px solid; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
+.prio.p1 { background: var(--critica-bg); color: var(--critica-txt, var(--critica)); border-color: var(--critica); }
+.prio.p2 { background: var(--alta-bg); color: var(--alta-txt, var(--alta)); border-color: var(--alta); }
+.prio.p3 { background: var(--media-bg); color: var(--media-txt, var(--media)); border-color: var(--media); }
+.prio.p4 { background: var(--baja-bg); color: var(--baja-txt, var(--baja)); border-color: var(--line); }
+@media (max-width: 560px) { .caso-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<header class="barra">
+  <a class="marca" href="/"><span class="logo" aria-hidden="true"></span><b>Helios</b><span class="sub">Monitoreo de operaciones</span></a>
+  <div class="derecha">
+    <button class="btn" id="btn-actualizar">Actualizar</button>
+    <a class="btn" href="/">← Tablero</a>
+    <div class="usuario">
+      <button class="avatar" id="btn-avatar" aria-haspopup="menu" aria-expanded="false" title="Mi cuenta"><span id="avatar-ini">·</span></button>
+      <div class="menu" id="menu-usuario" role="menu" hidden>
+        <div class="menu-cab"><b id="menu-nombre"></b><span id="menu-perfil"></span></div>
+        <a role="menuitem" href="/">Tablero</a>
+        <a role="menuitem" href="/seguimiento" id="lnk-seg" hidden>Seguimiento</a>
+        <a role="menuitem" href="/admin" id="lnk-admin" hidden>Administración</a>
+        <button role="menuitem" id="btn-salir">Salir</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Mis alertas</h1>
+  <p class="bajada" id="bajada">Cargando…</p>
+  <div class="resumen-mis" id="resumen"></div>
+
+  <section class="bloque-mis" id="b-curso">
+    <h2>En curso</h2>
+    <p class="bajada">Las que tomaste vos. Cuando esté solucionado, tocá "Resolver" y contá qué se hizo.</p>
+    <div class="casos" id="c-curso"></div>
+  </section>
+  <section class="bloque-mis" id="b-tomar">
+    <h2>Para tomar</h2>
+    <p class="bajada">Asignadas a vos o a tus equipos que todavía no tomó nadie. Si no te corresponde, devolvela al analista con el motivo.</p>
+    <div class="casos" id="c-tomar"></div>
+  </section>
+  <section class="bloque-mis" id="b-equipo" hidden>
+    <h2>De mis equipos</h2>
+    <p class="bajada">Sos responsable de estos equipos: podés reasignar sus alertas a otra persona del equipo.</p>
+    <div class="casos" id="c-equipo"></div>
+  </section>
+  <section class="bloque-mis" id="b-resueltas">
+    <h2>Resueltas en las últimas 24 horas</h2>
+    <div class="casos" id="c-resueltas"></div>
+  </section>
+</main>
+
+<!-- Comentar, devolver o resolver -->
+<dialog id="dlg-nota">
+  <form id="f-nota" method="dialog">
+    <h2 id="n-titulo"></h2>
+    <p class="bajada" id="n-alerta"></p>
+    <label class="campo"><span id="n-etiqueta"></span><textarea id="n-texto" maxlength="1000" required></textarea>
+      <small class="ayuda" id="n-ayuda"></small></label>
+    <p class="error-form" id="n-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="n-guardar"></button></div>
+  </form>
+</dialog>
+
+<!-- Reasignar dentro del equipo -->
+<dialog id="dlg-reasignar">
+  <form id="f-reasignar" method="dialog">
+    <h2>Reasignar alerta</h2>
+    <p class="bajada" id="r-alerta"></p>
+    <label class="campo"><span>Asignar a</span><select id="r-destino"></select></label>
+    <label class="campo"><span>Comentario <small class="gris">(opcional)</small></span><textarea id="r-texto" maxlength="1000"></textarea></label>
+    <p class="error-form" id="r-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="r-guardar">Reasignar</button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  var TZ = 'America/Argentina/Buenos_Aires';
+  var PERFIL_TXT = { ADMIN: 'Administrador', GERENTE: 'Gerente', ANALISTA: 'Analista', SOPORTE: 'Soporte' };
+  var SEV_TXT = { CRITICA: 'Grave', ALTA: 'Importante', MEDIA: 'Leve', BAJA: 'Informativo' };
+  var SEV_N = { CRITICA: 1, ALTA: 2, MEDIA: 3, BAJA: 4 };
+  var FRASE = {
+    VOLUMEN_BAJO: 'Entra menos tráfico de lo normal', VOLUMEN_ALTO: 'Entra mucho más tráfico de lo normal',
+    APROBACION_BAJA: 'Se aprueban menos operaciones', RECHAZO_ALTO: 'Suben los rechazos',
+    ERROR_ALTO: 'Suben los errores técnicos', IMPORTE_BAJO: 'Se opera menos dinero de lo normal',
+    IMPORTE_ALTO: 'Se opera más dinero de lo normal', LATENCIA_ALTA: 'El servicio responde lento',
+    SIN_EXITOS: 'No se aprueba ninguna operación', DATO_TARDIO: 'Los datos llegan con demora',
+    DATO_INCONSISTENTE: 'Los datos informados no cierran', SIN_PREDICCION: 'Cliente nuevo, todavía sin historia para comparar',
+    VENTANA_FALTANTE: 'Dejaron de llegar datos'
+  };
+  var SERVICIO = { TRANSFERENCIAS: 'Transferencias', PAGO_SERVICIOS: 'Pago de servicios', RECARGA_CELULAR: 'Recarga de celular', RECARGA_TRANSPORTE: 'Recarga de transporte' };
+  var CANAL = { MOBILE: 'app', WEB: 'web', API: 'API' };
+  var MOTIVO = { NORMALIZADA: 'Se normalizó sola', CONDICION_DESAPARECIDA: 'Dejó de detectarse', MANUAL: 'Resuelta a mano' };
+
+  var yo = null, permisos = [], datos = null, grupos = {};
+  // Prioridad: gravedad x criticidad del servicio (Administración > Umbrales; gana lo más específico)
+  var CRIT_TXT = { ALTA: 'alta', MEDIA: 'media', BAJA: 'baja' };
+  var MATRIZ_PRIORIDAD = { CRITICA: { ALTA: 1, MEDIA: 2, BAJA: 3 }, ALTA: { ALTA: 2, MEDIA: 3, BAJA: 3 }, MEDIA: { ALTA: 3, MEDIA: 4, BAJA: 4 }, BAJA: { ALTA: 4, MEDIA: 4, BAJA: 4 } };
+  function umbralDe(cli, srv, campo) {
+    var u = (datos && datos.umbrales) || [], f;
+    f = u.filter(function (x) { return x.cliente_id === cli && x.servicio_id === srv; })[0]; if (f && f[campo] != null) return f[campo];
+    f = u.filter(function (x) { return x.cliente_id === cli && x.servicio_id === '*'; })[0]; if (f && f[campo] != null) return f[campo];
+    f = u.filter(function (x) { return x.cliente_id === '*'; })[0]; return f ? f[campo] : null;
+  }
+  function prioridadDe(g) {
+    var c = umbralDe(g.ult.cliente_id, g.ult.servicio_id, 'criticidad') || 'MEDIA';
+    return { p: (MATRIZ_PRIORIDAD[g.sev] || MATRIZ_PRIORIDAD.BAJA)[c] || 4, crit: c };
+  }
+  function prioChip(g) {
+    return '<span class="prio p' + g.prio.p + '" title="' + esc((SEV_TXT[g.sev] || g.sev) + ' en un servicio de criticidad ' + CRIT_TXT[g.prio.crit]) + '">P' + g.prio.p + '</span>';
+  }
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function puedo(p) { return permisos.indexOf(p) >= 0; }
+  function toast(msg, error) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast' + (error ? ' error' : ''); t.style.display = 'block';
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = 'none'; }, error ? 7000 : 3500);
+  }
+  function pedir(url, cuerpo) {
+    var op = cuerpo === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) };
+    return fetch(url, op).then(function (r) {
+      if (r.status === 401) { location.href = '/login'; throw new Error('Tu sesión venció.'); }
+      return r.json().then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('Error ' + r.status)); return j; });
+    });
+  }
+  function aFecha(iso) { if (!iso) return null; var s = String(iso).replace(' ', 'T'); return new Date(s + (/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? '' : 'Z')); }
+  function hora(iso) { var d = aFecha(iso); return d && !isNaN(d) ? d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TZ }) : ''; }
+  function diaHora(iso) {
+    var d = aFecha(iso); if (!d || isNaN(d)) return '';
+    var ref = aFecha(datos.ahora), dia = d.toLocaleDateString('es-AR', { timeZone: TZ });
+    var hoy = ref.toLocaleDateString('es-AR', { timeZone: TZ }), ayer = new Date(ref.getTime() - 864e5).toLocaleDateString('es-AR', { timeZone: TZ });
+    return (dia === hoy ? '' : dia === ayer ? 'ayer ' : d.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', timeZone: TZ }) + ' ') + hora(iso);
+  }
+  function hace(iso) {
+    var m = Math.round((aFecha(datos.ahora) - aFecha(iso)) / 60000);
+    if (isNaN(m)) return ''; if (m < 1) return 'recién'; if (m < 60) return 'hace ' + m + ' min';
+    var h = Math.floor(m / 60), r = m % 60; return 'hace ' + h + ' h' + (r ? ' ' + r + ' min' : '');
+  }
+  function num(v, dec) { return v == null || v === '' ? '' : Number(v).toLocaleString('es-AR', { maximumFractionDigits: dec == null ? 2 : dec }); }
+  function valor(metrica, v) {
+    if (v == null) return '—';
+    if (/^tasa/.test(metrica)) return num(v * 100, 1) + ' %';
+    if (/tiempo/.test(metrica)) return num(v, 0) + ' ms';
+    if (/demora/.test(metrica)) return num(v, 0) + ' min';
+    if (/importe/.test(metrica)) return '$ ' + num(v, 0);
+    return num(v, 0);
+  }
+  function servicio(r) { return (SERVICIO[r.servicio_id] || String(r.servicio_id || '').toLowerCase().replace(/_/g, ' ')) + ' por ' + (CANAL[r.canal_id] || r.canal_id); }
+  function frase(tipo, r) { if (tipo === 'VOLUMEN_BAJO' && r && r.valor_observado === 0) return 'No está entrando tráfico'; return FRASE[tipo] || tipo; }
+  function iniciales(n) { return n.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || '?'; }
+  document.addEventListener('click', function (ev) { var b = ev.target.closest('[data-cerrar]'); if (b) b.closest('dialog').close(); });
+  function errorForm(id, msg) { var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+
+  // Menú del usuario
+  function menu(abrir) { var m = $('menu-usuario'); if (abrir === undefined) abrir = m.hidden; m.hidden = !abrir; $('btn-avatar').setAttribute('aria-expanded', abrir ? 'true' : 'false'); }
+  $('btn-avatar').addEventListener('click', function (ev) { ev.stopPropagation(); menu(); });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('.usuario')) menu(false); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') menu(false); });
+  $('btn-salir').addEventListener('click', function () { pedir('/api/logout', {}).catch(function () {}).then(function () { location.href = '/login'; }); });
+
+  // Agrupa las ventanas de un mismo problema (misma serie, mismo tipo y, si está resuelto, misma resolución)
+  function agrupar(filas) {
+    var out = [], idx = {};
+    filas.forEach(function (r) {
+      var k = [r.ambiente, r.cliente_id, r.servicio_id, r.producto_id, r.canal_id, r.moneda_id, r.tipo_alerta, r.fecha_resolucion || ''].join('|');
+      var g = idx[k];
+      if (!g) { g = idx[k] = { k: k, id: r.alerta_id, ids: [], filas: [], sev: r.severidad_maxima || r.severidad, desde: r.ventana_inicio, ult: r }; out.push(g); }
+      g.ids.push(r.alerta_id); g.filas.push(r);
+      if (SEV_N[r.severidad_maxima || r.severidad] < SEV_N[g.sev]) g.sev = r.severidad_maxima || r.severidad;
+      if (r.ventana_inicio < g.desde) g.desde = r.ventana_inicio;
+      if (r.ventana_inicio > g.ult.ventana_inicio) g.ult = r;
+      if (r.asignado_en && (!g.asig || r.asignado_en > g.asig.asignado_en)) g.asig = r;
+    });
+    out.forEach(function (g) {
+      g.a = g.asig || g.ult;
+      g.tomada = g.filas.every(function (r) { return r.estado === 'RECONOCIDA'; });
+      g.prio = prioridadDe(g);
+      g.eventos = (datos.eventos || []).filter(function (e) { return g.ids.indexOf(e.alerta_id) >= 0; });
+      grupos[g.id] = g;
+    });
+    return out.sort(function (x, y) { return x.prio.p - y.prio.p || SEV_N[x.sev] - SEV_N[y.sev] || (x.desde < y.desde ? -1 : 1); });
+  }
+  var ACC_TXT = { DERIVAR: 'derivó', TOMAR: 'la tomó', COMENTAR: 'comentó', DEVOLVER: 'la devolvió', RESOLVER: 'la resolvió' };
+  function textoEvento(e) {
+    var dest = e.accion === 'DERIVAR' ? ' a ' + [e.destino_nombre, e.equipo_destino_nombre ? 'equipo ' + e.equipo_destino_nombre : ''].filter(Boolean).join(', ') : '';
+    return '<li><time>' + esc(diaHora(e.fecha)) + '</time><b>' + esc(e.usuario_nombre || 'Sistema') + '</b> ' + esc(ACC_TXT[e.accion] || e.accion) + esc(dest) +
+      (e.comentario ? '<q>' + esc(e.comentario) + '</q>' : '') + '</li>';
+  }
+  function tarjeta(g, tipo) {
+    var r = g.ult, a = g.a, quien = [];
+    if (tipo === 'resuelta') {
+      var res = g.filas[0];
+      quien.push(res.motivo_resolucion === 'MANUAL' ? 'La resolvió <b>' + esc(res.resuelta_por === yo.nombre ? 'vos' : res.resuelta_por) + '</b>' : '<b>' + esc(MOTIVO[res.motivo_resolucion] || res.motivo_resolucion) + '</b>');
+      quien.push(esc(diaHora(res.fecha_resolucion)));
+    } else {
+      if (a.asignado_usuario_id === yo.id) quien.push(g.tomada ? 'La tenés <b>vos</b>' : 'Asignada a <b>vos</b>');
+      else if (a.asignado_nombre) quien.push((g.tomada ? 'La tiene ' : 'Asignada a ') + '<b>' + esc(a.asignado_nombre) + '</b>' + (g.tomada ? '' : ' (sin tomar)'));
+      if (a.equipo_nombre) quien.push('equipo <b>' + esc(a.equipo_nombre) + '</b>');
+      if (a.asignado_por_nombre && a.asignado_por_nombre !== yo.nombre) quien.push('derivó ' + esc(a.asignado_por_nombre));
+    }
+    var notas = g.eventos.filter(function (e) { return e.comentario && e.accion !== 'RESOLVER'; });
+    var ultNota = notas[notas.length - 1];
+    var acc = '';
+    if (tipo === 'curso') acc = '<button class="btn primario chico" data-acc="resolver" data-id="' + g.id + '">Resolver</button>' + btnComentar(g) + '<button class="btn chico" data-acc="devolver" data-id="' + g.id + '">Devolver</button>';
+    if (tipo === 'tomar') acc = '<button class="btn primario chico" data-acc="tomar" data-id="' + g.id + '">Tomar</button>' + btnComentar(g) + '<button class="btn chico" data-acc="devolver" data-id="' + g.id + '">Devolver</button>';
+    if (tipo === 'equipo') acc = btnComentar(g);
+    if (tipo !== 'resuelta' && a.asignado_equipo_id != null && datos.lidero.indexOf(a.asignado_equipo_id) >= 0) acc += '<button class="btn chico" data-acc="reasignar" data-id="' + g.id + '">Reasignar</button>';
+    var resComent = tipo === 'resuelta' && g.filas[0].comentario && g.filas[0].motivo_resolucion === 'MANUAL' ? '<p class="caso-nota">“' + esc(g.filas[0].comentario) + '”</p>' : '';
+    return '<article class="caso ' + (tipo === 'resuelta' ? 'resuelto' : esc(g.sev)) + '">' +
+      '<div class="caso-cab">' + (tipo === 'resuelta' ? '' : prioChip(g)) + '<span class="sev ' + esc(g.sev) + '">' + esc(SEV_TXT[g.sev]) + '</span><b>' + esc(frase(r.tipo_alerta, r)) + '</b></div>' +
+      '<div class="caso-sub">' + esc(r.cliente_id) + ' · ' + esc(servicio(r)) + '</div>' +
+      '<dl class="caso-datos"><div><dt>Desde</dt><dd>' + esc(hora(g.desde)) + '</dd></div><div><dt>' + (tipo === 'resuelta' ? 'Duró' : 'Hace') + '</dt><dd>' +
+        esc(tipo === 'resuelta' ? duracion(g) : hace(g.desde).replace('hace ', '')) + '</dd></div>' +
+        '<div><dt>Observado</dt><dd>' + esc(valor(r.metrica, r.valor_observado)) + '</dd></div><div><dt>Esperado</dt><dd>' + esc(valor(r.metrica, r.valor_esperado)) + '</dd></div></dl>' +
+      (quien.length ? '<p class="caso-asig">' + quien.join(' · ') + '</p>' : '') + resComent +
+      (ultNota && tipo !== 'resuelta' ? '<p class="caso-nota">' + esc(ultNota.usuario_nombre || 'Sistema') + ': “' + esc(ultNota.comentario) + '”</p>' : '') +
+      (acc ? '<div class="caso-acc">' + acc + '</div>' : '') +
+      (g.eventos.length ? '<details><summary>Historial (' + g.eventos.length + ')</summary><ol class="historial">' + g.eventos.map(textoEvento).join('') + '</ol></details>' : '') +
+      '</article>';
+  }
+  function btnComentar(g) { return '<button class="btn chico" data-acc="comentar" data-id="' + g.id + '">Comentar</button>'; }
+  function lista(id, gs, tipo, vacio) {
+    $(id).innerHTML = gs.length ? gs.map(function (g) { return tarjeta(g, tipo); }).join('') : '<div class="vacio-caja">' + esc(vacio) + '</div>';
+  }
+  function duracion(g) {
+    var fin = aFecha(g.filas[0].fecha_resolucion), m = Math.round((fin - aFecha(g.desde)) / 60000);
+    return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+  }
+
+  function pintar(d) {
+    datos = d; grupos = {};
+    (d.reglas_personalizadas || []).forEach(function (r) { FRASE['PERS_' + r.id] = r.nombre; });
+    var ab = agrupar(d.abiertas);
+    var curso = ab.filter(function (g) { return g.tomada && g.a.asignado_usuario_id === yo.id; });
+    var tomar = ab.filter(function (g) { return !g.tomada && (g.a.asignado_usuario_id === yo.id || (g.a.asignado_usuario_id == null && d.mis_equipos.indexOf(g.a.asignado_equipo_id) >= 0)); });
+    var equipo = ab.filter(function (g) { return curso.indexOf(g) < 0 && tomar.indexOf(g) < 0 && d.lidero.indexOf(g.a.asignado_equipo_id) >= 0; });
+    var res = agrupar(d.resueltas).sort(function (x, y) { return x.filas[0].fecha_resolucion < y.filas[0].fecha_resolucion ? 1 : -1; });
+    lista('c-curso', curso, 'curso', 'No tenés alertas en curso.');
+    lista('c-tomar', tomar, 'tomar', 'No hay alertas esperando que las tomes.');
+    lista('c-equipo', equipo, 'equipo', 'Tus equipos no tienen otras alertas abiertas.');
+    $('b-equipo').hidden = !d.lidero.length;
+    lista('c-resueltas', res, 'resuelta', 'Todavía no resolviste alertas en las últimas 24 horas.');
+    var n = tomar.length, c = curso.length;
+    $('bajada').textContent = 'Hola, ' + yo.nombre.split(' ')[0] + '. ' + (n + c === 0 ? 'No tenés nada pendiente.' :
+      (n ? 'Tenés ' + n + (n === 1 ? ' alerta para tomar' : ' alertas para tomar') : '') + (n && c ? ' y ' : '') + (c ? (n ? '' : 'Tenés ') + c + ' en curso' : '') + '.') +
+      (d.reloj_simulado ? ' (Reloj de demostración: ' + hora(d.ahora) + ')' : '');
+    $('resumen').innerHTML = [['b-curso', c, 'en curso'], ['b-tomar', n, 'para tomar'], ['b-resueltas', res.length, 'resueltas (24 h)']]
+      .map(function (x) { return '<a href="#' + x[0] + '"' + (x[1] ? ' class="hay"' : '') + '><b>' + x[1] + '</b>' + x[2] + '</a>'; }).join('');
+    document.title = (n + c ? '(' + (n + c) + ') ' : '') + 'Helios · Mis alertas';
+  }
+  function cargar() { return pedir('/api/mis-alertas').then(pintar).catch(function (e) { toast(e.message, true); }); }
+  $('btn-actualizar').addEventListener('click', function () { var b = this; b.disabled = true; cargar().then(function () { b.disabled = false; toast('Datos actualizados.'); }); });
+
+  // Acciones
+  var actual = null;
+  var NOTA = {
+    comentar: { t: 'Comentar', e: 'Comentario', a: 'Lo ven quienes trabajan la alerta y el analista.', b: 'Guardar comentario', ok: 'Comentario guardado.' },
+    devolver: { t: 'Devolver al analista', e: 'Motivo', a: 'Obligatorio: el analista lo va a leer para volver a derivarla.', b: 'Devolver', ok: 'Devuelta: vuelve a la bandeja del analista.' },
+    resolver: { t: 'Resolver alerta', e: '¿Qué se hizo?', a: 'Obligatorio: queda en el historial de la alerta.', b: 'Marcar como resuelta', ok: 'Alerta resuelta.' }
+  };
+  function abrirNota(acc, g) {
+    var n = NOTA[acc]; actual = { acc: acc, g: g };
+    $('f-nota').reset(); errorForm('n-error');
+    $('n-titulo').textContent = n.t; $('n-etiqueta').textContent = n.e; $('n-ayuda').textContent = n.a; $('n-guardar').textContent = n.b;
+    $('n-alerta').textContent = frase(g.ult.tipo_alerta, g.ult) + ' · ' + g.ult.cliente_id + ', ' + servicio(g.ult);
+    $('dlg-nota').showModal(); $('n-texto').focus();
+  }
+  $('f-nota').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('n-error');
+    var b = $('n-guardar'), a = actual; b.disabled = true;
+    pedir('/api/alertas/' + a.g.id + '/' + a.acc, { comentario: $('n-texto').value.trim() })
+      .then(function () { $('dlg-nota').close(); toast(NOTA[a.acc].ok); return cargar(); })
+      .catch(function (e) { errorForm('n-error', e.message); }).then(function () { b.disabled = false; });
+  });
+  function abrirReasignar(g) {
+    actual = { acc: 'derivar', g: g };
+    $('f-reasignar').reset(); errorForm('r-error');
+    var eqId = g.a.asignado_equipo_id, eq = datos.equipos.filter(function (e) { return e.id === eqId; })[0];
+    var ms = datos.miembros_lidero.filter(function (m) { return m.equipo_id === eqId && m.perfil !== 'GERENTE'; });
+    $('r-alerta').textContent = frase(g.ult.tipo_alerta, g.ult) + ' · ' + g.ult.cliente_id + ', ' + servicio(g.ult);
+    $('r-destino').innerHTML = '<option value="">Todo el equipo ' + esc(eq ? eq.nombre : '') + ' (la toma el primero)</option>' +
+      ms.map(function (m) { return '<option value="' + m.id + '">' + esc(m.nombre) + (m.id === yo.id ? ' (vos)' : '') + '</option>'; }).join('');
+    $('r-destino').value = g.a.asignado_usuario_id ? String(g.a.asignado_usuario_id) : '';
+    $('dlg-reasignar').showModal();
+  }
+  $('f-reasignar').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('r-error');
+    var b = $('r-guardar'), g = actual.g; b.disabled = true;
+    pedir('/api/alertas/' + g.id + '/derivar', { equipo_id: g.a.asignado_equipo_id, usuario_id: $('r-destino').value ? Number($('r-destino').value) : null, comentario: $('r-texto').value.trim() })
+      .then(function () { $('dlg-reasignar').close(); toast('Alerta reasignada.'); return cargar(); })
+      .catch(function (e) { errorForm('r-error', e.message); }).then(function () { b.disabled = false; });
+  });
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-acc]'); if (!b) return;
+    var g = grupos[b.dataset.id], acc = b.dataset.acc;
+    if (acc === 'tomar') {
+      b.disabled = true;
+      pedir('/api/alertas/' + g.id + '/tomar', {}).then(function () { toast('La tomaste: ahora está en "En curso".'); return cargar(); })
+        .catch(function (e) { b.disabled = false; toast(e.message, true); return cargar(); });
+    } else if (acc === 'reasignar') abrirReasignar(g);
+    else abrirNota(acc, g);
+  });
+
+  pedir('/api/yo').then(function (r) {
+    yo = r.usuario; permisos = r.permisos || [];
+    if (yo.debe_cambiar || !puedo('mis_alertas')) { location.href = '/'; return; }
+    $('avatar-ini').textContent = iniciales(yo.nombre);
+    $('menu-nombre').textContent = yo.nombre; $('menu-perfil').textContent = PERFIL_TXT[yo.perfil] || yo.perfil;
+    $('lnk-admin').hidden = !puedo('admin_panel');
+    $('lnk-seg').hidden = !puedo('seguimiento');
+    return cargar();
+  }).catch(function (e) { toast(e.message, true); });
+})();
+</script>
+</body>
+</html>

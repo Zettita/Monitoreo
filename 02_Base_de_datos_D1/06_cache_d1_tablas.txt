@@ -1,0 +1,19 @@
+TABLERO LIVIANO - TABLAS DE CACHE (para la Console de D1)
+
+Qué cambia: el tablero deja de recalcular series y pre-alertas en cada carga. Se calculan una sola vez después de cada revisión de alertas y quedan guardadas en estas tablas.
+No borra ni modifica nada existente. Se puede correr dos veces sin problema.
+
+En el panel de Cloudflare: D1 > helios-monitoring-dev > Console. Cada bloque es una sola línea. Correr los 4 en orden ANTES de publicar el Worker nuevo.
+(Si se publica el Worker sin correr esto, el tablero muestra un error que pide correr este archivo.)
+
+--- 1. Tabla de control del cache del tablero ---
+CREATE TABLE IF NOT EXISTS tablero_cache ( id INTEGER PRIMARY KEY CHECK (id = 1), revision TEXT NOT NULL, calculado TEXT );
+
+--- 2. Fila inicial del control ---
+INSERT OR IGNORE INTO tablero_cache (id, revision, calculado) VALUES (1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), NULL);
+
+--- 3. Series del tablero (barras de 24 h) ---
+CREATE TABLE IF NOT EXISTS series_estado ( ambiente TEXT NOT NULL, cliente_id TEXT NOT NULL, servicio_id TEXT NOT NULL, producto_id TEXT NOT NULL, canal_id TEXT NOT NULL, moneda_id TEXT NOT NULL, ventanas INTEGER NOT NULL, ultima_ventana_fin TEXT, primera_ventana_inicio TEXT );
+
+--- 4. Pre-alertas del tablero ---
+CREATE TABLE IF NOT EXISTS prealertas_estado ( tipo_prealerta TEXT, tipo_previsto TEXT, severidad TEXT, ambiente TEXT, cliente_id TEXT, servicio_id TEXT, producto_id TEXT, canal_id TEXT, moneda_id TEXT, metrica TEXT, inicio TEXT, ultima_ventana TEXT, ventanas INTEGER, valor_observado REAL, valor_esperado REAL, umbral REAL, margen_consumido REAL, margen_consumido_max REAL, minutos_estimados REAL, activa INTEGER, resultado TEXT, minutos_anticipacion REAL );

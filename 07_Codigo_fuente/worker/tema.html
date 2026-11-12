@@ -1,0 +1,148 @@
+<!--HEAD-->
+<script>
+// Tema elegido por la persona (claro, oscuro o el del sistema). Se aplica antes de pintar para que no parpadee.
+(function () { var t = 'claro'; try { t = localStorage.getItem('helios_tema') || 'claro'; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', t === 'oscuro' ? 'dark' : t === 'sistema' ? 'auto' : 'light'); })();
+</script>
+<!--TOKENS-->
+/* Colores: base neutra del Atlassian Design System con acento verde azulado (teal): claro (por defecto), oscuro o el del sistema */
+:root, :root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F7F8F9; --panel: #FFFFFF; --ink: #172B4D; --ink-2: #44546F; --ink-3: #626F86;
+  --line: #DCDFE4; --line-input: #8590A2; --input-bg: #FFFFFF; --track: #F1F2F4;
+  --accent: #0F766E; --accent-hover: #115E59; --link: #0F766E; --sobre-accent: #FFFFFF;
+  --btn-bg: rgba(9, 30, 66, .06); --btn-bg-hover: rgba(9, 30, 66, .14); --btn-ink: #172B4D;
+  --ok: #22A06B; --ok-bg: #DCFFF1; --ok-txt: #216E4E; --ok-suave: #BAF3DB;
+  --pre: #1D7AFC; --pre-bg: #E9F2FF; --pre-txt: #0055CC;
+  --critica: #C9372C; --critica-bg: #FFECEB; --critica-txt: #AE2E24;
+  --alta: #E56910; --alta-bg: #FFF3EB; --alta-txt: #A54800;
+  --media: #CF9F02; --media-bg: #FFF7D6; --media-txt: #7F5F01;
+  --baja: #8590A2; --baja-bg: #F1F2F4; --baja-txt: #44546F;
+  --morado: #6E5DC6; --morado-bg: #F3F0FF; --morado-txt: #5E4DB2;
+  --shadow: 0 1px 1px rgba(9, 30, 66, .25), 0 0 1px rgba(9, 30, 66, .31);
+  --shadow-overlay: 0 8px 12px rgba(9, 30, 66, .15), 0 0 1px rgba(9, 30, 66, .31);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1D2125; --panel: #22272B; --ink: #B6C2CF; --ink-2: #9FADBC; --ink-3: #8C9BAB;
+  --line: #38414A; --line-input: #738496; --input-bg: #22272B; --track: #2C333A;
+  --accent: #2DD4BF; --accent-hover: #5EEAD4; --link: #2DD4BF; --sobre-accent: #1D2125;
+  --btn-bg: rgba(161, 189, 217, .08); --btn-bg-hover: rgba(166, 197, 226, .16); --btn-ink: #B6C2CF;
+  --ok: #2ABB7F; --ok-bg: #1C3329; --ok-txt: #7EE2B8; --ok-suave: #216E4E;
+  --pre: #579DFF; --pre-bg: #1C2B41; --pre-txt: #85B8FF;
+  --critica: #F87168; --critica-bg: #42221F; --critica-txt: #FD9891;
+  --alta: #FEA362; --alta-bg: #3E2A1E; --alta-txt: #FEC195;
+  --media: #F5CD47; --media-bg: #332E1B; --media-txt: #F8E6A0;
+  --baja: #8C9BAB; --baja-bg: #2C333A; --baja-txt: #9FADBC;
+  --morado: #9F8FEF; --morado-bg: #2B273F; --morado-txt: #B8ACF6;
+  --shadow: 0 1px 1px rgba(3, 4, 4, .5), 0 0 1px rgba(3, 4, 4, .5);
+  --shadow-overlay: 0 0 0 1px #39424A, 0 8px 12px rgba(3, 4, 4, .36);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    color-scheme: dark;
+    --bg: #1D2125; --panel: #22272B; --ink: #B6C2CF; --ink-2: #9FADBC; --ink-3: #8C9BAB;
+    --line: #38414A; --line-input: #738496; --input-bg: #22272B; --track: #2C333A;
+    --accent: #2DD4BF; --accent-hover: #5EEAD4; --link: #2DD4BF; --sobre-accent: #1D2125;
+    --btn-bg: rgba(161, 189, 217, .08); --btn-bg-hover: rgba(166, 197, 226, .16); --btn-ink: #B6C2CF;
+    --ok: #2ABB7F; --ok-bg: #1C3329; --ok-txt: #7EE2B8; --ok-suave: #216E4E;
+    --pre: #579DFF; --pre-bg: #1C2B41; --pre-txt: #85B8FF;
+    --critica: #F87168; --critica-bg: #42221F; --critica-txt: #FD9891;
+    --alta: #FEA362; --alta-bg: #3E2A1E; --alta-txt: #FEC195;
+    --media: #F5CD47; --media-bg: #332E1B; --media-txt: #F8E6A0;
+    --baja: #8C9BAB; --baja-bg: #2C333A; --baja-txt: #9FADBC;
+    --morado: #9F8FEF; --morado-bg: #2B273F; --morado-txt: #B8ACF6;
+    --shadow: 0 1px 1px rgba(3, 4, 4, .5), 0 0 1px rgba(3, 4, 4, .5);
+    --shadow-overlay: 0 0 0 1px #39424A, 0 8px 12px rgba(3, 4, 4, .36);
+  }
+}
+<!--ESTILO-->
+/* ===== Estilo tipo Atlassian / InvGate: tipografía del sistema, bordes chicos, botones planos, etiquetas de estado ===== */
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Helvetica Neue", sans-serif; font-size: 14px; line-height: 1.43; color: var(--ink); background: var(--bg); }
+h1, h2, h3, b, strong, .marca b { font-stretch: normal; }
+a { color: var(--link); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Barra superior */
+.barra { min-height: 56px; padding-top: 8px; padding-bottom: 8px; background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: none; }
+.barra .marca b, .marca b { font-weight: 700; font-size: 16px; letter-spacing: 0; }
+.barra .marca .sub, .marca .sub { font-size: 14px; color: var(--ink-2); }
+.logo, .barra .logo { border-radius: 4px; }
+.reloj, .barra .reloj { color: var(--ink-3); font-size: 12px; }
+/* Botones */
+.btn { border: 0; border-radius: 3px; background: var(--btn-bg); color: var(--btn-ink); font-weight: 500; font-size: 14px; line-height: 20px; padding: 6px 12px; min-height: 32px; }
+.btn:hover { background: var(--btn-bg-hover); border: 0; }
+.btn.primario { background: var(--accent); color: var(--sobre-accent); font-weight: 500; }
+.btn.primario:hover { background: var(--accent-hover); filter: none; }
+.btn.chico { min-height: 24px; padding: 2px 8px; font-size: 13px; line-height: 20px; }
+.btn.enlace { background: transparent; color: var(--link); }
+.btn.enlace:hover { background: var(--btn-bg); text-decoration: none; }
+.btn.peligro { color: var(--critica-txt); }
+.btn:disabled { opacity: .5; }
+/* Superficies */
+.panel, details.detalle, .ficha, .explica, .caso, .vacio-caja, .resumen-mis a, .caja { border-radius: 4px; border-color: var(--line); box-shadow: var(--shadow); }
+.pronostico, .demo, .aviso, .frase-regla, .caso-nota, .error-form, .error { border-radius: 4px; }
+.pronostico { border-width: 1px; }
+.caja button { border-radius: 3px; font-weight: 500; }
+dialog, dialog.dlg, #dlg-clave { border: 0; border-radius: 4px; box-shadow: var(--shadow-overlay); }
+dialog::backdrop { background: rgba(9, 30, 66, .54); }
+.menu, .panel-avisos { border: 0; border-radius: 4px; box-shadow: var(--shadow-overlay); }
+.menu [role="menuitem"] { border-radius: 3px; }
+/* Títulos */
+.portada h1 { font-weight: 600; font-size: clamp(24px, 3vw, 32px); line-height: 1.2; letter-spacing: -.01em; }
+.portada .relato { font-size: 16px; }
+.cifra b { font-weight: 600; }
+h1 { font-weight: 600; letter-spacing: -.01em; }
+.bloque > h2, .dos > div > h2, .titulo-filtro h2, .cab-seccion h2, .bloque-mis > h2 { font-size: 20px; font-weight: 600; letter-spacing: -.008em; }
+.panel h3, .titulo-filtro h3 { font-size: 16px; font-weight: 600; }
+/* Campos */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea { border-radius: 3px; border-color: var(--line-input); background-color: var(--input-bg); }
+/* Tablas */
+th { font-size: 12px; font-weight: 600; color: var(--ink-2); border-bottom: 2px solid var(--line); }
+/* Etiquetas de estado (lozenges) */
+.sev, .est, .chip.ok, .chip.mal, .chip.aviso, .chip.pre, .chip-dev { display: inline-block; border-radius: 3px; padding: 0 4px; font-size: 11px; font-weight: 700; line-height: 16px; text-transform: uppercase; letter-spacing: .01em; white-space: nowrap; }
+.sev.CRITICA { color: var(--critica-txt); background: var(--critica-bg); }
+.sev.ALTA { color: var(--alta-txt); background: var(--alta-bg); }
+.sev.MEDIA { color: var(--media-txt); background: var(--media-bg); }
+.sev.BAJA { color: var(--baja-txt); background: var(--baja-bg); }
+.est-nueva { background: var(--baja-bg); color: var(--ink-2); }
+.est-asig { background: var(--morado-bg); color: var(--morado-txt); }
+.est-curso { background: var(--pre-bg); color: var(--pre-txt); }
+.est-dev, .chip-dev { background: var(--media-bg); color: var(--media-txt); }
+.est-info { background: var(--baja-bg); color: var(--baja-txt); }
+.chip.ok { background: var(--ok-bg); color: var(--ok-txt); }
+.chip.mal { background: var(--critica-bg); color: var(--critica-txt); }
+.chip.aviso { background: var(--media-bg); color: var(--media-txt); }
+.chip.pre { background: var(--pre-bg); color: var(--pre-txt); }
+.chip { border-radius: 3px; }
+/* Pestañas del panel */
+.tabs a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+/* Selector de tema en el menú del usuario */
+.menu-tema { padding: 8px 10px 10px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 4px 0; }
+.menu-tema > span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--ink-3); margin-bottom: 6px; }
+.menu-tema .seg { display: flex; gap: 2px; padding: 2px; border-radius: 4px; background: var(--btn-bg); }
+.menu-tema .seg button { flex: 1; border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 3px; cursor: pointer; }
+.menu-tema .seg button:hover { color: var(--ink); }
+.menu-tema .seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+<!--MENU-->
+<div class="menu-tema" role="group" aria-label="Tema"><span>Tema</span><div class="seg"><button type="button" data-tema="claro">Claro</button><button type="button" data-tema="oscuro">Oscuro</button><button type="button" data-tema="sistema">Sistema</button></div></div>
+<!--SCRIPT-->
+<script>
+// Selector de tema del menú del usuario (se recuerda en este navegador)
+(function () {
+  var actual = 'claro';
+  try { actual = localStorage.getItem('helios_tema') || 'claro'; } catch (e) {}
+  function aplicar(t) {
+    actual = t;
+    document.documentElement.setAttribute('data-theme', t === 'oscuro' ? 'dark' : t === 'sistema' ? 'auto' : 'light');
+    try { localStorage.setItem('helios_tema', t); } catch (e) {}
+    Array.prototype.forEach.call(document.querySelectorAll('.menu-tema [data-tema]'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-tema') === t ? 'true' : 'false');
+    });
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('.menu-tema [data-tema]');
+    if (b) { ev.stopPropagation(); aplicar(b.getAttribute('data-tema')); }
+  });
+  aplicar(actual);
+})();
+</script>

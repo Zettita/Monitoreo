@@ -1,0 +1,14 @@
+AVISOS PUSH (para la Console de D1: helios-monitoring-dev) — parche 26
+
+Qué hace: crea la tabla suscripciones_push, donde queda cada celular o PC que activó los avisos
+(una fila por dispositivo). Con eso los avisos de la campanita llegan aunque Helios esté cerrado.
+
+Orden: 1) correr estos 2 bloques; 2) cargar el secreto VAPID_JWK en el Worker (Settings → Variables and Secrets,
+tipo Secret); 3) publicar 01_Worker/worker_alertas_cron.js. Son 2 escrituras: no hace falta /bookmark.
+Los dos bloques se pueden repetir sin problema.
+
+--- 1. Tabla de dispositivos suscriptos a los avisos ---
+CREATE TABLE IF NOT EXISTS suscripciones_push ( endpoint TEXT PRIMARY KEY, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), clave_p256dh TEXT NOT NULL, clave_auth TEXT NOT NULL, creada TEXT NOT NULL, actualizada TEXT NOT NULL );
+
+--- 2. Índice por persona (para encontrar sus dispositivos al mandar un aviso) ---
+CREATE INDEX IF NOT EXISTS ix_suscripciones_push_usuario ON suscripciones_push (usuario_id);

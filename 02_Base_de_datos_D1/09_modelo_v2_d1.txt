@@ -1,0 +1,85 @@
+MODELO v2 · ETAPA 2 (para D1: helios-monitoring-dev) — el motor compara contra el perfil y se borran las vistas
+
+Correr DESPUÉS de perfil_comportamiento_d1.txt (ya cargado) y ANTES de publicar el Worker nuevo.
+Antes de empezar, en la consola: /bookmark (para poder volver con /restore).
+
+Qué hace:
+  1. Crea el índice ix_perfil_comportamiento_franja (lo usan la regla de ventana faltante y la demo).
+  2-8. Borra las 7 vistas: su SQL ahora vive en el Worker.
+  9-13. Borra las tablas que ya no se usan: core_metricas_esperadas, historico_metricas, calendario,
+     raw_metricas_recibidas y demo_escenarios.
+  14-19. Vacía avisos, eventos, alertas, el cache del tablero y TODAS las métricas observadas. La demo arranca sin datos
+     recibidos: el perfil ya está entrenado con la historia hasta el lunes 26/10 a las 10:00 y la escena 1 es la primera
+     llegada de datos de cada serie.
+  20. Pone el reloj de la demo en el lunes 26/10/2026 10:00 ARG.
+  21. Marca el tablero para que se recalcule.
+
+Escrituras estimadas: unas 68.000 filas (el índice ~26.000; borrar las métricas viejas ~42.000 contando sus 3 índices).
+Correrlo en un día con el cupo libre (se renueva a las 21:00 de Argentina). Todos los bloques se pueden repetir.
+Después de publicar el Worker: Preparar demo y recorrer las escenas.
+
+Son 21 bloques: pegar cada uno (una sola línea) en orden. O con Wrangler, el archivo modelo_v2_d1.sql de 07_Codigo_fuente/worker:
+  npx wrangler d1 execute helios-monitoring-dev --remote --file=07_Codigo_fuente/worker/modelo_v2_d1.sql
+
+--- 1. Índice del perfil por día de la semana, franja y tercio (lo usan la regla de ventana faltante y la demo) ---
+CREATE INDEX IF NOT EXISTS ix_perfil_comportamiento_franja ON perfil_comportamiento (dia_semana, franja_horaria, tercio_mes);
+
+--- 2. Borrar la vista v_alertas (su SQL ahora está en el Worker) ---
+DROP VIEW IF EXISTS v_alertas;
+
+--- 3. Borrar la vista v_alertas_observadas (su SQL ahora está en el Worker) ---
+DROP VIEW IF EXISTS v_alertas_observadas;
+
+--- 4. Borrar la vista v_alertas_faltantes (su SQL ahora está en el Worker) ---
+DROP VIEW IF EXISTS v_alertas_faltantes;
+
+--- 5. Borrar la vista v_prealertas (su SQL ahora está en el Worker) ---
+DROP VIEW IF EXISTS v_prealertas;
+
+--- 6. Borrar la vista v_comparacion (su SQL ahora está en el Worker) ---
+DROP VIEW IF EXISTS v_comparacion;
+
+--- 7. Borrar la vista v_incidentes (su SQL ahora está en el Worker) ---
+DROP VIEW IF EXISTS v_incidentes;
+
+--- 8. Borrar la vista v_prediccion_vigente (su SQL ahora está en el Worker) ---
+DROP VIEW IF EXISTS v_prediccion_vigente;
+
+--- 9. Borrar la tabla core_metricas_esperadas (la reemplaza perfil_comportamiento) ---
+DROP TABLE IF EXISTS core_metricas_esperadas;
+
+--- 10. Borrar la tabla historico_metricas (la historia es core_metricas_observadas; el perfil se entrena fuera de D1) ---
+DROP TABLE IF EXISTS historico_metricas;
+
+--- 11. Borrar la tabla calendario (el día de la semana y el tercio se calculan de la fecha) ---
+DROP TABLE IF EXISTS calendario;
+
+--- 12. Borrar la tabla raw_metricas_recibidas (no se usa) ---
+DROP TABLE IF EXISTS raw_metricas_recibidas;
+
+--- 13. Borrar la tabla demo_escenarios (no se usa) ---
+DROP TABLE IF EXISTS demo_escenarios;
+
+--- 14. Vaciar avisos ---
+DELETE FROM avisos;
+
+--- 15. Vaciar alerta_eventos ---
+DELETE FROM alerta_eventos;
+
+--- 16. Vaciar alertas_historico ---
+DELETE FROM alertas_historico;
+
+--- 17. Vaciar prealertas_estado ---
+DELETE FROM prealertas_estado;
+
+--- 18. Vaciar series_estado ---
+DELETE FROM series_estado;
+
+--- 19. Vaciar core_metricas_observadas ---
+DELETE FROM core_metricas_observadas;
+
+--- 20. Reloj de la demo en el arranque (lunes 26/10/2026 10:00 ARG) ---
+UPDATE alerta_parametros SET ahora = '2026-10-26T13:00:00Z', horizonte_horas = 24 WHERE id = 1;
+
+--- 21. Marcar el tablero para que se recalcule ---
+UPDATE tablero_cache SET revision = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = 1;

@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS usuarios ( id INTEGER PRIMARY KEY AUTOINCREMENT, usuario TEXT NOT NULL UNIQUE, nombre TEXT NOT NULL, perfil TEXT NOT NULL CHECK (perfil IN ('ADMIN', 'GERENTE', 'ANALISTA', 'SOPORTE')), hash TEXT NOT NULL, sal TEXT NOT NULL, iteraciones INTEGER NOT NULL, debe_cambiar INTEGER NOT NULL DEFAULT 1, activo INTEGER NOT NULL DEFAULT 1, intentos_fallidos INTEGER NOT NULL DEFAULT 0, bloqueado_hasta TEXT, creado TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), ultimo_ingreso TEXT );
+CREATE TABLE IF NOT EXISTS sesiones ( token_hash TEXT PRIMARY KEY, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), creada TEXT NOT NULL, vence TEXT NOT NULL );
+CREATE INDEX IF NOT EXISTS ix_sesiones_usuario ON sesiones (usuario_id);
+CREATE TABLE IF NOT EXISTS auditoria ( id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), usuario_id INTEGER, accion TEXT NOT NULL, detalle TEXT );
+CREATE INDEX IF NOT EXISTS ix_auditoria_fecha ON auditoria (fecha);

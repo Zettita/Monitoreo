@@ -1,0 +1,103 @@
+// =====================================================================
+// Medidas DAX - tablero de alertas
+// Crear una tabla vacía "Medidas" (Inicio → Especificar datos → Cargar)
+// y agregar cada medida con Nueva medida.
+// =====================================================================
+
+// ---------- Conteos ----------
+Total alertas = COUNTROWS ( Alertas )
+
+Alertas activas =
+CALCULATE ( [Total alertas], Alertas[activa] = 1 )
+
+Abiertas =
+CALCULATE ( [Total alertas], Alertas[estado] = "ABIERTA" )
+
+Reconocidas =
+CALCULATE ( [Total alertas], Alertas[estado] = "RECONOCIDA" )
+
+Resueltas =
+CALCULATE ( [Total alertas], Alertas[estado] = "RESUELTA" )
+
+Críticas activas =
+CALCULATE ( [Alertas activas], Alertas[severidad] = "CRITICA" )
+
+Altas activas =
+CALCULATE ( [Alertas activas], Alertas[severidad] = "ALTA" )
+
+// Para visuales "por severidad" que deben mostrar 0 en vez de vacío
+Alertas activas (0) = COALESCE ( [Alertas activas], 0 )
+
+
+// ---------- Resolución ----------
+Resueltas automáticamente =
+CALCULATE ( [Resueltas], Alertas[resuelta_por] = "SISTEMA" )
+
+% resolución automática =
+DIVIDE ( [Resueltas automáticamente], [Resueltas] )
+
+Tiempo medio de resolución (min) =
+CALCULATE ( AVERAGE ( Alertas[minutos_abierta] ), Alertas[estado] = "RESUELTA" )
+
+Antigüedad media activas (min) =
+CALCULATE ( AVERAGE ( Alertas[minutos_abierta] ), Alertas[activa] = 1 )
+
+Reaperturas = SUM ( Alertas[cantidad_reaperturas] )
+
+Alertas escaladas =
+// la severidad actual es menor que la peor que tuvo
+CALCULATE (
+    [Total alertas],
+    FILTER ( Alertas, Alertas[severidad_orden] > Alertas[severidad_maxima_orden] )
+)
+
+
+// ---------- Incidentes ----------
+Total incidentes = COUNTROWS ( Incidentes )
+
+Incidentes abiertos =
+CALCULATE ( [Total incidentes], Incidentes[estado_incidente] = "ABIERTO" )
+
+Duración media incidente (min) =
+AVERAGE ( Incidentes[duracion_minutos] )
+
+
+// ---------- Encabezado ----------
+Datos al =
+"Datos al " & FORMAT ( MAX ( Actualizacion[datos_al] ), "dd/MM/yyyy HH:mm" )
+    & IF ( MAX ( Actualizacion[reloj_simulado] ) = 1, "  (reloj simulado)", "" )
+
+Última ventana recibida =
+FORMAT ( MAX ( Actualizacion[ultima_ventana_recibida] ), "dd/MM HH:mm" )
+
+
+// ---------- Formato condicional ----------
+// Usar en Formato → Color de fondo/fuente → "Valor del campo"
+Color severidad =
+SWITCH (
+    SELECTEDVALUE ( Alertas[severidad] ),
+    "CRITICA", "#C0392B",
+    "ALTA",    "#E67E22",
+    "MEDIA",   "#F1C40F",
+    "BAJA",    "#95A5A6"
+)
+
+
+// ---------- Pre-alertas (tabla Prealertas) ----------
+Prealertas activas =
+COALESCE ( CALCULATE ( COUNTROWS ( Prealertas ), Prealertas[activa] = 1 ), 0 )
+
+Prealertas 48 h = COUNTROWS ( Prealertas )
+
+Prealertas confirmadas =
+CALCULATE ( COUNTROWS ( Prealertas ), Prealertas[resultado] = "CONFIRMADA" )
+
+Prealertas no cumplidas =
+CALCULATE ( COUNTROWS ( Prealertas ), Prealertas[resultado] = "NO_SE_CUMPLIO" )
+
+// Sobre las que ya tienen resultado (no cuenta las que siguen en observación)
+Precisión prealertas =
+DIVIDE ( [Prealertas confirmadas], [Prealertas confirmadas] + [Prealertas no cumplidas] )
+
+Anticipación media (min) =
+CALCULATE ( AVERAGE ( Prealertas[minutos_anticipacion] ), Prealertas[resultado] = "CONFIRMADA" )

@@ -1,0 +1,124 @@
+<!--CSS-->
+/* Campanita de avisos */
+.campana { position: relative; }
+.campana[hidden], .campana .panel-avisos[hidden], .campana .badge-campana[hidden] { display: none; }
+.btn-campana { position: relative; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.btn-campana:hover, .btn-campana[aria-expanded="true"] { color: var(--ink); border-color: var(--ink-3); }
+.btn-campana svg { width: 18px; height: 18px; }
+.badge-campana { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--critica); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; border: 2px solid var(--panel); line-height: 1; }
+.panel-avisos { position: absolute; right: -52px; top: calc(100% + 8px); width: min(380px, calc(100vw - 24px)); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 28px rgba(10, 25, 30, .16); z-index: 40; overflow: hidden; }
+.avisos-cab { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.avisos-cab b { font-size: 15px; }
+.avisos-cab button { border: 0; background: none; color: var(--accent); font-size: 13px; cursor: pointer; padding: 0; }
+.avisos-cab button:disabled { color: var(--ink-3); cursor: default; }
+.lista-avisos { list-style: none; margin: 0; padding: 0; max-height: min(460px, 70vh); overflow-y: auto; }
+.lista-avisos li + li { border-top: 1px solid var(--line); }
+.lista-avisos a { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; padding: 11px 14px; color: var(--ink); text-decoration: none; font-size: 13.5px; line-height: 1.35; }
+.lista-avisos a:hover { background: var(--track); }
+.lista-avisos .punto-aviso { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: transparent; }
+.lista-avisos .nuevo .punto-aviso { background: var(--accent); }
+.lista-avisos .nuevo .t-aviso { font-weight: 650; }
+.lista-avisos .GRAVE_SIN_ASIGNAR .punto-aviso { background: var(--critica); }
+.lista-avisos .d-aviso { color: var(--ink-2); display: block; margin-top: 2px; }
+.lista-avisos q { display: block; color: var(--ink-2); font-style: italic; margin-top: 2px; }
+.lista-avisos time { display: block; color: var(--ink-3); font-size: 12px; margin-top: 3px; }
+.avisos-vacio { padding: 22px 14px; color: var(--ink-2); font-size: 14px; text-align: center; }
+@media (max-width: 640px) { .panel-avisos { position: fixed; left: 12px; right: 12px; top: 58px; width: auto; } }
+<!--BOTON-->
+<div class="campana" id="campana" hidden>
+  <button class="btn-campana" id="btn-campana" aria-haspopup="true" aria-expanded="false" title="Avisos" aria-label="Avisos">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    <span class="badge-campana" id="badge-campana" hidden></span>
+  </button>
+  <div class="panel-avisos" id="panel-avisos" hidden>
+    <div class="avisos-cab"><b>Avisos</b><button type="button" id="avisos-todos">Marcar todo como leído</button></div>
+    <ul class="lista-avisos" id="lista-avisos"></ul>
+  </div>
+</div>
+<!--SCRIPT-->
+<script>
+// Campanita: consulta solo el contador cada 2 minutos (con la pestaña visible) y la lista al abrirla
+(function () {
+  var TZ = 'America/Argentina/Buenos_Aires', CADA_MS = 120000;
+  var FRASE = {
+    VOLUMEN_BAJO: 'Entra menos tráfico de lo normal', VOLUMEN_ALTO: 'Entra mucho más tráfico de lo normal', APROBACION_BAJA: 'Se aprueban menos operaciones',
+    RECHAZO_ALTO: 'Suben los rechazos', ERROR_ALTO: 'Suben los errores técnicos', IMPORTE_BAJO: 'Se opera menos dinero de lo normal',
+    IMPORTE_ALTO: 'Se opera más dinero de lo normal', LATENCIA_ALTA: 'El servicio responde lento', SIN_EXITOS: 'No se aprueba ninguna operación',
+    DATO_TARDIO: 'Los datos llegan con demora', DATO_INCONSISTENTE: 'Los datos informados no cierran', SIN_PREDICCION: 'Cliente nuevo, sin historia', VENTANA_FALTANTE: 'Dejaron de llegar datos'
+  };
+  var SERV = { TRANSFERENCIAS: 'Transferencias', PAGO_SERVICIOS: 'Pago de servicios', RECARGA_CELULAR: 'Recarga de celular', RECARGA_TRANSPORTE: 'Recarga de transporte' };
+  var CAN = { MOBILE: 'app', WEB: 'web', API: 'API' };
+  var A_MIS = { ASIGNADA: 1, COMENTARIO: 1, RESUELTA: 1, DEVUELTA: 1 };   // estos llevan a la bandeja (Mis alertas o Seguimiento); el resto al tablero
+  var bandeja = '/mis-alertas';
+  var el = function (id) { return document.getElementById(id); };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var ultimo = null, ultimaConsulta = 0, avisos = [];
+  function pedir(url, post) {
+    return fetch(url, post ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' } : undefined)
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || 'Error ' + r.status); return j; }); });
+  }
+  function badge(n) { var b = el('badge-campana'); b.textContent = n > 99 ? '99+' : n; b.hidden = !n; }
+  function aviso(msg) {
+    var t = el('toast'); if (!t) return;
+    t.textContent = msg; t.className = 'toast'; t.style.display = 'block';
+    clearTimeout(aviso._t); aviso._t = setTimeout(function () { t.style.display = 'none'; }, 4000);
+  }
+  function contar() {
+    ultimaConsulta = Date.now();
+    return pedir('/api/avisos/contador').then(function (r) {
+      if (!r.habilitado) { el('campana').hidden = true; return; }
+      if (r.bandeja) bandeja = r.bandeja;
+      el('campana').hidden = false;
+      if (ultimo != null && r.ultimo_id != null && r.ultimo_id > ultimo) aviso(r.no_leidos === 1 ? 'Tenés un aviso nuevo.' : 'Tenés ' + r.no_leidos + ' avisos sin leer.');
+      ultimo = r.ultimo_id == null ? (ultimo == null ? 0 : ultimo) : r.ultimo_id;
+      badge(r.no_leidos);
+    }).catch(function () {});
+  }
+  function cuando(f, ahora) {
+    var m = Math.round((new Date(ahora) - new Date(f)) / 60000);
+    if (isNaN(m)) return '';
+    if (m < 1) return 'recién'; if (m < 60) return 'hace ' + m + ' min';
+    if (m < 1440) return 'hace ' + Math.floor(m / 60) + ' h';
+    return new Date(f).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TZ });
+  }
+  function pintar() {
+    var l = el('lista-avisos');
+    el('avisos-todos').disabled = !avisos.some(function (a) { return !a.leido; });
+    if (!avisos.length) { l.innerHTML = '<li class="avisos-vacio">No tenés avisos.</li>'; return; }
+    l.innerHTML = avisos.map(function (a) {
+      var alerta = a.tipo_alerta ? (a.regla_nombre || (a.tipo_alerta === 'VOLUMEN_BAJO' && a.valor_observado === 0 ? 'No está entrando tráfico' : FRASE[a.tipo_alerta] || a.tipo_alerta)) +
+        ' · ' + a.cliente_id + ', ' + (SERV[a.servicio_id] || a.servicio_id) + ' por ' + (CAN[a.canal_id] || a.canal_id) : '';
+      return '<li class="' + (a.leido ? '' : 'nuevo ') + esc(a.tipo) + '"><a href="' + (A_MIS[a.tipo] ? (a.tipo === 'DEVUELTA' && bandeja === '/mis-alertas' ? '/' : bandeja) : '/') + '" data-aviso="' + a.id + '">' +
+        '<span class="punto-aviso"></span><span><span class="t-aviso">' + esc(a.texto) + '</span>' +
+        (alerta ? '<span class="d-aviso">' + esc(alerta) + (a.estado_alerta === 'RESUELTA' && a.tipo !== 'RESUELTA' ? ' (ya resuelta)' : '') + '</span>' : '') +
+        (a.detalle ? '<q>“' + esc(a.detalle) + '”</q>' : '') + '<time>' + esc(cuando(a.fecha, a.ahora)) + '</time></span></a></li>';
+    }).join('');
+  }
+  function abrir(si) {
+    var p = el('panel-avisos'), b = el('btn-campana');
+    if (si === undefined) si = p.hidden;
+    p.hidden = !si; b.setAttribute('aria-expanded', si ? 'true' : 'false');
+    if (si) {
+      el('lista-avisos').innerHTML = '<li class="avisos-vacio">Cargando…</li>';
+      pedir('/api/avisos').then(function (r) { avisos = r.avisos; pintar(); }).catch(function (e) { el('lista-avisos').innerHTML = '<li class="avisos-vacio">' + esc(e.message) + '</li>'; });
+    }
+  }
+  el('btn-campana').addEventListener('click', function (ev) { ev.stopPropagation(); abrir(); });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('.campana')) { el('panel-avisos').hidden = true; el('btn-campana').setAttribute('aria-expanded', 'false'); } });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') abrir(false); });
+  el('avisos-todos').addEventListener('click', function () {
+    pedir('/api/avisos/leer-todos', true).then(function () { avisos.forEach(function (a) { a.leido = 1; }); pintar(); badge(0); });
+  });
+  el('lista-avisos').addEventListener('click', function (ev) {
+    var a = ev.target.closest('a[data-aviso]'); if (!a) return;
+    ev.preventDefault();
+    var destino = a.getAttribute('href');
+    pedir('/api/avisos/' + a.getAttribute('data-aviso') + '/leido', true).catch(function () {}).then(function () {
+      if (location.pathname === destino) location.reload(); else location.href = destino;
+    });
+  });
+  contar();
+  setInterval(function () { if (!document.hidden) contar(); }, CADA_MS);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - ultimaConsulta > CADA_MS) contar(); });
+})();
+</script>

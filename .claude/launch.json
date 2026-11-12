@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "helios-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--no-warnings",
+        "07_Codigo_fuente/worker/servidor_local.mjs",
+        "07_Codigo_fuente/worker/prueba.sqlite",
+        "8787"
+      ],
+      "port": 8787
+    }
+  ]
+}

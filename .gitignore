@@ -1,0 +1,25 @@
+# Claves: nunca al repositorio (el secreto VAPID_JWK vive solo en Cloudflare)
+clave_push_*.txt
+*.pem
+*.key
+.env*
+.dev.vars
+
+# Bases de prueba que arman las pruebas (se regeneran con mkdb.mjs); base.sqlite sí va
+*.sqlite
+!07_Codigo_fuente/pruebas/base.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Salidas del build y de las pruebas (w.mjs es igual a 01_Worker/worker_alertas_cron.js)
+07_Codigo_fuente/worker/w.mjs
+07_Codigo_fuente/worker/salida*.txt
+
+# Basura de herramientas
+__pycache__/
+node_modules/
+.claude/settings.local.json
+~$*
+Thumbs.db
+desktop.ini

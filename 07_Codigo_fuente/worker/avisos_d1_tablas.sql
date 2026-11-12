@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS reglas_derivacion ( id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, prioridad INTEGER NOT NULL DEFAULT 100, cliente_id TEXT, servicio_id TEXT, canal_id TEXT, tipo_alerta TEXT, severidad_minima TEXT CHECK (severidad_minima IS NULL OR severidad_minima IN ('CRITICA', 'ALTA', 'MEDIA')), equipo_id INTEGER REFERENCES equipos (id), usuario_id INTEGER REFERENCES usuarios (id), activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1)), creada_por INTEGER REFERENCES usuarios (id), creada TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), actualizada TEXT, CHECK (equipo_id IS NOT NULL OR usuario_id IS NOT NULL) );
+CREATE TABLE IF NOT EXISTS avisos ( id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), fecha TEXT NOT NULL, tipo TEXT NOT NULL, alerta_id TEXT, texto TEXT NOT NULL, detalle TEXT, leido INTEGER NOT NULL DEFAULT 0 CHECK (leido IN (0, 1)) );
+CREATE INDEX IF NOT EXISTS ix_avisos_no_leidos ON avisos (usuario_id, leido);
+CREATE INDEX IF NOT EXISTS ix_avisos_usuario ON avisos (usuario_id, id);
+CREATE INDEX IF NOT EXISTS ix_avisos_alerta ON avisos (alerta_id, tipo);

@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helios · Administración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #EDF1F0; --panel: #FFFFFF; --ink: #13262E; --ink-2: #4A5D66; --ink-3: #7C8D94; --line: #D5DEDC; --track: #E3EAE8;
+  --accent: #1E5A73; --sobre-accent: #FFFFFF; --ok: #23876A; --ok-bg: #E2F2EC; --pre: #2A74C2; --pre-bg: #E4EEF9;
+  --critica: #C8203A; --critica-bg: #FBE6E9; --alta: #DB661C; --alta-bg: #FCEDE2; --media: #B88A00; --media-bg: #F8F0D6;
+  --baja: #8193A0; --baja-bg: #EBEFF2; --shadow: 0 1px 2px rgba(19, 38, 46, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F1B21; --panel: #15252D; --ink: #E5EEF0; --ink-2: #A9BAC0; --ink-3: #7F939A; --line: #263A43; --track: #1D3039;
+    --accent: #6FB3CF; --sobre-accent: #0F1B21; --ok: #4CC49B; --ok-bg: #133229; --pre: #6AA8EE; --pre-bg: #172C44;
+    --critica: #FF5D72; --critica-bg: #3A1720; --alta: #FF9150; --alta-bg: #3A2316; --media: #E5BE3F; --media-bg: #332B12;
+    --baja: #95A6B2; --baja-bg: #22313A; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* Barra superior (igual que el tablero) */
+.barra { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 24px; background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
+.marca { display: flex; align-items: center; gap: 10px; min-width: 0; color: inherit; text-decoration: none; }
+.marca b { font-weight: 800; font-stretch: 112%; font-size: 18px; letter-spacing: -.01em; }
+.marca .sub { color: var(--ink-2); font-size: 14px; white-space: nowrap; }
+.logo { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); position: relative; flex: none; }
+.logo::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; border: 2.5px solid var(--sobre-accent); }
+.derecha { display: flex; align-items: center; gap: 10px; }
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 14px; white-space: nowrap; text-decoration: none; display: inline-block; line-height: 1.4; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primario { background: var(--accent); border-color: var(--accent); color: var(--sobre-accent); font-weight: 600; }
+.btn.primario:hover { filter: brightness(1.08); }
+.btn.chico { padding: 3px 10px; font-size: 13px; }
+.btn.peligro { color: var(--critica); }
+.btn:disabled { opacity: .55; cursor: default; }
+.usuario { position: relative; margin-left: 6px; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center;
+  background: var(--accent); color: var(--sobre-accent); font-weight: 700; font-size: 14px; }
+.avatar:hover, .avatar[aria-expanded="true"] { box-shadow: 0 0 0 3px var(--track); }
+.menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(10, 25, 30, .14); padding: 6px; z-index: 30; }
+.menu-cab { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.menu-cab b { display: block; font-size: 14.5px; }
+.menu-cab span { display: block; font-size: 12.5px; color: var(--ink-3); }
+.menu [role="menuitem"] { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: var(--ink);
+  padding: 8px 10px; border-radius: 7px; font-size: 14px; cursor: pointer; text-decoration: none; }
+.menu [role="menuitem"]:hover, .menu [role="menuitem"]:focus-visible { background: var(--track); }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 22px 24px 56px; }
+h1 { margin: 0; font-size: 28px; font-weight: 750; font-stretch: 112%; letter-spacing: -.015em; }
+.bajada { margin: 4px 0 0; color: var(--ink-2); max-width: 75ch; }
+
+/* Pestañas */
+.tabs { display: flex; gap: 2px; margin: 20px 0 18px; border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { padding: 9px 14px; color: var(--ink-2); text-decoration: none; font-weight: 600; font-size: 14.5px; border-bottom: 2.5px solid transparent; white-space: nowrap; flex: none; }
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+.cab-seccion { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.cab-seccion h2 { margin: 0; font-size: 20px; font-weight: 700; font-stretch: 108%; }
+.cab-seccion .bajada { font-size: 14px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 16px 10px; box-shadow: var(--shadow); min-width: 0; }
+.panel + .cab-seccion { margin-top: 30px; }
+.tabla-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font-weight: 500; color: var(--ink-3); font-size: 12.5px; padding: 8px 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; }
+td.acc { text-align: right; white-space: nowrap; }
+td.acc .btn + .btn { margin-left: 4px; }
+td small, .gris { color: var(--ink-3); }
+tr.inactivo td:not(.acc) { color: var(--ink-3); }
+.vacio { color: var(--ink-2); font-size: 14px; padding: 14px 0; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; background: var(--track); color: var(--ink-2); margin: 1px 2px 1px 0; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); }
+.chip.mal { background: var(--critica-bg); color: var(--critica); }
+.chip.aviso { background: var(--media-bg); color: var(--media); }
+.chip.pre { background: var(--pre-bg); color: var(--pre); }
+.sev { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.sev.CRITICA { color: var(--critica); background: var(--critica-bg); }
+.sev.ALTA { color: var(--alta); background: var(--alta-bg); }
+.sev.MEDIA { color: var(--media); background: var(--media-bg); }
+.sev.BAJA { color: var(--baja); background: var(--baja-bg); }
+
+/* Interruptor */
+.interruptor { position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--ink-2); }
+.interruptor input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.interruptor i { display: inline-block; width: 34px; height: 20px; border-radius: 999px; background: var(--line); position: relative; transition: background .15s; flex: none; }
+.interruptor i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); transition: transform .15s; }
+.interruptor input:checked + i { background: var(--ok); }
+.interruptor input:checked + i::after { transform: translateX(14px); }
+.interruptor input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.interruptor input:disabled + i { opacity: .5; }
+.orden { display: inline-block; min-width: 1.4em; font-weight: 700; color: var(--ink-2); }
+.btn.flecha { padding: 1px 7px; margin-left: 2px; }
+
+/* Modelo */
+/* Las tarjetas ocupan siempre todo el ancho de la fila: sin huecos al final */
+.fichas { display: flex; flex-wrap: wrap; gap: 14px; }
+.fichas .ficha { flex: 1 1 300px; }
+.ficha { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+.ficha span { display: block; color: var(--ink-3); font-size: 12.5px; }
+.ficha b { display: block; font-size: clamp(17px, 1.6vw, 20px); font-weight: 700; font-stretch: 105%; margin-top: 2px; line-height: 1.3; overflow-wrap: anywhere; }
+.ficha small { display: block; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.explica { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; color: var(--ink-2); font-size: 14px; }
+.explica h3 { margin: 0 0 6px; font-size: 15px; color: var(--ink); }
+.explica ol { margin: 6px 0 0; padding-left: 20px; }
+.explica li { margin: 3px 0; }
+
+/* Filtros de auditoría */
+.filtros { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+.filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.filtros select, .filtros input { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 8px; font-size: 14px; min-width: 0; }
+.filtros input.fecha { width: 8.6em; text-align: center; }
+.filtros input.error { border-color: var(--critica); outline: 1px solid var(--critica); }
+
+/* Diálogos */
+dialog { border: 1px solid var(--line); border-radius: 12px; padding: 22px; width: min(520px, calc(100vw - 32px)); background: var(--panel); color: var(--ink); max-height: calc(100vh - 40px); }
+dialog::backdrop { background: rgba(10, 20, 25, .45); }
+dialog h2 { margin: 0 0 4px; font-size: 19px; }
+dialog .bajada { font-size: 14px; }
+.campo { display: block; margin-top: 14px; }
+.campo > span { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 5px; }
+.campo input[type=text], .campo select, .campo textarea { display: block; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14.5px; }
+.campo input[readonly] { background: var(--track); color: var(--ink-2); }
+/* En los formularios el interruptor no toma el estilo de título del campo */
+.campo > .interruptor { display: inline-flex; margin: 0; font-size: 14px; font-weight: 400; }
+.campo > .interruptor > span { display: inline; margin: 0; }
+.campo .ayuda { display: block; font-size: 12.5px; color: var(--ink-3); margin-top: 4px; font-weight: 400; }
+.fila-campos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fila-campos.dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lista-check { max-height: 190px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; }
+.lista-check label { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 14px; }
+.lista-check label small { color: var(--ink-3); }
+.lista-check .vacio { padding: 6px 0; font-size: 13.5px; }
+.frase-regla { margin-top: 16px; padding: 10px 12px; border-radius: 8px; background: var(--pre-bg); color: var(--ink); font-size: 14px; }
+.error-form { margin: 14px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--critica-bg); color: var(--critica); font-size: 13.5px; }
+.acc-dlg { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.clave-temp { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+.clave-temp code { flex: 1; font-size: 20px; letter-spacing: .06em; padding: 10px 12px; border-radius: 8px; background: var(--track); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; text-align: center; user-select: all; }
+
+/* Umbrales */
+dialog.ancho { width: min(840px, calc(100vw - 32px)); max-width: none; padding: 24px 28px; overflow-x: hidden; }
+/* Cada umbral en una fila: nombre | valor | recomendación (en el celular, uno debajo del otro) */
+.fu { display: grid; grid-template-columns: minmax(0, 1fr) 200px minmax(0, 1.25fr); gap: 4px 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.grupo > legend + .fu, .grupo > p + .fu { border-top: 0; }
+.fu-nombre { font-size: 14px; font-weight: 600; line-height: 1.3; min-width: 0; }
+.fu-nombre small { display: block; font-weight: 400; font-size: 12.5px; color: var(--ink-3); margin-top: 1px; }
+.fu-control { display: grid; grid-template-columns: minmax(0, 1fr) 30px; align-items: center; gap: 6px; }
+.fu-control input, .fu-control select { width: 100%; min-width: 0; border: 1px solid var(--line-input, var(--line)); background: var(--input-bg, var(--panel)); color: var(--ink); border-radius: 4px; padding: 7px 9px; font-size: 14px; }
+.fu-control select { grid-column: 1 / -1; }
+.fu-control select + em { display: none; }
+.fu-control input { text-align: right; font-variant-numeric: tabular-nums; }
+.fu-control em { font-style: normal; color: var(--ink-3); font-size: 13px; }
+.fu .reco { margin: 0; line-height: 1.35; overflow-wrap: anywhere; }
+.acc-umbral { flex-wrap: wrap; }
+.acc-feriados { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.acc-feriados select { border: 1px solid var(--line-input, var(--line)); border-radius: 4px; padding: 6px 8px; background: var(--input-bg, var(--panel)); color: var(--ink); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.acc-umbral .separa { flex: 1; }
+@media (max-width: 640px) {
+  dialog.ancho { padding: 18px 16px; }
+  .fu { grid-template-columns: minmax(0, 1fr); }
+  .fu-control { max-width: 260px; }
+  .acc-umbral .separa { flex-basis: 100%; height: 0; }
+}
+.grupo { border: 0; border-top: 1px solid var(--line); margin: 18px 0 0; padding: 12px 0 0; min-width: 0; }
+.grupo legend { padding: 0; font-weight: 700; font-size: 15px; }
+.grupo > p.bajada { margin: 4px 0 0; font-size: 13px; }
+.grupo .campo { margin-top: 10px; }
+.campo > .con-unidad { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; }
+.con-unidad input { flex: 1; min-width: 0; }
+.con-unidad em { font-style: normal; color: var(--ink-3); font-size: 13px; white-space: nowrap; }
+.reco { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink-3); }
+.reco b { color: var(--ink-2); font-weight: 600; }
+.modelo-dice { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: var(--track); font-size: 13.5px; color: var(--ink-2); }
+.modelo-dice b { color: var(--ink); }
+.modelo-dice ul { margin: 6px 0 0; padding-left: 18px; }
+.alcance-fijo { margin: 6px 0 0; font-size: 15px; font-weight: 600; }
+.lista-cambios { margin: 0; padding: 0; list-style: none; }
+.lista-cambios li { display: inline; }
+.lista-cambios li + li::before { content: " · "; color: var(--ink-3); }
+.btn.enlace-chico { border: 0; background: none; padding: 0; color: var(--link); font-size: 12.5px; cursor: pointer; text-decoration: underline; min-height: 0; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 8px; font-size: 14px; max-width: calc(100% - 32px); display: none; z-index: 50; }
+.toast.error { background: var(--critica); color: #fff; }
+
+@media (max-width: 760px) {
+  .barra { padding: 8px 16px; }
+  .marca .sub { display: none; }
+  .wrap { padding: 16px 16px 40px; }
+  .fila-campos, .fila-campos.dos { grid-template-columns: 1fr; }
+  /* Tablas como tarjetas en el celular */
+  table.resp thead { display: none; }
+  table.resp tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  table.resp tr:last-child { border-bottom: 0; }
+  table.resp td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 3px 0; text-align: right; }
+  table.resp td::before { content: attr(data-t); color: var(--ink-3); font-size: 12.5px; text-align: left; flex: none; }
+  table.resp td:first-child { display: block; text-align: left; font-size: 14.5px; }
+  table.resp td:first-child::before { content: none; }
+  table.resp td.acc { justify-content: flex-end; padding-top: 8px; }
+  table.resp td.acc::before { content: none; }
+}
+</style>
+</head>
+<body>
+<header class="barra">
+  <a class="marca" href="/"><span class="logo" aria-hidden="true"></span><b>Helios</b><span class="sub">Monitoreo de operaciones</span></a>
+  <div class="derecha">
+    <a class="btn" href="/">← Volver al tablero</a>
+    <div class="usuario">
+      <button class="avatar" id="btn-avatar" aria-haspopup="menu" aria-expanded="false" title="Mi cuenta"><span id="avatar-ini">·</span></button>
+      <div class="menu" id="menu-usuario" role="menu" hidden>
+        <div class="menu-cab"><b id="menu-nombre"></b><span id="menu-perfil"></span></div>
+        <a role="menuitem" href="/">Tablero</a>
+        <a role="menuitem" href="/mis-alertas" id="lnk-mis" hidden>Mis alertas</a>
+        <a role="menuitem" href="/seguimiento" id="lnk-seg" hidden>Seguimiento</a>
+        <button role="menuitem" id="btn-salir">Salir</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Administración</h1>
+  <p class="bajada" id="bajada-admin">Cargando…</p>
+  <nav class="tabs" id="tabs" aria-label="Secciones"></nav>
+
+  <!-- USUARIOS -->
+  <section id="s-usuarios" hidden>
+    <div class="cab-seccion">
+      <div><h2>Usuarios</h2><p class="bajada">Quién puede entrar y con qué perfil. Al crear un usuario o resetear su contraseña se muestra una contraseña temporal que tiene que cambiar en su primer ingreso.</p></div>
+      <button class="btn primario" id="btn-nuevo-usuario">Nuevo usuario</button>
+    </div>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-usuarios"></table></div></div>
+  </section>
+
+  <!-- EQUIPOS -->
+  <section id="s-equipos" hidden>
+    <div class="cab-seccion">
+      <div><h2>Equipos</h2><p class="bajada">Grupos de personas a los que después se les van a poder asignar alertas. Una persona puede estar en varios equipos.</p></div>
+      <button class="btn primario" id="btn-nuevo-equipo">Nuevo equipo</button>
+    </div>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-equipos"></table></div></div>
+  </section>
+
+  <!-- REGLAS -->
+  <section id="s-reglas" hidden>
+    <div class="cab-seccion">
+      <div><h2>Reglas personalizadas</h2><p class="bajada">Avisos propios: qué métrica mirar, en qué cliente o servicio, cuántas ventanas seguidas y con qué severidad. Los mínimos y máximos los calcula el modelo para cada ventana de 15 minutos, con el ancho de banda configurado en Umbrales.</p></div>
+      <button class="btn primario" id="btn-nueva-regla">Nueva regla</button>
+    </div>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-reglas-pers"></table></div></div>
+    <div class="cab-seccion">
+      <div><h2>Reglas del sistema</h2><p class="bajada">Las reglas que vienen con la plataforma. Se pueden apagar si generan avisos que no sirven; los cambios valen desde la próxima revisión de alertas.</p></div>
+    </div>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-reglas-base"></table></div></div>
+  </section>
+
+  <!-- DERIVACIÓN AUTOMÁTICA -->
+  <section id="s-derivacion" hidden>
+    <div class="cab-seccion">
+      <div><h2>Derivación automática</h2><p class="bajada">Cada vez que se revisan las alertas, las que están sin asignar se derivan solas según estas reglas. Se evalúan de arriba hacia abajo: gana la primera que coincide. Nunca pisan una derivación hecha a mano y no tocan las alertas devueltas.</p></div>
+      <button class="btn primario" id="btn-nueva-deriv">Nueva regla</button>
+    </div>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-derivacion"></table></div></div>
+  </section>
+
+  <!-- UMBRALES -->
+  <section id="s-umbrales" hidden>
+    <div class="cab-seccion">
+      <div><h2>Valores generales</h2><p class="bajada">Cómo se evalúan las alertas de todos los clientes. Los cambios valen desde la próxima revisión de alertas.</p></div>
+      <button class="btn" id="btn-umbral-general">Editar valores generales</button>
+    </div>
+    <div class="fichas" id="fichas-umbrales"></div>
+    <div class="cab-seccion" style="margin-top:30px">
+      <div><h2>Excepciones por cliente</h2><p class="bajada">Para un cliente o un servicio en particular. Solo cambian lo que se completa: el resto lo toman del cliente o de los valores generales.</p></div>
+      <button class="btn primario" id="btn-nueva-excepcion">Nueva excepción</button>
+    </div>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-umbrales"></table></div></div>
+    <div class="cab-seccion" style="margin-top:30px">
+      <div><h2>Feriados</h2><p class="bajada">Nacionales, de la API pública argentinadatos (se actualizan solos una vez por año), más los que agregues a mano. Los servicios con "Silenciar alertas en feriados" no generan alertas esos días.</p></div>
+      <div class="acc-feriados"><label class="sr" for="fer-anio">Año</label><select id="fer-anio"></select><button class="btn" id="btn-fer-sync">Actualizar desde la API</button><button class="btn primario" id="btn-fer-nuevo">Agregar feriado</button></div>
+    </div>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-feriados"></table></div></div>
+    <div class="explica">
+      <h3>Cómo se usan</h3>
+      <ol>
+        <li><b>Prioridad.</b> La gravedad de la alerta junto con la criticidad del servicio da la prioridad: P1 (grave en un servicio crítico) a P4. El tablero ordena por prioridad.</li>
+        <li><b>Objetivo de disponibilidad.</b> El tablero compara el porcentaje del día sin problemas de cada cliente contra su objetivo.</li>
+        <li><b>Gravedad.</b> Cuánto tiene que alejarse una métrica de lo esperado para que la alerta sea Importante o Grave. Por debajo, es Leve.</li>
+        <li><b>Ancho de la banda.</b> El modelo calcula para cada ventana un mínimo y un máximo normales: eso es el 100 %. Con 150 % la banda es más ancha y avisa menos; con 80 % es más angosta y avisa antes. Vale para las alertas, las pre-alertas y las reglas personalizadas.</li>
+        <li><b>Operación.</b> Con menos operaciones que el volumen mínimo no se evalúan las tasas (con pocas operaciones un solo rechazo mueve mucho el porcentaje). La gracia es cuánto se espera a que lleguen los datos antes de avisar que faltan o que llegaron tarde.</li>
+        <li><b>Feriados.</b> En un feriado nacional (o uno agregado a mano), los servicios con "Silenciar alertas en feriados" no generan alertas, pre-alertas ni reglas personalizadas. Sirve para servicios que esos días casi no operan, como préstamos; los que operan normal (transferencias, pagos) conviene dejarlos alertando.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- MODELO -->
+  <section id="s-modelo" hidden>
+    <div class="cab-seccion"><div><h2>Modelo de predicción</h2><p class="bajada">Solo lectura. Muestra con qué está calculando el modelo los valores esperados, mínimos y máximos.</p></div></div>
+    <div class="fichas" id="fichas-modelo"></div>
+    <div class="explica">
+      <h3>Cómo trabaja</h3>
+      <ol>
+        <li>Toma los últimos 7 días de datos observados, sin las ventanas que tuvieron alertas.</li>
+        <li>Para cada cliente, servicio y canal calcula, por franja de 15 minutos del día, el valor normal y la banda de mínimo y máximo.</li>
+        <li>Con eso genera las predicciones de las próximas 48 horas. Se reentrena una vez por día.</li>
+        <li>Las reglas (del sistema y personalizadas) comparan cada ventana observada contra esa predicción.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- AUDITORÍA -->
+  <section id="s-auditoria" hidden>
+    <div class="cab-seccion"><div><h2>Auditoría</h2><p class="bajada">Quién hizo qué y cuándo: ingresos, cambios de usuarios, equipos y reglas, y acciones sobre alertas.</p></div></div>
+    <form class="filtros" id="f-auditoria">
+      <label>Usuario<select id="a-usuario"><option value="">Todos</option></select></label>
+      <label>Acción<select id="a-accion"><option value="">Todas</option></select></label>
+      <label>Desde<input class="fecha" id="a-desde" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10"></label>
+      <label>Hasta<input class="fecha" id="a-hasta" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10"></label>
+      <button class="btn primario" type="submit">Buscar</button>
+    </form>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-auditoria"></table></div></div>
+    <p class="bajada" id="a-pie"></p>
+  </section>
+</main>
+
+<!-- Diálogo: usuario -->
+<dialog id="dlg-usuario">
+  <form id="f-usuario" method="dialog">
+    <h2 id="u-titulo">Nuevo usuario</h2>
+    <label class="campo"><span>Nombre y apellido</span><input type="text" id="u-nombre" maxlength="80" required autocomplete="off"></label>
+    <label class="campo"><span>Usuario</span><input type="text" id="u-usuario" maxlength="40" required autocomplete="off" autocapitalize="none" spellcheck="false">
+      <small class="ayuda" id="u-usuario-ayuda">Entre 3 y 40 caracteres: letras, números, punto o guion. Con esto ingresa.</small></label>
+    <label class="campo"><span>Perfil</span><select id="u-perfil">
+      <option value="SOPORTE">Soporte: resuelve las alertas que le asignan</option>
+      <option value="ANALISTA">Analista: revisa, deriva y arma reglas</option>
+      <option value="GERENTE">Gerente: ve todo, sin acciones</option>
+      <option value="ADMIN">Administrador: todo, incluido usuarios y equipos</option>
+    </select></label>
+    <div class="campo"><span>Equipos</span><div class="lista-check" id="u-equipos"></div></div>
+    <label class="campo" id="u-activo-campo"><span>Estado</span><span class="interruptor"><input type="checkbox" id="u-activo"><i></i><span id="u-activo-txt">Activo</span></span>
+      <small class="ayuda">Un usuario inactivo no puede ingresar. Al desactivarlo o cambiarle el perfil se cierran sus sesiones abiertas.</small></label>
+    <p class="error-form" id="u-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="u-guardar">Crear usuario</button></div>
+  </form>
+</dialog>
+
+<!-- Diálogo: contraseña temporal -->
+<dialog id="dlg-temp">
+  <h2>Contraseña temporal</h2>
+  <p class="bajada" id="t-texto"></p>
+  <div class="clave-temp"><code id="t-clave"></code><button class="btn" id="t-copiar">Copiar</button></div>
+  <p class="bajada" style="margin-top:12px">Se muestra <b>una sola vez</b>. Pasásela a la persona por un canal privado: en su primer ingreso va a tener que elegir una propia.</p>
+  <div class="acc-dlg"><button class="btn primario" data-cerrar>Listo</button></div>
+</dialog>
+
+<!-- Diálogo: equipo -->
+<dialog id="dlg-equipo">
+  <form id="f-equipo" method="dialog">
+    <h2 id="e-titulo">Nuevo equipo</h2>
+    <label class="campo"><span>Nombre</span><input type="text" id="e-nombre" maxlength="60" required autocomplete="off"></label>
+    <label class="campo"><span>Descripción <small class="gris">(opcional)</small></span><input type="text" id="e-descripcion" maxlength="200" autocomplete="off"></label>
+    <label class="campo"><span>Responsable <small class="gris">(opcional)</small></span><select id="e-responsable"></select></label>
+    <div class="campo"><span>Miembros</span><div class="lista-check" id="e-miembros"></div></div>
+    <label class="campo" id="e-activo-campo"><span>Estado</span><span class="interruptor"><input type="checkbox" id="e-activo"><i></i><span id="e-activo-txt">Activo</span></span></label>
+    <p class="error-form" id="e-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="e-guardar">Crear equipo</button></div>
+  </form>
+</dialog>
+
+<!-- Diálogo: regla de derivación -->
+<dialog id="dlg-deriv">
+  <form id="f-deriv" method="dialog">
+    <h2 id="dv-titulo">Nueva regla de derivación</h2>
+    <label class="campo"><span>Nombre</span><input type="text" id="dv-nombre" maxlength="80" required autocomplete="off" placeholder="Ej.: Pagos de CLI_004 a Backoffice"></label>
+    <p class="bajada" style="margin-top:14px"><b>Cuándo</b> (lo que quede en "Cualquiera" no se tiene en cuenta)</p>
+    <div class="fila-campos">
+      <label class="campo"><span>Cliente</span><select id="dv-cliente"></select></label>
+      <label class="campo"><span>Servicio</span><select id="dv-servicio"></select></label>
+      <label class="campo"><span>Canal</span><select id="dv-canal"></select></label>
+    </div>
+    <div class="fila-campos dos">
+      <label class="campo"><span>Tipo de alerta</span><select id="dv-tipo"></select></label>
+      <label class="campo"><span>Severidad</span><select id="dv-sev">
+        <option value="">Cualquiera</option><option value="MEDIA">Leve o más</option><option value="ALTA">Importante o más</option><option value="CRITICA">Solo grave</option>
+      </select></label>
+    </div>
+    <p class="bajada" style="margin-top:14px"><b>A quién</b></p>
+    <div class="fila-campos dos">
+      <label class="campo"><span>Equipo</span><select id="dv-equipo"></select></label>
+      <label class="campo"><span>Persona</span><select id="dv-persona"></select></label>
+    </div>
+    <label class="campo" id="dv-activa-campo"><span>Estado</span><span class="interruptor"><input type="checkbox" id="dv-activa"><i></i><span id="dv-activa-txt">Activa</span></span></label>
+    <p class="frase-regla" id="dv-frase"></p>
+    <p class="error-form" id="dv-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="dv-guardar">Crear regla</button></div>
+  </form>
+</dialog>
+
+<!-- Diálogo: regla personalizada -->
+<dialog id="dlg-regla">
+  <form id="f-regla" method="dialog">
+    <h2 id="r-titulo">Nueva regla</h2>
+    <label class="campo"><span>Nombre</span><input type="text" id="r-nombre" maxlength="80" required autocomplete="off" placeholder="Ej.: Caída fuerte de transferencias">
+      <small class="ayuda">Es lo que se va a leer en el tablero cuando la regla avise.</small></label>
+    <div class="fila-campos dos">
+      <label class="campo"><span>Qué mirar</span><select id="r-metrica">
+        <option value="VOLUMEN">Tráfico (cantidad de operaciones)</option>
+        <option value="APROBACION">Aprobaciones</option>
+        <option value="RECHAZO">Rechazos</option>
+        <option value="ERROR">Errores técnicos</option>
+        <option value="IMPORTE">Importe operado</option>
+        <option value="LATENCIA">Tiempo de respuesta</option>
+      </select></label>
+      <label class="campo"><span>Cuándo avisar</span><select id="r-direccion"></select></label>
+    </div>
+    <div class="fila-campos dos">
+      <label class="campo"><span>Ventanas seguidas</span><select id="r-ventanas"></select>
+        <small class="ayuda">Cuántas ventanas de 15 minutos seguidas tiene que pasar.</small></label>
+      <label class="campo"><span>Severidad</span><select id="r-severidad">
+        <option value="CRITICA">Grave</option><option value="ALTA">Importante</option><option value="MEDIA">Leve</option>
+      </select></label>
+    </div>
+    <div class="fila-campos">
+      <label class="campo"><span>Cliente</span><select id="r-cliente"></select></label>
+      <label class="campo"><span>Servicio</span><select id="r-servicio"></select></label>
+      <label class="campo"><span>Canal</span><select id="r-canal"></select></label>
+    </div>
+    <label class="campo" id="r-activa-campo"><span>Estado</span><span class="interruptor"><input type="checkbox" id="r-activa"><i></i><span id="r-activa-txt">Activa</span></span></label>
+    <p class="frase-regla" id="r-frase"></p>
+    <p class="error-form" id="r-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="r-guardar">Crear regla</button></div>
+  </form>
+</dialog>
+
+<!-- Diálogo: umbrales (generales o excepción) -->
+<dialog id="dlg-umbral" class="ancho">
+  <form id="f-umbral" method="dialog">
+    <h2 id="um-titulo">Valores generales</h2>
+    <p class="bajada" id="um-sub"></p>
+    <div class="fila-campos dos" id="um-alcance">
+      <label class="campo"><span>Cliente</span><select id="um-cliente"></select></label>
+      <label class="campo"><span>Servicio</span><select id="um-servicio"></select></label>
+    </div>
+    <p class="alcance-fijo" id="um-alcance-fijo" hidden></p>
+    <div class="modelo-dice" id="um-modelo">Consultando al modelo…</div>
+    <fieldset class="grupo">
+      <legend>Impacto en el negocio</legend>
+      <div class="fu"><label class="fu-nombre" for="um-criticidad">Criticidad del servicio<small>Junto con la gravedad define la prioridad</small></label><span class="fu-control"><select id="um-criticidad"></select><em></em></span><small class="reco" data-reco="criticidad"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-objetivo_disponibilidad">Objetivo de disponibilidad<small>Del día sin problemas</small></label><span class="fu-control"><input type="text" inputmode="decimal" id="um-objetivo_disponibilidad" autocomplete="off"><em>%</em></span><small class="reco" data-reco="objetivo_disponibilidad"></small></div>
+    </fieldset>
+    <fieldset class="grupo">
+      <legend>Gravedad de la alerta</legend>
+      <p class="bajada">Desde qué desvío respecto de lo esperado una alerta es Importante o Grave. Por debajo, es Leve.</p>
+      <div class="fu"><label class="fu-nombre" for="um-corte_pct_alta">Importante desde<small>Tráfico, importe y tiempo de respuesta</small></label><span class="fu-control"><input type="text" inputmode="decimal" id="um-corte_pct_alta" autocomplete="off"><em>%</em></span><small class="reco" data-reco="corte_pct_alta"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-corte_pct_critica">Grave desde<small>Tráfico, importe y tiempo de respuesta</small></label><span class="fu-control"><input type="text" inputmode="decimal" id="um-corte_pct_critica" autocomplete="off"><em>%</em></span><small class="reco" data-reco="corte_pct_critica"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-corte_tasa_alta">Importante desde<small>Aprobaciones, rechazos y errores</small></label><span class="fu-control"><input type="text" inputmode="decimal" id="um-corte_tasa_alta" autocomplete="off"><em>pts</em></span><small class="reco" data-reco="corte_tasa_alta"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-corte_tasa_critica">Grave desde<small>Aprobaciones, rechazos y errores</small></label><span class="fu-control"><input type="text" inputmode="decimal" id="um-corte_tasa_critica" autocomplete="off"><em>pts</em></span><small class="reco" data-reco="corte_tasa_critica"></small></div>
+    </fieldset>
+    <fieldset class="grupo">
+      <legend>Ancho de la banda del modelo</legend>
+      <p class="bajada">100 % es la banda que calcula el modelo. Más ancha (por ejemplo 150 %) avisa menos; más angosta (80 %) avisa antes.</p>
+      <div class="fu"><label class="fu-nombre" for="um-banda_volumen">Tráfico</label><span class="fu-control"><input type="text" inputmode="decimal" id="um-banda_volumen" autocomplete="off"><em>%</em></span><small class="reco" data-reco="banda_volumen"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-banda_tasas">Aprobaciones, rechazos y errores</label><span class="fu-control"><input type="text" inputmode="decimal" id="um-banda_tasas" autocomplete="off"><em>%</em></span><small class="reco" data-reco="banda_tasas"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-banda_importe">Importe operado</label><span class="fu-control"><input type="text" inputmode="decimal" id="um-banda_importe" autocomplete="off"><em>%</em></span><small class="reco" data-reco="banda_importe"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-banda_latencia">Tiempo de respuesta</label><span class="fu-control"><input type="text" inputmode="decimal" id="um-banda_latencia" autocomplete="off"><em>%</em></span><small class="reco" data-reco="banda_latencia"></small></div>
+    </fieldset>
+    <fieldset class="grupo">
+      <legend>Operación</legend>
+      <div class="fu"><label class="fu-nombre" for="um-volumen_minimo">Volumen mínimo<small>Para evaluar las tasas</small></label><span class="fu-control"><input type="text" inputmode="numeric" id="um-volumen_minimo" autocomplete="off"><em>ops</em></span><small class="reco" data-reco="volumen_minimo"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-gracia_minutos">Gracia<small>Espera para la llegada de los datos</small></label><span class="fu-control"><input type="text" inputmode="numeric" id="um-gracia_minutos" autocomplete="off"><em>min</em></span><small class="reco" data-reco="gracia_minutos"></small></div>
+      <div class="fu"><label class="fu-nombre" for="um-silenciar_feriados">Silenciar alertas en feriados<small>Ese día no se generan alertas ni pre-alertas</small></label><span class="fu-control"><select id="um-silenciar_feriados"></select><em></em></span><small class="reco" data-reco="silenciar_feriados"></small></div>
+    </fieldset>
+    <p class="error-form" id="um-error" hidden></p>
+    <div class="acc-dlg acc-umbral"><button type="button" class="btn" id="um-recomendado">Usar lo recomendado</button><span class="separa"></span><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="um-guardar">Guardar</button></div>
+  </form>
+</dialog>
+
+<!-- Diálogo: feriado manual -->
+<dialog id="dlg-feriado">
+  <form id="f-feriado" method="dialog">
+    <h2>Agregar feriado</h2>
+    <p class="bajada">Para un puente, un feriado provincial o un día especial del cliente. Vale para todos los servicios que tengan silenciadas las alertas en feriados.</p>
+    <label class="campo"><span>Fecha</span><input type="text" id="fer-fecha" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" required autocomplete="off"></label>
+    <label class="campo"><span>Nombre</span><input type="text" id="fer-nombre" maxlength="150" required autocomplete="off" placeholder="Ej.: Día no laborable bancario"></label>
+    <p class="error-form" id="fer-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="fer-guardar">Agregar</button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  var TZ = 'America/Argentina/Buenos_Aires';
+  var PERFIL_TXT = { ADMIN: 'Administrador', GERENTE: 'Gerente', ANALISTA: 'Analista', SOPORTE: 'Soporte' };
+  var SEV_TXT = { CRITICA: 'Grave', ALTA: 'Importante', MEDIA: 'Leve', BAJA: 'Informativo' };
+  var SERVICIO = { TRANSFERENCIAS: 'Transferencias', PAGO_SERVICIOS: 'Pago de servicios', RECARGA_CELULAR: 'Recarga de celular', RECARGA_TRANSPORTE: 'Recarga de transporte' };
+  var CANAL = { MOBILE: 'App', WEB: 'Web', API: 'API' };
+  var GRUPO_TXT = { VOLUMEN: 'Tráfico', TRANSACCIONES: 'Operaciones', CALIDAD_DATO: 'Calidad del dato' };
+  var REGLA_TXT = {
+    VOLUMEN_BAJO: 'Entra menos tráfico de lo normal', VOLUMEN_ALTO: 'Entra mucho más tráfico de lo normal',
+    APROBACION_BAJA: 'Se aprueban menos operaciones', RECHAZO_ALTO: 'Suben los rechazos', ERROR_ALTO: 'Suben los errores técnicos',
+    IMPORTE_FUERA_DE_BANDA: 'Se opera más o menos dinero de lo normal', LATENCIA_ALTA: 'El servicio responde lento',
+    SIN_EXITOS: 'No se aprueba ninguna operación', DATO_TARDIO: 'Los datos llegan con demora', DATO_INCONSISTENTE: 'Los datos informados no cierran',
+    SIN_PREDICCION: 'Cliente nuevo, sin historia para comparar', VENTANA_FALTANTE: 'Dejaron de llegar datos'
+  };
+  var METRICA_TXT = { VOLUMEN: 'el tráfico', APROBACION: 'la tasa de aprobación', RECHAZO: 'la tasa de rechazo', ERROR: 'la tasa de errores técnicos', IMPORTE: 'el importe operado', LATENCIA: 'el tiempo de respuesta' };
+  var METRICA_CORTA = { VOLUMEN: 'Tráfico', APROBACION: 'Aprobaciones', RECHAZO: 'Rechazos', ERROR: 'Errores técnicos', IMPORTE: 'Importe', LATENCIA: 'Tiempo de respuesta' };
+  var DIR_TXT = { BAJO: 'por debajo del mínimo', ALTO: 'por encima del máximo' };
+  var ACCION_TXT = {
+    LOGIN: 'Ingresó', LOGIN_FALLIDO: 'Ingreso fallido', USUARIO_BLOQUEADO: 'Usuario bloqueado por intentos', LOGOUT: 'Salió',
+    CAMBIO_CLAVE: 'Cambió su contraseña', ALTA_PRIMER_ADMIN: 'Alta del primer administrador',
+    PROCESAR: 'Revisó alertas', DEMO_PREPARAR: 'Preparó la demo', TOMAR_ALERTA: 'Tomó una alerta', RESOLVER_ALERTA: 'Resolvió una alerta',
+    ALTA_USUARIO: 'Creó un usuario', EDITAR_USUARIO: 'Editó un usuario', RESETEAR_CLAVE: 'Reseteó una contraseña', DESBLOQUEAR_USUARIO: 'Desbloqueó un usuario',
+    ALTA_EQUIPO: 'Creó un equipo', EDITAR_EQUIPO: 'Editó un equipo',
+    ALTA_REGLA: 'Creó una regla', EDITAR_REGLA: 'Editó una regla', REGLA_ACTIVADA: 'Activó una regla', REGLA_DESACTIVADA: 'Desactivó una regla',
+    DERIVAR_ALERTA: 'Derivó una alerta', COMENTAR_ALERTA: 'Comentó una alerta', DEVOLVER_ALERTA: 'Devolvió una alerta',
+    ALTA_DERIVACION: 'Creó una regla de derivación', EDITAR_DERIVACION: 'Editó una regla de derivación', MOVER_DERIVACION: 'Cambió la prioridad de una derivación',
+    ALTA_UMBRALES: 'Creó una excepción de umbrales', EDITAR_UMBRALES: 'Cambió umbrales', BORRAR_UMBRALES: 'Quitó una excepción de umbrales',
+    SINCRONIZAR_FERIADOS: 'Actualizó los feriados', ALTA_FERIADO: 'Agregó un feriado', BORRAR_FERIADO: 'Quitó un feriado'
+  };
+  var SECCIONES = [
+    { id: 'usuarios', txt: 'Usuarios', permiso: 'admin_usuarios' },
+    { id: 'equipos', txt: 'Equipos', permiso: 'admin_equipos' },
+    { id: 'reglas', txt: 'Reglas de alerta', permiso: 'admin_reglas' },
+    { id: 'derivacion', txt: 'Derivación', permiso: 'admin_derivacion' },
+    { id: 'umbrales', txt: 'Umbrales', permiso: 'admin_umbrales' },
+    { id: 'modelo', txt: 'Modelo', permiso: 'admin_modelo' },
+    { id: 'auditoria', txt: 'Auditoría', permiso: 'admin_auditoria' }
+  ];
+
+  var yo = null, permisos = [], personas = null, reglas = null, actual = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function puedo(p) { return permisos.indexOf(p) >= 0; }
+  function toast(msg, error) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast' + (error ? ' error' : ''); t.style.display = 'block';
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = 'none'; }, error ? 7000 : 3500);
+  }
+  // fetch con JSON; si la sesión venció vuelve al login
+  function pedir(url, cuerpo) {
+    var op = cuerpo === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) };
+    return fetch(url, op).then(function (r) {
+      if (r.status === 401) { location.href = '/login'; throw new Error('Tu sesión venció.'); }
+      return r.json().then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('Error ' + r.status)); return j; });
+    });
+  }
+  function fechaHora(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d)) return '';
+    return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TZ });
+  }
+  function corta(iso) {
+    var d = new Date(iso); if (!iso || isNaN(d)) return '';
+    return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TZ }).replace(',', '');
+  }
+  function hace(iso) {
+    if (!iso) return 'nunca';
+    var m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (m < 1) return 'recién'; if (m < 60) return 'hace ' + m + ' min';
+    var h = Math.round(m / 60); if (h < 24) return 'hace ' + h + ' h';
+    var d = Math.round(h / 24); return 'hace ' + d + (d === 1 ? ' día' : ' días');
+  }
+  function servicioTxt(s) { return SERVICIO[s] || String(s || '').toLowerCase().replace(/_/g, ' '); }
+  function iniciales(n) { return n.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || '?'; }
+  function interruptor(attrs, checked, txt) {
+    return '<label class="interruptor"><input type="checkbox" ' + attrs + (checked ? ' checked' : '') + '><i></i><span>' + esc(txt) + '</span></label>';
+  }
+  // Abrir y cerrar diálogos
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-cerrar]'); if (b) b.closest('dialog').close();
+  });
+  function errorForm(id, msg) { var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+
+  // ---------- Menú del usuario ----------
+  function menu(abrir) {
+    var m = $('menu-usuario'), b = $('btn-avatar');
+    if (abrir === undefined) abrir = m.hidden;
+    m.hidden = !abrir; b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  }
+  $('btn-avatar').addEventListener('click', function (ev) { ev.stopPropagation(); menu(); });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('.usuario')) menu(false); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') menu(false); });
+  $('btn-salir').addEventListener('click', function () {
+    pedir('/api/logout', {}).catch(function () {}).then(function () { location.href = '/login'; });
+  });
+
+  // ---------- Navegación por pestañas (#usuarios, #reglas...) ----------
+  function visibles() { return SECCIONES.filter(function (s) { return puedo(s.permiso); }); }
+  function mostrar() {
+    var vs = visibles(), id = location.hash.slice(1);
+    if (!vs.some(function (s) { return s.id === id; })) id = vs[0].id;
+    actual = id;
+    vs.forEach(function (s) {
+      $('s-' + s.id).hidden = s.id !== id;
+      var a = document.querySelector('.tabs a[href="#' + s.id + '"]');
+      if (s.id === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    cargarSeccion(id);
+  }
+  window.addEventListener('hashchange', mostrar);
+  function cargarSeccion(id) {
+    var p = id === 'usuarios' || id === 'equipos' ? cargarPersonas() : id === 'reglas' ? cargarReglas() : id === 'derivacion' ? cargarDerivacion() : id === 'modelo' ? cargarModelo() : id === 'umbrales' ? cargarUmbrales() : cargarAuditoria();
+    return p.catch(function (e) { toast(e.message, true); });
+  }
+
+  // ---------- Usuarios y equipos ----------
+  function cargarPersonas() {
+    return pedir('/api/admin/usuarios').then(function (d) { personas = d; pintarUsuarios(); pintarEquipos(); });
+  }
+  function equiposDe(uid) {
+    var ids = personas.miembros.filter(function (m) { return m.usuario_id === uid; }).map(function (m) { return m.equipo_id; });
+    return personas.equipos.filter(function (e) { return ids.indexOf(e.id) >= 0; });
+  }
+  function miembrosDe(eid) {
+    var ids = personas.miembros.filter(function (m) { return m.equipo_id === eid; }).map(function (m) { return m.usuario_id; });
+    return personas.usuarios.filter(function (u) { return ids.indexOf(u.id) >= 0; });
+  }
+  function usuarioPorId(id) { return personas.usuarios.filter(function (u) { return u.id === id; })[0]; }
+  function pintarUsuarios() {
+    var us = personas.usuarios;
+    $('t-usuarios').innerHTML = '<thead><tr><th>Persona</th><th>Perfil</th><th>Equipos</th><th>Estado</th><th>Último ingreso</th><th></th></tr></thead><tbody>' +
+      us.map(function (u) {
+        var est = !u.activo ? '<span class="chip">Inactivo</span>'
+          : u.bloqueado ? '<span class="chip mal">Bloqueado</span>'
+          : u.debe_cambiar ? '<span class="chip aviso">Debe cambiar contraseña</span>' : '<span class="chip ok">Activo</span>';
+        var eqs = equiposDe(u.id).map(function (e) { return '<span class="chip">' + esc(e.nombre) + '</span>'; }).join('') || '<span class="gris">—</span>';
+        var soy = u.id === yo.id;
+        return '<tr' + (u.activo ? '' : ' class="inactivo"') + '><td><b>' + esc(u.nombre) + '</b>' + (soy ? ' <small>(vos)</small>' : '') + '<br><small>' + esc(u.usuario) + '</small></td>' +
+          '<td data-t="Perfil">' + esc(PERFIL_TXT[u.perfil] || u.perfil) + '</td><td data-t="Equipos">' + eqs + '</td><td data-t="Estado">' + est + '</td>' +
+          '<td data-t="Último ingreso" title="' + esc(fechaHora(u.ultimo_ingreso)) + '">' + esc(hace(u.ultimo_ingreso)) + '</td>' +
+          '<td class="acc"><button class="btn chico" data-editar-usuario="' + u.id + '">Editar</button>' +
+          (soy ? '' : '<button class="btn chico" data-resetear="' + u.id + '">Resetear contraseña</button>') +
+          (u.bloqueado ? '<button class="btn chico" data-desbloquear="' + u.id + '">Desbloquear</button>' : '') + '</td></tr>';
+      }).join('') + '</tbody>';
+  }
+  function pintarEquipos() {
+    var es = personas.equipos;
+    $('t-equipos').innerHTML = es.length ? '<thead><tr><th>Equipo</th><th>Responsable</th><th>Miembros</th><th>Estado</th><th></th></tr></thead><tbody>' +
+      es.map(function (e) {
+        var resp = e.responsable_id ? usuarioPorId(e.responsable_id) : null;
+        var ms = miembrosDe(e.id);
+        return '<tr' + (e.activo ? '' : ' class="inactivo"') + '><td><b>' + esc(e.nombre) + '</b>' + (e.descripcion ? '<br><small>' + esc(e.descripcion) + '</small>' : '') + '</td>' +
+          '<td data-t="Responsable">' + (resp ? esc(resp.nombre) : '<span class="gris">—</span>') + '</td>' +
+          '<td data-t="Miembros">' + (ms.length ? ms.map(function (u) { return '<span class="chip">' + esc(u.nombre) + '</span>'; }).join('') : '<span class="gris">Sin miembros</span>') + '</td>' +
+          '<td data-t="Estado">' + (e.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip">Inactivo</span>') + '</td>' +
+          '<td class="acc"><button class="btn chico" data-editar-equipo="' + e.id + '">Editar</button></td></tr>';
+      }).join('') + '</tbody>' : '<tbody><tr><td class="vacio">Todavía no hay equipos. Creá el primero con "Nuevo equipo".</td></tr></tbody>';
+  }
+
+  // Alta y edición de usuario
+  var editandoUsuario = null;
+  function abrirUsuario(u) {
+    editandoUsuario = u || null;
+    $('f-usuario').reset(); errorForm('u-error');
+    $('u-titulo').textContent = u ? 'Editar usuario' : 'Nuevo usuario';
+    $('u-guardar').textContent = u ? 'Guardar cambios' : 'Crear usuario';
+    $('u-nombre').value = u ? u.nombre : '';
+    $('u-usuario').value = u ? u.usuario : ''; $('u-usuario').readOnly = !!u;
+    $('u-usuario-ayuda').textContent = u ? 'El usuario no se puede cambiar.' : 'Entre 3 y 40 caracteres: letras, números, punto o guion. Con esto ingresa.';
+    $('u-perfil').value = u ? u.perfil : 'SOPORTE';
+    var soy = u && u.id === yo.id;
+    $('u-perfil').disabled = !!soy;
+    $('u-activo-campo').hidden = !u;
+    $('u-activo').checked = u ? !!u.activo : true; $('u-activo').disabled = !!soy;
+    $('u-activo-txt').textContent = $('u-activo').checked ? 'Activo' : 'Inactivo';
+    var mios = u ? equiposDe(u.id).map(function (e) { return e.id; }) : [];
+    var activos = personas.equipos.filter(function (e) { return e.activo || mios.indexOf(e.id) >= 0; });
+    $('u-equipos').innerHTML = activos.length ? activos.map(function (e) {
+      return '<label><input type="checkbox" value="' + e.id + '"' + (mios.indexOf(e.id) >= 0 ? ' checked' : '') + '> ' + esc(e.nombre) + (e.activo ? '' : ' <small>(inactivo)</small>') + '</label>';
+    }).join('') : '<div class="vacio">No hay equipos creados.</div>';
+    $('dlg-usuario').showModal(); $('u-nombre').focus();
+  }
+  $('u-activo').addEventListener('change', function () { $('u-activo-txt').textContent = this.checked ? 'Activo' : 'Inactivo'; });
+  $('btn-nuevo-usuario').addEventListener('click', function () { abrirUsuario(null); });
+  $('f-usuario').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('u-error');
+    var equipos = Array.prototype.map.call($('u-equipos').querySelectorAll('input:checked'), function (i) { return Number(i.value); });
+    var datos = { nombre: $('u-nombre').value.trim(), perfil: $('u-perfil').value, equipos: equipos };
+    var u = editandoUsuario, b = $('u-guardar'); b.disabled = true;
+    var p;
+    if (u) { datos.activo = $('u-activo').checked; if (u.id === yo.id) { delete datos.perfil; delete datos.activo; } p = pedir('/api/admin/usuarios/' + u.id, datos); }
+    else { datos.usuario = $('u-usuario').value.trim().toLowerCase(); p = pedir('/api/admin/usuarios', datos); }
+    p.then(function (r) {
+      $('dlg-usuario').close();
+      if (r.clave_temporal) mostrarTemporal(r.usuario, r.clave_temporal, 'Usuario creado: ' + r.usuario + '.');
+      else toast('Cambios guardados.');
+      return cargarPersonas();
+    }).catch(function (e) { errorForm('u-error', e.message); }).then(function () { b.disabled = false; });
+  });
+  function mostrarTemporal(usuario, clave, texto) {
+    $('t-texto').textContent = texto + ' Esta es su contraseña temporal:';
+    $('t-clave').textContent = clave; $('t-copiar').textContent = 'Copiar';
+    $('dlg-temp').showModal();
+  }
+  $('t-copiar').addEventListener('click', function () {
+    var b = this;
+    navigator.clipboard.writeText($('t-clave').textContent).then(function () { b.textContent = 'Copiada'; }, function () { b.textContent = 'Seleccionala y copiala'; });
+  });
+  document.addEventListener('click', function (ev) {
+    var b;
+    if ((b = ev.target.closest('[data-editar-usuario]'))) abrirUsuario(usuarioPorId(Number(b.dataset.editarUsuario)));
+    else if ((b = ev.target.closest('[data-resetear]'))) {
+      var u = usuarioPorId(Number(b.dataset.resetear));
+      if (!confirm('¿Resetear la contraseña de ' + u.nombre + '? Se cierran sus sesiones y va a tener que ingresar con una contraseña temporal.')) return;
+      b.disabled = true;
+      pedir('/api/admin/usuarios/' + u.id + '/resetear-clave', {})
+        .then(function (r) { mostrarTemporal(r.usuario, r.clave_temporal, 'Contraseña reseteada para ' + u.nombre + '.'); return cargarPersonas(); })
+        .catch(function (e) { toast(e.message, true); b.disabled = false; });
+    } else if ((b = ev.target.closest('[data-desbloquear]'))) {
+      b.disabled = true;
+      pedir('/api/admin/usuarios/' + b.dataset.desbloquear + '/desbloquear', {})
+        .then(function () { toast('Usuario desbloqueado.'); return cargarPersonas(); })
+        .catch(function (e) { toast(e.message, true); b.disabled = false; });
+    } else if ((b = ev.target.closest('[data-editar-equipo]'))) {
+      abrirEquipo(personas.equipos.filter(function (e) { return e.id === Number(b.dataset.editarEquipo); })[0]);
+    } else if ((b = ev.target.closest('[data-editar-deriv]'))) {
+      abrirDeriv(deriv.reglas.filter(function (r) { return r.id === Number(b.dataset.editarDeriv); })[0]);
+    } else if ((b = ev.target.closest('[data-mover-deriv]'))) {
+      b.disabled = true;
+      pedir('/api/admin/derivacion/' + b.dataset.moverDeriv + '/mover', { direccion: Number(b.dataset.dir) })
+        .then(cargarDerivacion).catch(function (e) { toast(e.message, true); b.disabled = false; });
+    } else if ((b = ev.target.closest('[data-editar-regla]'))) {
+      abrirRegla(reglas.personalizadas.filter(function (r) { return r.id === Number(b.dataset.editarRegla); })[0]);
+    }
+  });
+
+  // Alta y edición de equipo
+  var editandoEquipo = null;
+  function abrirEquipo(e) {
+    editandoEquipo = e || null;
+    $('f-equipo').reset(); errorForm('e-error');
+    $('e-titulo').textContent = e ? 'Editar equipo' : 'Nuevo equipo';
+    $('e-guardar').textContent = e ? 'Guardar cambios' : 'Crear equipo';
+    $('e-nombre').value = e ? e.nombre : ''; $('e-descripcion').value = e && e.descripcion ? e.descripcion : '';
+    var activos = personas.usuarios.filter(function (u) { return u.activo; });
+    $('e-responsable').innerHTML = '<option value="">Sin responsable</option>' + activos.map(function (u) {
+      return '<option value="' + u.id + '">' + esc(u.nombre) + ' (' + esc(PERFIL_TXT[u.perfil]) + ')</option>';
+    }).join('');
+    $('e-responsable').value = e && e.responsable_id ? String(e.responsable_id) : '';
+    var mios = e ? miembrosDe(e.id).map(function (u) { return u.id; }) : [];
+    var lista = personas.usuarios.filter(function (u) { return u.activo || mios.indexOf(u.id) >= 0; });
+    $('e-miembros').innerHTML = lista.map(function (u) {
+      return '<label><input type="checkbox" value="' + u.id + '"' + (mios.indexOf(u.id) >= 0 ? ' checked' : '') + '> ' + esc(u.nombre) +
+        ' <small>' + esc(PERFIL_TXT[u.perfil]) + (u.activo ? '' : ', inactivo') + '</small></label>';
+    }).join('');
+    $('e-activo-campo').hidden = !e;
+    $('e-activo').checked = e ? !!e.activo : true; $('e-activo-txt').textContent = $('e-activo').checked ? 'Activo' : 'Inactivo';
+    $('dlg-equipo').showModal(); $('e-nombre').focus();
+  }
+  $('e-activo').addEventListener('change', function () { $('e-activo-txt').textContent = this.checked ? 'Activo' : 'Inactivo'; });
+  // El responsable queda marcado como miembro
+  $('e-responsable').addEventListener('change', function () {
+    var i = $('e-miembros').querySelector('input[value="' + this.value + '"]'); if (i) i.checked = true;
+  });
+  $('btn-nuevo-equipo').addEventListener('click', function () { abrirEquipo(null); });
+  $('f-equipo').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('e-error');
+    var datos = {
+      nombre: $('e-nombre').value.trim(), descripcion: $('e-descripcion').value.trim(),
+      responsable_id: $('e-responsable').value ? Number($('e-responsable').value) : null,
+      miembros: Array.prototype.map.call($('e-miembros').querySelectorAll('input:checked'), function (i) { return Number(i.value); })
+    };
+    if (editandoEquipo) datos.activo = $('e-activo').checked;
+    var b = $('e-guardar'); b.disabled = true;
+    pedir('/api/admin/equipos' + (editandoEquipo ? '/' + editandoEquipo.id : ''), datos)
+      .then(function () { $('dlg-equipo').close(); toast(editandoEquipo ? 'Equipo actualizado.' : 'Equipo creado.'); return cargarPersonas(); })
+      .catch(function (e) { errorForm('e-error', e.message); }).then(function () { b.disabled = false; });
+  });
+
+  // ---------- Reglas ----------
+  function cargarReglas() {
+    return pedir('/api/admin/reglas').then(function (d) { reglas = d; pintarReglas(); });
+  }
+  function disparos(tipos) {
+    return (reglas.disparos || []).filter(function (x) { return tipos.indexOf(x.tipo_alerta) >= 0; }).reduce(function (t, x) { return t + x.ventanas; }, 0);
+  }
+  function alcance(r) {
+    var p = [];
+    if (r.cliente_id) p.push(r.cliente_id);
+    if (r.servicio_id) p.push(servicioTxt(r.servicio_id));
+    if (r.canal_id) p.push(CANAL[r.canal_id] || r.canal_id);
+    return p.length ? p.join(' · ') : 'Todos los clientes';
+  }
+  function pintarReglas() {
+    var ps = reglas.personalizadas;
+    $('t-reglas-pers').innerHTML = ps.length ? '<thead><tr><th>Regla</th><th>Qué mira</th><th>Alcance</th><th>Severidad</th><th class="num">Ventanas con alerta (7 días)</th><th>Estado</th><th></th></tr></thead><tbody>' +
+      ps.map(function (r) {
+        var n = r.ventanas_seguidas;
+        return '<tr' + (r.activa ? '' : ' class="inactivo"') + '><td><b>' + esc(r.nombre) + '</b><br><small>Creada por ' + esc(r.creada_por_nombre || '—') + '</small></td>' +
+          '<td data-t="Qué mira"><span>' + esc(METRICA_CORTA[r.metrica]) + ' ' + esc(DIR_TXT[r.direccion]) + '<br><small>' + (n === 1 ? 'en una ventana' : n + ' ventanas seguidas (' + n * 15 + ' min)') + '</small></span></td>' +
+          '<td data-t="Alcance">' + esc(alcance(r)) + '</td>' +
+          '<td data-t="Severidad"><span class="sev ' + esc(r.severidad) + '">' + esc(SEV_TXT[r.severidad]) + '</span></td>' +
+          '<td class="num" data-t="Ventanas con alerta (7 días)">' + disparos(['PERS_' + r.id]) + '</td>' +
+          '<td data-t="Estado">' + interruptor('data-activar-pers="' + r.id + '" aria-label="Regla activa"', r.activa, r.activa ? 'Activa' : 'Apagada') + '</td>' +
+          '<td class="acc"><button class="btn chico" data-editar-regla="' + r.id + '">Editar</button></td></tr>';
+      }).join('') + '</tbody>' : '<tbody><tr><td class="vacio">Todavía no hay reglas personalizadas. Creá una con "Nueva regla".</td></tr></tbody>';
+    $('t-reglas-base').innerHTML = '<thead><tr><th>Regla</th><th>Tipo</th><th class="num">Ventanas con alerta (7 días)</th><th>Estado</th></tr></thead><tbody>' +
+      reglas.base.map(function (r) {
+        var tipos = r.regla === 'IMPORTE_FUERA_DE_BANDA' ? ['IMPORTE_BAJO', 'IMPORTE_ALTO'] : [r.regla];
+        return '<tr' + (r.activa ? '' : ' class="inactivo"') + '><td><b>' + esc(REGLA_TXT[r.regla] || r.regla) + '</b><br><small>' + esc(r.descripcion) + '</small></td>' +
+          '<td data-t="Tipo">' + esc(GRUPO_TXT[r.grupo] || r.grupo) + '</td>' +
+          '<td class="num" data-t="Ventanas con alerta (7 días)">' + disparos(tipos) + '</td>' +
+          '<td data-t="Estado">' + interruptor('data-activar-base="' + esc(r.regla) + '" aria-label="Regla activa"', r.activa, r.activa ? 'Activa' : 'Apagada') + '</td></tr>';
+      }).join('') + '</tbody>';
+  }
+  document.addEventListener('change', function (ev) {
+    var i = ev.target, url, ok;
+    if (i.matches('[data-activar-base]')) url = '/api/admin/reglas/base/' + i.dataset.activarBase;
+    else if (i.matches('[data-activar-pers]')) url = '/api/admin/reglas/' + i.dataset.activarPers;
+    else if (i.matches('[data-activar-deriv]')) url = '/api/admin/derivacion/' + i.dataset.activarDeriv;
+    else return;
+    i.disabled = true; ok = i.checked;
+    pedir(url, { activa: ok })
+      .then(function () { toast(ok ? 'Regla activada. Vale desde la próxima revisión de alertas.' : 'Regla apagada. Vale desde la próxima revisión de alertas.'); return cargarSeccion(actual); })
+      .catch(function (e) { toast(e.message, true); i.checked = !ok; i.disabled = false; });
+  });
+
+  // Formulario de regla personalizada
+  var editandoRegla = null;
+  function opciones(sel, lista, todos, actualV) {
+    sel.innerHTML = '<option value="">' + esc(todos) + '</option>' + lista.map(function (o) {
+      return '<option value="' + esc(o.v) + '">' + esc(o.t) + '</option>';
+    }).join('');
+    sel.value = lista.some(function (o) { return o.v === actualV; }) ? actualV : '';
+  }
+  function unicos(arr) { return arr.filter(function (v, i) { return arr.indexOf(v) === i; }); }
+  // Los combos se filtran entre sí: servicio según cliente, canal según cliente y servicio
+  function pintarAlcance(c, s, k) {
+    var se = reglas.series;
+    opciones($('r-cliente'), unicos(se.map(function (x) { return x.cliente_id; })).map(function (v) { return { v: v, t: v }; }), 'Todos', c);
+    c = $('r-cliente').value;
+    var s1 = se.filter(function (x) { return !c || x.cliente_id === c; });
+    opciones($('r-servicio'), unicos(s1.map(function (x) { return x.servicio_id; })).map(function (v) { return { v: v, t: servicioTxt(v) }; }), 'Todos', s);
+    s = $('r-servicio').value;
+    var s2 = s1.filter(function (x) { return !s || x.servicio_id === s; });
+    opciones($('r-canal'), unicos(s2.map(function (x) { return x.canal_id; })).map(function (v) { return { v: v, t: CANAL[v] || v }; }), 'Todos', k);
+  }
+  function pintarDireccion(d) {
+    var ds = reglas.combinaciones[$('r-metrica').value] || [];
+    $('r-direccion').innerHTML = ds.map(function (x) { return '<option value="' + x + '">' + (x === 'BAJO' ? 'Por debajo del mínimo del modelo' : 'Por encima del máximo del modelo') + '</option>'; }).join('');
+    $('r-direccion').value = ds.indexOf(d) >= 0 ? d : ds[0];
+  }
+  function fraseRegla() {
+    var n = Number($('r-ventanas').value), m = $('r-metrica').value;
+    var donde = [$('r-cliente').value, $('r-servicio').value ? servicioTxt($('r-servicio').value) : '', $('r-canal').value ? (CANAL[$('r-canal').value] || $('r-canal').value) : ''].filter(Boolean).join(' · ');
+    $('r-frase').innerHTML = 'Va a avisar como <b>' + esc(SEV_TXT[$('r-severidad').value]) + '</b> cuando ' + esc(METRICA_TXT[m]) +
+      (donde ? ' de <b>' + esc(donde) + '</b>' : ' de <b>cualquier cliente</b>') + ' esté <b>' + esc(DIR_TXT[$('r-direccion').value]) + '</b> que calcula el modelo' +
+      (n === 1 ? ' en una ventana de 15 minutos.' : ' durante <b>' + n + ' ventanas seguidas</b> (' + n * 15 + ' minutos).') +
+      (m === 'APROBACION' || m === 'RECHAZO' || m === 'ERROR' ? ' Las tasas solo se evalúan en ventanas con volumen suficiente.' : '');
+  }
+  function abrirRegla(r) {
+    editandoRegla = r || null;
+    $('f-regla').reset(); errorForm('r-error');
+    $('r-titulo').textContent = r ? 'Editar regla' : 'Nueva regla';
+    $('r-guardar').textContent = r ? 'Guardar cambios' : 'Crear regla';
+    $('r-ventanas').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return '<option value="' + n + '">' + n + (n === 1 ? ' (15 min)' : ' (' + n * 15 + ' min)') + '</option>'; }).join('');
+    $('r-nombre').value = r ? r.nombre : '';
+    $('r-metrica').value = r ? r.metrica : 'VOLUMEN';
+    pintarDireccion(r ? r.direccion : 'BAJO');
+    $('r-ventanas').value = String(r ? r.ventanas_seguidas : 2);
+    $('r-severidad').value = r ? r.severidad : 'ALTA';
+    pintarAlcance(r ? r.cliente_id : '', r ? r.servicio_id : '', r ? r.canal_id : '');
+    $('r-activa-campo').hidden = !r;
+    $('r-activa').checked = r ? !!r.activa : true; $('r-activa-txt').textContent = $('r-activa').checked ? 'Activa' : 'Apagada';
+    fraseRegla();
+    $('dlg-regla').showModal(); $('r-nombre').focus();
+  }
+  $('r-activa').addEventListener('change', function () { $('r-activa-txt').textContent = this.checked ? 'Activa' : 'Apagada'; });
+  $('r-metrica').addEventListener('change', function () { pintarDireccion($('r-direccion').value); fraseRegla(); });
+  ['r-direccion', 'r-ventanas', 'r-severidad'].forEach(function (id) { $(id).addEventListener('change', fraseRegla); });
+  ['r-cliente', 'r-servicio', 'r-canal'].forEach(function (id) {
+    $(id).addEventListener('change', function () { pintarAlcance($('r-cliente').value, $('r-servicio').value, $('r-canal').value); fraseRegla(); });
+  });
+  $('btn-nueva-regla').addEventListener('click', function () { abrirRegla(null); });
+  $('f-regla').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('r-error');
+    var datos = {
+      nombre: $('r-nombre').value.trim(), metrica: $('r-metrica').value, direccion: $('r-direccion').value,
+      ventanas_seguidas: Number($('r-ventanas').value), severidad: $('r-severidad').value,
+      cliente_id: $('r-cliente').value || null, servicio_id: $('r-servicio').value || null, canal_id: $('r-canal').value || null
+    };
+    if (editandoRegla) datos.activa = $('r-activa').checked;
+    var b = $('r-guardar'); b.disabled = true;
+    pedir('/api/admin/reglas' + (editandoRegla ? '/' + editandoRegla.id : ''), datos)
+      .then(function () { $('dlg-regla').close(); toast(editandoRegla ? 'Regla actualizada.' : 'Regla creada. Empieza a avisar desde la próxima revisión de alertas.'); return cargarReglas(); })
+      .catch(function (e) { errorForm('r-error', e.message); }).then(function () { b.disabled = false; });
+  });
+
+  // ---------- Derivación automática ----------
+  var TIPO_TXT = {
+    VOLUMEN_BAJO: 'Entra menos tráfico', VOLUMEN_ALTO: 'Pico de tráfico', APROBACION_BAJA: 'Menos aprobaciones', RECHAZO_ALTO: 'Suben los rechazos',
+    ERROR_ALTO: 'Suben los errores técnicos', IMPORTE_BAJO: 'Menos importe', IMPORTE_ALTO: 'Más importe', LATENCIA_ALTA: 'Lentitud',
+    SIN_EXITOS: 'Sin aprobaciones', DATO_TARDIO: 'Datos tardíos', DATO_INCONSISTENTE: 'Datos inconsistentes', VENTANA_FALTANTE: 'Dejaron de llegar datos'
+  };
+  var SEV_MIN_TXT = { MEDIA: 'leve o más', ALTA: 'importante o más', CRITICA: 'solo grave' };
+  var deriv = null, editandoDeriv = null;
+  function cargarDerivacion() {
+    return pedir('/api/admin/derivacion').then(function (d) { deriv = d; pintarDerivacion(); });
+  }
+  function tipoTxt(t) {
+    if (!t) return '';
+    var m = /^PERS_(\d+)$/.exec(t);
+    if (m) { var r = (deriv.personalizadas || []).filter(function (x) { return x.id === Number(m[1]); })[0]; return r ? r.nombre : t; }
+    return TIPO_TXT[t] || t;
+  }
+  function condicionTxt(r) {
+    var p = [];
+    if (r.cliente_id) p.push(r.cliente_id);
+    if (r.servicio_id) p.push(servicioTxt(r.servicio_id));
+    if (r.canal_id) p.push(CANAL[r.canal_id] || r.canal_id);
+    if (r.tipo_alerta) p.push(tipoTxt(r.tipo_alerta));
+    if (r.severidad_minima) p.push(SEV_MIN_TXT[r.severidad_minima]);
+    return p.length ? p.join(' · ') : 'Cualquier alerta';
+  }
+  function destinoTxt(r) {
+    var p = [];
+    if (r.usuario_nombre) p.push('<b>' + esc(r.usuario_nombre) + '</b>' + (r.usuario_activo ? '' : ' <small>(inactivo)</small>'));
+    if (r.equipo_nombre) p.push((r.usuario_nombre ? '<small>equipo ' : 'Equipo <b>') + esc(r.equipo_nombre) + (r.usuario_nombre ? '</small>' : '</b>') + (r.equipo_activo ? '' : ' <small>(inactivo)</small>'));
+    return p.join('<br>');
+  }
+  function pintarDerivacion() {
+    var rs = deriv.reglas;
+    $('t-derivacion').innerHTML = rs.length ? '<thead><tr><th>Orden</th><th>Regla</th><th>Cuándo</th><th>A quién</th><th>Estado</th><th></th></tr></thead><tbody>' +
+      rs.map(function (r, i) {
+        return '<tr' + (r.activa ? '' : ' class="inactivo"') + '><td data-t="Orden"><span class="orden">' + (i + 1) + '</span>' +
+          '<button class="btn chico flecha" data-mover-deriv="' + r.id + '" data-dir="-1" aria-label="Subir"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button class="btn chico flecha" data-mover-deriv="' + r.id + '" data-dir="1" aria-label="Bajar"' + (i === rs.length - 1 ? ' disabled' : '') + '>↓</button></td>' +
+          '<td><b>' + esc(r.nombre) + '</b><br><small>Creada por ' + esc(r.creada_por_nombre || '—') + '</small></td>' +
+          '<td data-t="Cuándo">' + esc(condicionTxt(r)) + '</td><td data-t="A quién">' + destinoTxt(r) + '</td>' +
+          '<td data-t="Estado">' + interruptor('data-activar-deriv="' + r.id + '" aria-label="Regla activa"', r.activa, r.activa ? 'Activa' : 'Apagada') + '</td>' +
+          '<td class="acc"><button class="btn chico" data-editar-deriv="' + r.id + '">Editar</button></td></tr>';
+      }).join('') + '</tbody>' : '<tbody><tr><td class="vacio">Todavía no hay reglas. Sin reglas, todas las alertas esperan que un analista las derive.</td></tr></tbody>';
+  }
+  function dvAlcance(c, s, k) {
+    var se = deriv.series;
+    opciones($('dv-cliente'), unicos(se.map(function (x) { return x.cliente_id; })).map(function (v) { return { v: v, t: v }; }), 'Cualquiera', c);
+    c = $('dv-cliente').value;
+    var s1 = se.filter(function (x) { return !c || x.cliente_id === c; });
+    opciones($('dv-servicio'), unicos(s1.map(function (x) { return x.servicio_id; })).map(function (v) { return { v: v, t: servicioTxt(v) }; }), 'Cualquiera', s);
+    s = $('dv-servicio').value;
+    var s2 = s1.filter(function (x) { return !s || x.servicio_id === s; });
+    opciones($('dv-canal'), unicos(s2.map(function (x) { return x.canal_id; })).map(function (v) { return { v: v, t: CANAL[v] || v }; }), 'Cualquiera', k);
+  }
+  function dvPersonas(sel) {
+    var eq = $('dv-equipo').value ? Number($('dv-equipo').value) : null;
+    var ids = eq ? deriv.miembros.filter(function (m) { return m.equipo_id === eq; }).map(function (m) { return m.usuario_id; }) : null;
+    var ps = deriv.usuarios.filter(function (u) { return !ids || ids.indexOf(u.id) >= 0; });
+    $('dv-persona').innerHTML = '<option value="">' + (eq ? 'Todo el equipo (la toma el primero)' : 'Ninguna') + '</option>' +
+      ps.map(function (u) { return '<option value="' + u.id + '">' + esc(u.nombre) + '</option>'; }).join('');
+    $('dv-persona').value = sel && ps.some(function (u) { return u.id === sel; }) ? String(sel) : '';
+  }
+  function dvFrase() {
+    var r = { cliente_id: $('dv-cliente').value, servicio_id: $('dv-servicio').value, canal_id: $('dv-canal').value, tipo_alerta: $('dv-tipo').value, severidad_minima: $('dv-sev').value };
+    var eq = $('dv-equipo').selectedOptions[0], pe = $('dv-persona').selectedOptions[0];
+    var dest = $('dv-persona').value ? '<b>' + esc(pe.textContent) + '</b>' + ($('dv-equipo').value ? ' (equipo ' + esc(eq.textContent) + ')' : '')
+      : $('dv-equipo').value ? 'el equipo <b>' + esc(eq.textContent) + '</b> (la toma el primero)' : '<i>elegí un equipo o una persona</i>';
+    $('dv-frase').innerHTML = 'Cuando aparezca una alerta sin asignar de <b>' + esc(condicionTxt(r).toLowerCase() === 'cualquier alerta' ? 'cualquier tipo' : condicionTxt(r)) + '</b>, se deriva a ' + dest + '.';
+  }
+  function abrirDeriv(r) {
+    editandoDeriv = r || null;
+    $('f-deriv').reset(); errorForm('dv-error');
+    $('dv-titulo').textContent = r ? 'Editar regla de derivación' : 'Nueva regla de derivación';
+    $('dv-guardar').textContent = r ? 'Guardar cambios' : 'Crear regla';
+    $('dv-nombre').value = r ? r.nombre : '';
+    dvAlcance(r ? r.cliente_id : '', r ? r.servicio_id : '', r ? r.canal_id : '');
+    var tipos = Object.keys(TIPO_TXT).map(function (k) { return { v: k, t: TIPO_TXT[k] }; })
+      .concat((deriv.personalizadas || []).map(function (p) { return { v: 'PERS_' + p.id, t: p.nombre + ' (personalizada)' }; }));
+    opciones($('dv-tipo'), tipos, 'Cualquiera', r ? r.tipo_alerta : '');
+    $('dv-sev').value = r && r.severidad_minima ? r.severidad_minima : '';
+    $('dv-equipo').innerHTML = '<option value="">Ninguno</option>' + deriv.equipos.map(function (e) { return '<option value="' + e.id + '">' + esc(e.nombre) + '</option>'; }).join('');
+    $('dv-equipo').value = r && r.equipo_id ? String(r.equipo_id) : '';
+    dvPersonas(r ? r.usuario_id : null);
+    $('dv-activa-campo').hidden = !r;
+    $('dv-activa').checked = r ? !!r.activa : true; $('dv-activa-txt').textContent = $('dv-activa').checked ? 'Activa' : 'Apagada';
+    dvFrase();
+    $('dlg-deriv').showModal(); $('dv-nombre').focus();
+  }
+  ['dv-cliente', 'dv-servicio', 'dv-canal'].forEach(function (id) {
+    $(id).addEventListener('change', function () { dvAlcance($('dv-cliente').value, $('dv-servicio').value, $('dv-canal').value); dvFrase(); });
+  });
+  ['dv-tipo', 'dv-sev', 'dv-persona'].forEach(function (id) { $(id).addEventListener('change', dvFrase); });
+  $('dv-equipo').addEventListener('change', function () { dvPersonas(Number($('dv-persona').value) || null); dvFrase(); });
+  $('dv-activa').addEventListener('change', function () { $('dv-activa-txt').textContent = this.checked ? 'Activa' : 'Apagada'; });
+  $('btn-nueva-deriv').addEventListener('click', function () { abrirDeriv(null); });
+  $('f-deriv').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('dv-error');
+    var datos = {
+      nombre: $('dv-nombre').value.trim(), cliente_id: $('dv-cliente').value || null, servicio_id: $('dv-servicio').value || null, canal_id: $('dv-canal').value || null,
+      tipo_alerta: $('dv-tipo').value || null, severidad_minima: $('dv-sev').value || null,
+      equipo_id: $('dv-equipo').value ? Number($('dv-equipo').value) : null, usuario_id: $('dv-persona').value ? Number($('dv-persona').value) : null
+    };
+    if (editandoDeriv) datos.activa = $('dv-activa').checked;
+    var b = $('dv-guardar'); b.disabled = true;
+    pedir('/api/admin/derivacion' + (editandoDeriv ? '/' + editandoDeriv.id : ''), datos)
+      .then(function () { $('dlg-deriv').close(); toast(editandoDeriv ? 'Regla actualizada.' : 'Regla creada. Se aplica desde la próxima revisión de alertas.'); return cargarDerivacion(); })
+      .catch(function (e) { errorForm('dv-error', e.message); }).then(function () { b.disabled = false; });
+  });
+
+  // ---------- Modelo ----------
+  function cargarModelo() {
+    return pedir('/api/admin/modelo').then(function (d) {
+      var m = d.modelos[0];
+      var dias = d.observadas_desde && d.observadas_hasta ? Math.round((new Date(d.observadas_hasta) - new Date(d.observadas_desde)) / 864e5 * 10) / 10 : null;
+      var f = [];
+      if (m) {
+        var horas = Math.round((new Date(m.hasta) - new Date(m.desde)) / 36e5 + 0.25);
+        f.push(['Modelo', esc(String(m.modelo_id).replace(/_/g, ' ')), 'Versión ' + esc(m.modelo_version) + ' · origen ' + esc(String(m.origen_prediccion || '').toLowerCase().replace(/_/g, ' '))]);
+        f.push(['Último entrenamiento', esc(corta(m.ultima_generacion)), esc(hace(m.ultima_generacion)) + ' · ' + esc(fechaHora(m.ultima_generacion))]);
+        f.push(['Predicciones', esc(corta(m.desde)) + ' → ' + esc(corta(m.hasta)), horas + ' h · ' + Number(m.predicciones).toLocaleString('es-AR') + ' ventanas de ' + m.series + ' series']);
+      } else {
+        f.push(['Modelo', 'Sin predicciones activas', 'Hay que correr el entrenamiento']);
+      }
+      f.push(['Historia observada', dias == null ? '—' : dias.toLocaleString('es-AR') + ' días', d.observadas_desde ? esc(corta(d.observadas_desde)) + ' → ' + esc(corta(d.observadas_hasta)) : '']);
+      if (d.reloj) f.push(['Reloj de la demo', esc(corta(d.reloj)), 'El sistema usa esta hora en vez de la real']);
+      if (d.modelos.length > 1) f.push(['Otros modelos activos', String(d.modelos.length - 1), d.modelos.slice(1).map(function (x) { return esc(x.modelo_id + ' ' + x.modelo_version); }).join(', ')]);
+      $('fichas-modelo').innerHTML = f.map(function (x) { return '<div class="ficha"><span>' + x[0] + '</span><b>' + x[1] + '</b><small>' + x[2] + '</small></div>'; }).join('');
+    });
+  }
+
+  // ---------- Umbrales ----------
+  // Valores en la base: fracciones (0.25 = 25 %, 0.05 = 5 puntos, 1 = banda del modelo). En pantalla, porcentajes.
+  var UCAMPOS = {
+    criticidad: { sel: true, opciones: [['ALTA', 'Alta'], ['MEDIA', 'Media'], ['BAJA', 'Baja']] },
+    silenciar_feriados: { sel: true, opciones: [['1', 'Sí, silenciar'], ['0', 'No, alertar igual']] },
+    objetivo_disponibilidad: { x: 100, txt: function (n) { return 'Objetivo ' + n + ' %'; } },
+    corte_pct_alta: { x: 100, txt: function (n) { return 'Importante desde ' + n + ' %'; } },
+    corte_pct_critica: { x: 100, txt: function (n) { return 'Grave desde ' + n + ' %'; } },
+    corte_tasa_alta: { x: 100, txt: function (n) { return 'Tasas: importante desde ' + n + ' puntos'; } },
+    corte_tasa_critica: { x: 100, txt: function (n) { return 'Tasas: grave desde ' + n + ' puntos'; } },
+    banda_volumen: { x: 100, txt: function (n) { return 'Banda de tráfico ' + n + ' %'; } },
+    banda_tasas: { x: 100, txt: function (n) { return 'Banda de tasas ' + n + ' %'; } },
+    banda_importe: { x: 100, txt: function (n) { return 'Banda de importe ' + n + ' %'; } },
+    banda_latencia: { x: 100, txt: function (n) { return 'Banda de tiempo de respuesta ' + n + ' %'; } },
+    volumen_minimo: { x: 1, txt: function (n) { return 'Volumen mínimo ' + n; } },
+    gracia_minutos: { x: 1, txt: function (n) { return 'Gracia ' + n + ' min'; } }
+  };
+  var CRIT_TXT = { ALTA: 'Alta', MEDIA: 'Media', BAJA: 'Baja' };
+  var UMB = null, umAlcance = null, umReco = null, umPedido = 0;
+  function uno(v) { return (Math.round(v * 10) / 10).toLocaleString('es-AR', { maximumFractionDigits: 1 }); }
+  function nTxt(v) { return (Math.round(v * 1000) / 1000).toLocaleString('es-AR', { maximumFractionDigits: 3 }); }
+  function aPantalla(k, v) { return v == null ? null : UCAMPOS[k].sel ? v : Math.round(v * UCAMPOS[k].x * 1000) / 1000; }
+  function valorTxt(k, v) { return k === 'silenciar_feriados' ? (Number(v) ? 'Silencia alertas en feriados' : 'Alerta en feriados') : UCAMPOS[k].sel ? 'Criticidad ' + (CRIT_TXT[v] || v).toLowerCase() : UCAMPOS[k].txt(nTxt(aPantalla(k, v))); }
+  function selTxt(k, v) { return k === 'silenciar_feriados' ? (Number(v) ? 'sí' : 'no') : (CRIT_TXT[v] || '').toLowerCase(); }
+  function filaUmbral(cli, srv) { return UMB.filas.filter(function (f) { return f.cliente_id === cli && f.servicio_id === srv; })[0] || null; }
+  function generales() {
+    var g = Object.assign({}, filaUmbral('*', '*') || {});
+    g.volumen_minimo = UMB.parametros.volumen_minimo; g.gracia_minutos = UMB.parametros.gracia_minutos;
+    return g;
+  }
+  // Lo que vale si la excepción deja el campo vacío
+  function heredado(k) { var o = origen(k); return o ? o.v : null; }
+  function origen(k) {
+    if (!umAlcance) return null;
+    if (umAlcance.srv) { var c = filaUmbral(umAlcance.cli, '*'); if (c && c[k] != null) return { v: c[k], de: 'el cliente' }; }
+    return { v: generales()[k], de: 'el general' };
+  }
+  function alcanceTxt(cli, srv) { return cli === '*' ? 'Todos los clientes' : cli + (srv && srv !== '*' ? ', ' + servicioTxt(srv) : ' (todos sus servicios)'); }
+
+  function cargarUmbrales() {
+    return pedir('/api/admin/umbrales').then(function (d) { UMB = d; pintarUmbrales(); return cargarFeriados(); });
+  }
+  // Feriados
+  var ferAnio = null;
+  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  var TIPO_FER = { inamovible: 'Inamovible', trasladable: 'Trasladable', puente: 'No laborable', manual: 'Agregado a mano' };
+  function cargarFeriados() {
+    return pedir('/api/admin/feriados' + (ferAnio ? '?anio=' + ferAnio : '')).then(function (d) {
+      ferAnio = d.anio;
+      var anios = d.anios.slice(); [d.anio - 1, d.anio, d.anio + 1].forEach(function (a) { if (anios.indexOf(a) < 0) anios.push(a); }); anios.sort();
+      $('fer-anio').innerHTML = anios.map(function (a) { return '<option value="' + a + '"' + (a === d.anio ? ' selected' : '') + '>' + a + '</option>'; }).join('');
+      $('t-feriados').innerHTML = d.feriados.length ? '<thead><tr><th>Fecha</th><th>Feriado</th><th>Tipo</th><th></th></tr></thead><tbody>' +
+        d.feriados.map(function (f) {
+          var dt = new Date(f.fecha + 'T12:00:00Z');
+          return '<tr><td><b>' + f.fecha.slice(8, 10) + '/' + f.fecha.slice(5, 7) + '</b> <small>' + DIAS[dt.getUTCDay()] + '</small></td><td data-t="Feriado">' + esc(f.nombre) + '</td>' +
+            '<td data-t="Tipo"><span class="chip">' + esc(TIPO_FER[f.tipo] || f.tipo) + '</span></td>' +
+            '<td class="acc">' + (f.origen === 'MANUAL' ? '<button class="btn chico" data-quitar-feriado="' + f.fecha + '">Quitar</button>' : '') + '</td></tr>';
+        }).join('') + '</tbody>' : '<tbody><tr><td class="vacio">No hay feriados cargados para ' + d.anio + '. Tocá "Actualizar desde la API".</td></tr></tbody>';
+    });
+  }
+  $('fer-anio').addEventListener('change', function () { ferAnio = Number(this.value); cargarFeriados().catch(function (e) { toast(e.message, true); }); });
+  $('btn-fer-sync').addEventListener('click', function () {
+    var b = this; b.disabled = true;
+    pedir('/api/admin/feriados/sincronizar', { anio: ferAnio })
+      .then(function (r) { toast(r.cargados ? 'Se actualizaron ' + r.cargados + ' feriados de ' + r.anio + '.' : 'La API todavía no tiene feriados para ' + r.anio + '.'); return cargarFeriados(); })
+      .catch(function (e) { toast(e.message, true); }).then(function () { b.disabled = false; });
+  });
+  $('btn-fer-nuevo').addEventListener('click', function () { $('f-feriado').reset(); errorForm('fer-error'); $('dlg-feriado').showModal(); $('fer-fecha').focus(); });
+  $('fer-fecha').addEventListener('input', function () {
+    var n = this.value.replace(/\D/g, '').slice(0, 8);
+    this.value = n.length > 4 ? n.slice(0, 2) + '/' + n.slice(2, 4) + '/' + n.slice(4) : n.length > 2 ? n.slice(0, 2) + '/' + n.slice(2) : n;
+  });
+  $('f-feriado').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('fer-error');
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec($('fer-fecha').value);
+    if (!m) { errorForm('fer-error', 'La fecha tiene que ser DD/MM/AAAA.'); return; }
+    var b = $('fer-guardar'); b.disabled = true;
+    pedir('/api/admin/feriados', { fecha: m[3] + '-' + m[2] + '-' + m[1], nombre: $('fer-nombre').value.trim() })
+      .then(function () { $('dlg-feriado').close(); ferAnio = Number(m[3]); toast('Feriado agregado.'); return cargarFeriados(); })
+      .catch(function (e) { errorForm('fer-error', e.message); }).then(function () { b.disabled = false; });
+  });
+  $('t-feriados').addEventListener('click', function (ev) {
+    var q = ev.target.closest('[data-quitar-feriado]'); if (!q) return;
+    var f = q.getAttribute('data-quitar-feriado');
+    if (!confirm('¿Quitar el feriado del ' + f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4) + '?')) return;
+    q.disabled = true;
+    pedir('/api/admin/feriados/borrar', { fecha: f }).then(function () { toast('Feriado quitado.'); return cargarFeriados(); })
+      .catch(function (e) { q.disabled = false; toast(e.message, true); });
+  });
+  function pintarUmbrales() {
+    var g = generales();
+    var bandas = ['banda_volumen', 'banda_tasas', 'banda_importe', 'banda_latencia'];
+    var iguales = bandas.every(function (k) { return g[k] === g.banda_volumen; });
+    var f = [
+      ['Criticidad de los servicios', esc(CRIT_TXT[g.criticidad] || g.criticidad), 'Una alerta grave es P' + ({ ALTA: 1, MEDIA: 2, BAJA: 3 })[g.criticidad]],
+      ['Objetivo de disponibilidad', nTxt(g.objetivo_disponibilidad * 100) + ' %', 'del día sin problemas'],
+      ['Gravedad: tráfico, importe y tiempo', 'Importante ' + nTxt(g.corte_pct_alta * 100) + ' % · Grave ' + nTxt(g.corte_pct_critica * 100) + ' %', 'de desvío respecto de lo esperado'],
+      ['Gravedad: aprobaciones, rechazos y errores', 'Importante ' + nTxt(g.corte_tasa_alta * 100) + ' · Grave ' + nTxt(g.corte_tasa_critica * 100) + ' puntos', 'de diferencia con la tasa esperada'],
+      ['Ancho de la banda', iguales ? nTxt(g.banda_volumen * 100) + ' %' : bandas.map(function (k) { return nTxt(g[k] * 100) + ' %'; }).join(' · '),
+        iguales ? (g.banda_volumen === 1 ? 'tal como la calcula el modelo' : 'de la banda que calcula el modelo') : 'tráfico · tasas · importe · tiempo de respuesta'],
+      ['Operación', 'Mínimo ' + nTxt(g.volumen_minimo) + ' operaciones · gracia ' + nTxt(g.gracia_minutos) + ' min', 'por ventana de 15 minutos'],
+      ['Feriados', g.silenciar_feriados ? 'Alertas silenciadas' : 'Se alerta igual', 'cada servicio puede tener su excepción']
+    ];
+    $('fichas-umbrales').innerHTML = f.map(function (x) { return '<div class="ficha"><span>' + x[0] + '</span><b>' + x[1] + '</b><small>' + x[2] + '</small></div>'; }).join('');
+    var ex = UMB.filas.filter(function (r) { return r.cliente_id !== '*'; });
+    $('t-umbrales').innerHTML = ex.length ? '<thead><tr><th>Para</th><th>Qué cambia</th><th>Última modificación</th><th></th></tr></thead><tbody>' +
+      ex.map(function (r) {
+        var cambios = Object.keys(UCAMPOS).filter(function (k) { return r[k] != null; }).map(function (k) { return '<li>' + esc(valorTxt(k, r[k])) + '</li>'; });
+        return '<tr><td><b>' + esc(r.cliente_id) + '</b>' + (r.servicio_id !== '*' ? '<br><small>' + esc(servicioTxt(r.servicio_id)) + '</small>' : '<br><small>todos sus servicios</small>') + '</td>' +
+          '<td data-t="Qué cambia">' + (cambios.length ? '<ul class="lista-cambios">' + cambios.join('') + '</ul>' : '<span class="gris">Nada: usa los valores de arriba</span>') + '</td>' +
+          '<td data-t="Modificación">' + esc(corta(r.actualizado)) + (r.actualizado_por_nombre ? '<br><small>' + esc(r.actualizado_por_nombre) + '</small>' : '') + '</td>' +
+          '<td class="acc"><button class="btn chico" data-editar-umbral="' + esc(r.cliente_id) + '|' + esc(r.servicio_id) + '">Editar</button>' +
+          '<button class="btn chico" data-quitar-umbral="' + esc(r.cliente_id) + '|' + esc(r.servicio_id) + '">Quitar</button></td></tr>';
+      }).join('') + '</tbody>' : '<tbody><tr><td class="vacio">No hay excepciones: todos los clientes usan los valores generales.</td></tr></tbody>';
+  }
+
+  // Formulario
+  function umLeer(k) {
+    var el = $('um-' + k), t = el.value.trim();
+    if (UCAMPOS[k].sel) return t || null;
+    if (!t) return null;
+    var n = Number(t.replace(',', '.'));
+    if (!/^\d+([.,]\d+)?$/.test(t)) n = NaN;
+    return isNaN(n) ? NaN : n / UCAMPOS[k].x;
+  }
+  function umPoner(k, v) {
+    var el = $('um-' + k);
+    el.value = v == null ? '' : UCAMPOS[k].sel ? String(v) : String(aPantalla(k, v)).replace('.', ',');
+  }
+  function umEfectivo(k) { var v = umLeer(k); return v == null || (typeof v === 'number' && isNaN(v)) ? heredado(k) : v; }
+  function umAlcanceSelects(cli, srv) {
+    var se = UMB.alcance;
+    opciones($('um-cliente'), unicos(se.map(function (x) { return x.cliente_id; })).map(function (v) { return { v: v, t: v }; }), 'Elegí un cliente', cli);
+    cli = $('um-cliente').value;
+    opciones($('um-servicio'), unicos(se.filter(function (x) { return x.cliente_id === cli; }).map(function (x) { return x.servicio_id; })).map(function (v) { return { v: v, t: servicioTxt(v) }; }), 'Todos sus servicios', srv);
+  }
+  function umCargarValores() {
+    var fila = umAlcance ? filaUmbral(umAlcance.cli, umAlcance.srv || '*') : generales();
+    Object.keys(UCAMPOS).filter(function (k) { return UCAMPOS[k].sel; }).forEach(function (k) {
+      $('um-' + k).innerHTML = (umAlcance ? '<option value="">Como ' + origen(k).de + ' (' + esc(selTxt(k, heredado(k))) + ')</option>' : '') +
+        UCAMPOS[k].opciones.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('');
+    });
+    Object.keys(UCAMPOS).forEach(function (k) {
+      umPoner(k, fila ? fila[k] : null);
+      var el = $('um-' + k), h = heredado(k);
+      if (!UCAMPOS[k].sel) el.placeholder = umAlcance && h != null ? origen(k).de.replace('el ', '') + ': ' + nTxt(aPantalla(k, h)) : '';
+      el.required = !umAlcance;
+    });
+    umRecos();
+  }
+  // Recomendaciones del modelo al lado de cada campo
+  function umRecos() {
+    var rec = umReco && umReco.recomendado, m = umReco && umReco.modelo;
+    document.querySelectorAll('#f-umbral .reco').forEach(function (el) {
+      var k = el.getAttribute('data-reco'), t = '';
+      if (rec && rec[k] != null) t = 'Recomendado: <b>' + (UCAMPOS[k].sel ? esc(CRIT_TXT[rec[k]]) : nTxt(aPantalla(k, rec[k]))) + '</b>';
+      if (k === 'criticidad') t = 'Define la prioridad: grave en criticidad alta es P1.';
+      if (k === 'silenciar_feriados') t = 'Para servicios que en feriados casi no operan (por ejemplo, préstamos). Los feriados están abajo, en esta misma pestaña.';
+      if (k === 'objetivo_disponibilidad') t = 'Lo define el negocio. ' + t;
+      if (m && m.ventanas) {
+        var f = umEfectivo(k), pct = function (x) { return (Math.round(x * 1000) / 10).toLocaleString('es-AR', { maximumFractionDigits: 1 }); };
+        if (k === 'banda_volumen' && m.vol_abajo != null && f) t += '. Avisa por debajo de −' + pct(m.vol_abajo * f) + ' % o por encima de +' + pct(m.vol_arriba * f) + ' % de lo esperado';
+        if (k === 'banda_tasas' && m.aprob_abajo != null && f) t += '. Avisa con −' + pct(m.aprob_abajo * f) + ' puntos de aprobación, +' + pct(m.rech_arriba * f) + ' de rechazos o +' + pct(m.err_arriba * f) + ' de errores';
+        if (k === 'banda_importe' && m.imp_abajo != null && f) t += '. Avisa con −' + pct(m.imp_abajo * f) + ' % o +' + pct(m.imp_arriba * f) + ' % de importe';
+        if (k === 'banda_latencia' && m.lat_arriba != null && f) t += '. Avisa con +' + pct(m.lat_arriba * f) + ' % de tiempo de respuesta';
+        if (k === 'volumen_minimo' && m.vol_esp_min != null) t += '. En la franja más tranquila se esperan ' + nTxt(Math.round(m.vol_esp_min)) + ' operaciones';
+      }
+      if (k === 'gracia_minutos' && umReco && umReco.demora_p95 != null) t += '. Los datos llegan con hasta ' + nTxt(umReco.demora_p95) + ' min de demora';
+      el.innerHTML = t;
+    });
+  }
+  function umModelo() {
+    var cli = umAlcance ? umAlcance.cli : null, srv = umAlcance ? umAlcance.srv : null, n = ++umPedido;
+    umReco = null; umRecos();
+    if (umAlcance && !cli) { $('um-modelo').textContent = 'Elegí el cliente para ver qué espera el modelo.'; return; }
+    $('um-modelo').textContent = 'Consultando al modelo…';
+    pedir('/api/admin/umbrales/recomendacion' + (cli ? '?cliente=' + encodeURIComponent(cli) + (srv ? '&servicio=' + encodeURIComponent(srv) : '') : '')).then(function (r) {
+      if (n !== umPedido) return;
+      umReco = r; var m = r.modelo || {};
+      var quien = umAlcance ? alcanceTxt(cli, srv) : 'todos los clientes';
+      $('um-modelo').innerHTML = m.ventanas
+        ? '<b>Qué espera el modelo para ' + esc(quien) + '</b> (último día de predicciones):<ul>' +
+          '<li>' + nTxt(Math.round(m.vol_esp)) + ' operaciones por ventana de 15 minutos en promedio' + (m.vol_esp_min != null ? ' (' + nTxt(Math.round(m.vol_esp_min)) + ' en la franja más tranquila)' : '') + '.</li>' +
+          (m.aprob_esp != null ? '<li>Aprobación del ' + uno(m.aprob_esp * 100) + ' %, rechazos del ' + uno(m.rech_esp * 100) + ' % y errores del ' + uno(m.err_esp * 100) + ' %.</li>' : '') +
+          (m.lat_esp != null ? '<li>Tiempo de respuesta de ' + nTxt(Math.round(m.lat_esp)) + ' ms.</li>' : '') +
+          (r.demora_p95 != null ? '<li>Los datos llegan con hasta ' + nTxt(r.demora_p95) + ' minutos de demora (95 % de las veces, últimas 24 h).</li>' : '') +
+          '</ul>'
+        : 'El modelo todavía no tiene predicciones para ' + esc(quien) + ': se recomiendan los valores de fábrica.';
+      umRecos();
+    }).catch(function (e) { if (n === umPedido) $('um-modelo').textContent = 'No se pudo consultar al modelo: ' + e.message; });
+  }
+  function abrirUmbral(alcance) {
+    umAlcance = alcance;
+    $('f-umbral').reset(); errorForm('um-error');
+    var nuevo = alcance && !alcance.cli;
+    $('um-titulo').textContent = !alcance ? 'Valores generales' : nuevo ? 'Nueva excepción' : 'Excepción para ' + alcance.cli;
+    $('um-sub').textContent = !alcance ? 'Valen para todos los clientes que no tengan una excepción.' : 'Completá solo lo que cambia: lo que quede vacío se toma ' + (alcance.srv ? 'del cliente o ' : '') + 'de los valores generales.';
+    $('um-alcance').hidden = !nuevo;
+    $('um-alcance-fijo').hidden = !alcance || nuevo;
+    if (alcance && !nuevo) $('um-alcance-fijo').textContent = alcanceTxt(alcance.cli, alcance.srv);
+    if (nuevo) umAlcanceSelects('', '');
+    umCargarValores();
+    umModelo();
+    $('dlg-umbral').showModal();
+  }
+  ['um-cliente', 'um-servicio'].forEach(function (id) {
+    $(id).addEventListener('change', function () {
+      if (id === 'um-cliente') umAlcanceSelects($('um-cliente').value, '');
+      umAlcance = { cli: $('um-cliente').value || null, srv: $('um-servicio').value || null, nuevo: true };
+      umCargarValores(); umModelo();
+    });
+  });
+  document.querySelectorAll('#f-umbral input').forEach(function (el) { el.addEventListener('input', umRecos); });
+  $('um-recomendado').addEventListener('click', function () {
+    var rec = umReco ? umReco.recomendado : UMB.fabrica;
+    Object.keys(UCAMPOS).forEach(function (k) {
+      if (k === 'criticidad' || k === 'objetivo_disponibilidad' || k === 'silenciar_feriados') return;   // los define el negocio
+      // En una excepción solo se completa lo que difiere de lo heredado
+      umPoner(k, umAlcance && heredado(k) === rec[k] ? null : rec[k]);
+    });
+    umRecos();
+    toast('Se completaron los valores recomendados. Revisalos y guardá.');
+  });
+  $('btn-umbral-general').addEventListener('click', function () { abrirUmbral(null); });
+  $('btn-nueva-excepcion').addEventListener('click', function () { abrirUmbral({ cli: null, srv: null, nuevo: true }); });
+  $('t-umbrales').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-editar-umbral]'), q = ev.target.closest('[data-quitar-umbral]');
+    if (b) { var p = b.getAttribute('data-editar-umbral').split('|'); abrirUmbral({ cli: p[0], srv: p[1] === '*' ? null : p[1] }); }
+    if (q) {
+      var x = q.getAttribute('data-quitar-umbral').split('|');
+      if (!confirm('¿Quitar la excepción de ' + alcanceTxt(x[0], x[1]) + '? Va a usar ' + (x[1] !== '*' ? 'los valores del cliente o ' : '') + 'los valores generales.')) return;
+      q.disabled = true;
+      pedir('/api/admin/umbrales/borrar', { cliente_id: x[0], servicio_id: x[1] === '*' ? null : x[1] })
+        .then(function () { toast('Excepción quitada. Vale desde la próxima revisión de alertas.'); return cargarUmbrales(); })
+        .catch(function (e) { q.disabled = false; toast(e.message, true); });
+    }
+  });
+  $('f-umbral').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('um-error');
+    if (umAlcance && !umAlcance.cli) { errorForm('um-error', 'Elegí el cliente.'); return; }
+    var datos = { cliente_id: umAlcance ? umAlcance.cli : null, servicio_id: umAlcance ? umAlcance.srv : null };
+    var malo = Object.keys(UCAMPOS).filter(function (k) { var v = umLeer(k); return typeof v === 'number' && isNaN(v); })[0];
+    if (malo) { errorForm('um-error', 'Revisá el valor marcado: tiene que ser un número.'); $('um-' + malo).focus(); return; }
+    Object.keys(UCAMPOS).forEach(function (k) { datos[k] = umLeer(k); });
+    if (umAlcance && Object.keys(UCAMPOS).every(function (k) { return datos[k] == null; })) { errorForm('um-error', 'No cambiaste nada: completá al menos un valor para este cliente.'); return; }
+    var b = $('um-guardar'); b.disabled = true;
+    pedir('/api/admin/umbrales', datos)
+      .then(function () { $('dlg-umbral').close(); toast('Guardado. Vale desde la próxima revisión de alertas.'); return cargarUmbrales(); })
+      .catch(function (e) { errorForm('um-error', e.message); }).then(function () { b.disabled = false; });
+  });
+
+  // ---------- Auditoría ----------
+  function aDMA(f) { return f ? f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4) : ''; }
+  function deDMA(t) {
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t || ''); if (!m) return null;
+    var f = m[3] + '-' + m[2] + '-' + m[1], d = new Date(f + 'T12:00:00Z');
+    return isNaN(d) || d.toISOString().slice(0, 10) !== f ? null : f;
+  }
+  function hoyArg(menosDias) { return new Date(Date.now() - 3 * 3600e3 - (menosDias || 0) * 864e5).toISOString().slice(0, 10); }
+  ['a-desde', 'a-hasta'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      var n = this.value.replace(/\D/g, '').slice(0, 8);
+      this.value = n.length > 4 ? n.slice(0, 2) + '/' + n.slice(2, 4) + '/' + n.slice(4) : n.length > 2 ? n.slice(0, 2) + '/' + n.slice(2) : n;
+      this.classList.remove('error');
+    });
+  });
+  var auditoriaLista = false;
+  function cargarAuditoria() {
+    if (!auditoriaLista) {
+      auditoriaLista = true;
+      $('a-desde').value = aDMA(hoyArg(6)); $('a-hasta').value = aDMA(hoyArg(0));
+      $('a-accion').innerHTML = '<option value="">Todas</option>' + Object.keys(ACCION_TXT).map(function (k) { return '<option value="' + k + '">' + esc(ACCION_TXT[k]) + '</option>'; }).join('');
+      var lista = personas ? Promise.resolve(personas) : pedir('/api/admin/usuarios').then(function (d) { personas = d; return d; });
+      return lista.then(function (d) {
+        $('a-usuario').innerHTML = '<option value="">Todos</option>' + d.usuarios.map(function (u) { return '<option value="' + u.id + '">' + esc(u.nombre) + '</option>'; }).join('');
+        return buscarAuditoria();
+      });
+    }
+    return buscarAuditoria();
+  }
+  function buscarAuditoria() {
+    var d = deDMA($('a-desde').value), h = deDMA($('a-hasta').value);
+    $('a-desde').classList.toggle('error', !d); $('a-hasta').classList.toggle('error', !h);
+    if (!d || !h) { toast('Revisá las fechas: tienen que ser DD/MM/AAAA.', true); return Promise.resolve(); }
+    if (d > h) { $('a-desde').classList.add('error'); toast('La fecha "Desde" es posterior a "Hasta".', true); return Promise.resolve(); }
+    var q = '?desde=' + d + '&hasta=' + h + ($('a-usuario').value ? '&usuario=' + $('a-usuario').value : '') + ($('a-accion').value ? '&accion=' + $('a-accion').value : '');
+    return pedir('/api/admin/auditoria' + q).then(function (r) {
+      $('t-auditoria').innerHTML = r.filas.length ? '<thead><tr><th>Fecha y hora</th><th>Persona</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>' +
+        r.filas.map(function (f) {
+          var mal = f.accion === 'LOGIN_FALLIDO' || f.accion === 'USUARIO_BLOQUEADO';
+          return '<tr><td>' + esc(fechaHora(f.fecha)) + '</td><td data-t="Persona">' + (f.nombre ? esc(f.nombre) : '<span class="gris">—</span>') + '</td>' +
+            '<td data-t="Acción"><span class="chip' + (mal ? ' mal' : '') + '">' + esc(ACCION_TXT[f.accion] || f.accion) + '</span></td>' +
+            '<td data-t="Detalle">' + (f.detalle ? esc(f.detalle) : '<span class="gris">—</span>') + '</td></tr>';
+        }).join('') + '</tbody>' : '<tbody><tr><td class="vacio">No hay registros con esos filtros.</td></tr></tbody>';
+      $('a-pie').textContent = r.hay_mas ? 'Se muestran los 300 registros más recientes. Acotá las fechas o los filtros para ver el resto.' : r.filas.length ? r.filas.length + ' registro(s).' : '';
+    });
+  }
+  $('f-auditoria').addEventListener('submit', function (ev) { ev.preventDefault(); buscarAuditoria().catch(function (e) { toast(e.message, true); }); });
+
+  // ---------- Arranque ----------
+  pedir('/api/yo').then(function (r) {
+    yo = r.usuario; permisos = r.permisos || [];
+    if (yo.debe_cambiar || !puedo('admin_panel')) { location.href = '/'; return; }
+    var ini = iniciales(yo.nombre);
+    $('avatar-ini').textContent = ini;
+    $('menu-nombre').textContent = yo.nombre; $('menu-perfil').textContent = PERFIL_TXT[yo.perfil] || yo.perfil;
+    $('lnk-mis').hidden = !puedo('mis_alertas'); $('lnk-seg').hidden = !puedo('seguimiento');
+    $('bajada-admin').textContent = yo.perfil === 'ADMIN'
+      ? 'Usuarios, equipos, reglas de alerta, derivación automática, umbrales por cliente y registro de actividad.'
+      : 'Como ' + (PERFIL_TXT[yo.perfil] || yo.perfil).toLowerCase() + ' podés gestionar las reglas de alerta, la derivación automática y ver el estado del modelo.';
+    $('tabs').innerHTML = visibles().map(function (s) { return '<a href="#' + s.id + '">' + esc(s.txt) + '</a>'; }).join('');
+    mostrar();
+  }).catch(function (e) { toast(e.message, true); });
+})();
+</script>
+</body>
+</html>

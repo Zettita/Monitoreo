@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helios · Seguimiento</title>
+<style>
+/*ESTILOS_BASE*/
+/* Seguimiento */
+.resumen-seg { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.resumen-seg button { display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 14px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); font-size: 14px; cursor: pointer; }
+.resumen-seg button b { font-size: 20px; font-weight: 750; }
+.resumen-seg button.hay.alerta b { color: var(--critica-txt, var(--critica)); }
+.resumen-seg button.hay b { color: var(--accent); }
+.resumen-seg button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.bloque-seg { margin-top: 28px; }
+.bloque-seg > h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.bloque-seg > .bajada { font-size: 14px; margin-bottom: 12px; }
+.filtros-seg { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin: 18px 0 12px; }
+.filtros-seg label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.filtros-seg select { border: 1px solid var(--line-input, var(--line)); background: var(--input-bg, var(--panel)); border-radius: 4px; padding: 6px 8px; font-size: 14px; min-width: 150px; }
+.filtros-seg .btn { align-self: flex-end; }
+#t-seg td, #t-res td { vertical-align: top; }
+.quien b { font-weight: 600; }
+.quien small, .nota-seg small { display: block; color: var(--ink-3); }
+.nota-seg { max-width: 34ch; font-size: 13px; color: var(--ink-2); }
+.nota-seg q { quotes: "“" "”"; color: var(--ink); }
+.tiempo.demora { color: var(--critica-txt, var(--critica)); font-weight: 600; }
+.prio { display: inline-block; min-width: 30px; padding: 0 6px; border-radius: 3px; border: 1px solid; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
+.prio.p1 { background: var(--critica-bg); color: var(--critica-txt, var(--critica)); border-color: var(--critica); }
+.prio.p2 { background: var(--alta-bg); color: var(--alta-txt, var(--alta)); border-color: var(--alta); }
+.prio.p3 { background: var(--media-bg); color: var(--media-txt, var(--media)); border-color: var(--media); }
+.prio.p4 { background: var(--baja-bg); color: var(--baja-txt, var(--baja)); border-color: var(--line); }
+.est-sin { background: var(--critica-bg); color: var(--critica-txt, var(--critica)); }
+.equipos-seg { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.eq { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; box-shadow: var(--shadow); }
+.eq h3 { margin: 0; font-size: 15px; }
+.eq .cifras-eq { display: flex; gap: 16px; margin: 6px 0; font-size: 13px; color: var(--ink-2); }
+.eq .cifras-eq b { font-size: 18px; color: var(--ink); margin-right: 4px; }
+.eq ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
+.eq li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-top: 1px solid var(--line); }
+.eq li span:last-child { color: var(--ink-3); white-space: nowrap; }
+.historial { list-style: none; margin: 8px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--line); }
+.historial li { font-size: 13px; padding: 4px 0; color: var(--ink-2); }
+.historial li b { color: var(--ink); font-weight: 600; }
+.historial li q { display: block; color: var(--ink); quotes: "“" "”"; }
+.historial li time { color: var(--ink-3); font-size: 12px; margin-right: 6px; }
+.campo textarea { min-height: 90px; resize: vertical; font: inherit; color: inherit; display: block; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+</style>
+</head>
+<body>
+<header class="barra">
+  <a class="marca" href="/"><span class="logo" aria-hidden="true"></span><b>Helios</b><span class="sub">Monitoreo de operaciones</span></a>
+  <div class="derecha">
+    <button class="btn" id="btn-actualizar">Actualizar</button>
+    <a class="btn" href="/">← Tablero</a>
+    <div class="usuario">
+      <button class="avatar" id="btn-avatar" aria-haspopup="menu" aria-expanded="false" title="Mi cuenta"><span id="avatar-ini">·</span></button>
+      <div class="menu" id="menu-usuario" role="menu" hidden>
+        <div class="menu-cab"><b id="menu-nombre"></b><span id="menu-perfil"></span></div>
+        <a role="menuitem" href="/">Tablero</a>
+        <a role="menuitem" href="/mis-alertas" id="lnk-mis" hidden>Mis alertas</a>
+        <a role="menuitem" href="/admin" id="lnk-admin" hidden>Administración</a>
+        <button role="menuitem" id="btn-salir">Salir</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Seguimiento de alertas</h1>
+  <p class="bajada" id="bajada">Cargando…</p>
+  <div class="resumen-seg" id="resumen"></div>
+
+  <form class="filtros-seg" id="filtros">
+    <label>Estado<select id="f-estado">
+      <option value="">Todas las abiertas</option><option value="sin">Sin asignar</option><option value="dev">Devueltas</option>
+      <option value="asig">Asignadas, sin tomar</option><option value="curso">En curso</option>
+    </select></label>
+    <label>Equipo<select id="f-equipo"></select></label>
+    <label>Persona<select id="f-persona"></select></label>
+    <label>Cliente<select id="f-cliente"></select></label>
+    <button type="button" class="btn" id="f-limpiar">Limpiar filtros</button>
+  </form>
+
+  <section class="bloque-seg">
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-seg"></table></div></div>
+  </section>
+
+  <section class="bloque-seg">
+    <h2>Carga por equipo</h2>
+    <p class="bajada">Qué tiene cada equipo ahora y quién de su gente está trabajando alertas.</p>
+    <div class="equipos-seg" id="equipos"></div>
+  </section>
+
+  <section class="bloque-seg">
+    <h2>Resueltas en las últimas 24 horas</h2>
+    <p class="bajada">Quién las resolvió y cuánto tardaron.</p>
+    <div class="panel"><div class="tabla-scroll"><table class="resp" id="t-res"></table></div></div>
+  </section>
+</main>
+
+<!-- Derivar o reasignar -->
+<dialog id="dlg-derivar">
+  <form id="f-derivar" method="dialog">
+    <h2 id="d-titulo">Derivar alerta</h2>
+    <p class="bajada" id="d-alerta"></p>
+    <label class="campo"><span>Equipo</span><select id="d-equipo"></select></label>
+    <label class="campo"><span>Persona</span><select id="d-persona"></select></label>
+    <label class="campo"><span>Comentario <small class="gris">(opcional)</small></span><textarea id="d-texto" maxlength="1000"></textarea></label>
+    <p class="error-form" id="d-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="d-guardar">Derivar</button></div>
+  </form>
+</dialog>
+
+<!-- Comentar o resolver -->
+<dialog id="dlg-nota">
+  <form id="f-nota" method="dialog">
+    <h2 id="n-titulo"></h2>
+    <p class="bajada" id="n-alerta"></p>
+    <label class="campo"><span id="n-etiqueta"></span><textarea id="n-texto" maxlength="1000" required></textarea><small class="ayuda" id="n-ayuda"></small></label>
+    <p class="error-form" id="n-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="n-guardar"></button></div>
+  </form>
+</dialog>
+
+<!-- Historial -->
+<dialog id="dlg-hist">
+  <h2>Historial</h2>
+  <p class="bajada" id="h-alerta"></p>
+  <ol class="historial" id="h-lista"></ol>
+  <div class="acc-dlg"><button class="btn primario" data-cerrar>Cerrar</button></div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  var TZ = 'America/Argentina/Buenos_Aires';
+  var PERFIL_TXT = { ADMIN: 'Administrador', GERENTE: 'Gerente', ANALISTA: 'Analista', SOPORTE: 'Soporte' };
+  var SEV_TXT = { CRITICA: 'Grave', ALTA: 'Importante', MEDIA: 'Leve', BAJA: 'Informativo' };
+  var SEV_N = { CRITICA: 1, ALTA: 2, MEDIA: 3, BAJA: 4 };
+  var FRASE = {
+    VOLUMEN_BAJO: 'Entra menos tráfico de lo normal', VOLUMEN_ALTO: 'Entra mucho más tráfico de lo normal',
+    APROBACION_BAJA: 'Se aprueban menos operaciones', RECHAZO_ALTO: 'Suben los rechazos',
+    ERROR_ALTO: 'Suben los errores técnicos', IMPORTE_BAJO: 'Se opera menos dinero de lo normal',
+    IMPORTE_ALTO: 'Se opera más dinero de lo normal', LATENCIA_ALTA: 'El servicio responde lento',
+    SIN_EXITOS: 'No se aprueba ninguna operación', DATO_TARDIO: 'Los datos llegan con demora',
+    DATO_INCONSISTENTE: 'Los datos informados no cierran', SIN_PREDICCION: 'Cliente nuevo, todavía sin historia para comparar',
+    VENTANA_FALTANTE: 'Dejaron de llegar datos'
+  };
+  var SERVICIO = { TRANSFERENCIAS: 'Transferencias', PAGO_SERVICIOS: 'Pago de servicios', RECARGA_CELULAR: 'Recarga de celular', RECARGA_TRANSPORTE: 'Recarga de transporte' };
+  var CANAL = { MOBILE: 'app', WEB: 'web', API: 'API' };
+  var MOTIVO = { NORMALIZADA: 'Se normalizó sola', CONDICION_DESAPARECIDA: 'Dejó de detectarse', MANUAL: 'Resuelta a mano' };
+  var ESTADO = {
+    sin: ['est est-sin', 'Sin asignar'], dev: ['est est-dev', 'Devuelta'], asig: ['est est-asig', 'Asignada'], curso: ['est est-curso', 'En curso']
+  };
+  var CRIT_TXT = { ALTA: 'alta', MEDIA: 'media', BAJA: 'baja' };
+  var MATRIZ_PRIORIDAD = { CRITICA: { ALTA: 1, MEDIA: 2, BAJA: 3 }, ALTA: { ALTA: 2, MEDIA: 3, BAJA: 3 }, MEDIA: { ALTA: 3, MEDIA: 4, BAJA: 4 }, BAJA: { ALTA: 4, MEDIA: 4, BAJA: 4 } };
+  // Más de esto en el mismo estado se marca en rojo (minutos)
+  var DEMORA = { sin: 15, dev: 15, asig: 30, curso: 120 };
+
+  var yo = null, permisos = [], datos = null, grupos = {}, abiertas = [], asignablesCache = null, actual = null;
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function puedo(p) { return permisos.indexOf(p) >= 0; }
+  function toast(msg, error) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast' + (error ? ' error' : ''); t.style.display = 'block';
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = 'none'; }, error ? 7000 : 3500);
+  }
+  function pedir(url, cuerpo) {
+    var op = cuerpo === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) };
+    return fetch(url, op).then(function (r) {
+      if (r.status === 401) { location.href = '/login'; throw new Error('Tu sesión venció.'); }
+      return r.json().then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('Error ' + r.status)); return j; });
+    });
+  }
+  function aFecha(iso) { if (!iso) return null; var s = String(iso).replace(' ', 'T'); return new Date(s + (/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? '' : 'Z')); }
+  function hora(iso) { var d = aFecha(iso); return d && !isNaN(d) ? d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TZ }) : ''; }
+  function diaHora(iso) {
+    var d = aFecha(iso); if (!d || isNaN(d)) return '';
+    var ref = aFecha(datos.ahora), dia = d.toLocaleDateString('es-AR', { timeZone: TZ });
+    var hoy = ref.toLocaleDateString('es-AR', { timeZone: TZ }), ayer = new Date(ref.getTime() - 864e5).toLocaleDateString('es-AR', { timeZone: TZ });
+    return (dia === hoy ? '' : dia === ayer ? 'ayer ' : d.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', timeZone: TZ }) + ' ') + hora(iso);
+  }
+  function minutosDesde(iso) { return Math.max(0, Math.round((aFecha(datos.ahora) - aFecha(iso)) / 60000)); }
+  function dur(m) { return m < 1 ? 'recién' : m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : ''); }
+  function servicio(r) { return (SERVICIO[r.servicio_id] || String(r.servicio_id || '').toLowerCase().replace(/_/g, ' ')) + ' por ' + (CANAL[r.canal_id] || r.canal_id); }
+  function frase(tipo, r) { if (tipo === 'VOLUMEN_BAJO' && r && r.valor_observado === 0) return 'No está entrando tráfico'; return FRASE[tipo] || tipo; }
+  function iniciales(n) { return n.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || '?'; }
+  function errorForm(id, msg) { var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+  function opciones(sel, lista, todos) {
+    var v = sel.value;
+    sel.innerHTML = '<option value="">' + esc(todos) + '</option>' + lista.map(function (o) { return '<option value="' + esc(o.v) + '">' + esc(o.t) + '</option>'; }).join('');
+    sel.value = lista.some(function (o) { return String(o.v) === v; }) ? v : '';
+  }
+  document.addEventListener('click', function (ev) { var b = ev.target.closest('[data-cerrar]'); if (b) b.closest('dialog').close(); });
+
+  // Menú del usuario
+  function menu(abrir) { var m = $('menu-usuario'); if (abrir === undefined) abrir = m.hidden; m.hidden = !abrir; $('btn-avatar').setAttribute('aria-expanded', abrir ? 'true' : 'false'); }
+  $('btn-avatar').addEventListener('click', function (ev) { ev.stopPropagation(); menu(); });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('.usuario')) menu(false); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') menu(false); });
+  $('btn-salir').addEventListener('click', function () { pedir('/api/logout', {}).catch(function () {}).then(function () { location.href = '/login'; }); });
+
+  // Prioridad: gravedad x criticidad del servicio (Administración > Umbrales; gana lo más específico)
+  function umbralDe(cli, srv, campo) {
+    var u = datos.umbrales || [], f;
+    f = u.filter(function (x) { return x.cliente_id === cli && x.servicio_id === srv; })[0]; if (f && f[campo] != null) return f[campo];
+    f = u.filter(function (x) { return x.cliente_id === cli && x.servicio_id === '*'; })[0]; if (f && f[campo] != null) return f[campo];
+    f = u.filter(function (x) { return x.cliente_id === '*'; })[0]; return f ? f[campo] : null;
+  }
+  function prioChip(g) {
+    return '<span class="prio p' + g.prio + '" title="' + esc(SEV_TXT[g.sev] + ' en un servicio de criticidad ' + CRIT_TXT[g.crit]) + '">P' + g.prio + '</span>';
+  }
+
+  // Una fila por problema: ventanas abiertas del mismo tipo en la misma serie
+  function agrupar(filas, resueltas) {
+    var out = [], idx = {};
+    filas.forEach(function (r) {
+      if (r.severidad === 'BAJA' && !resueltas) return;   // informativas: no se derivan
+      var k = [r.ambiente, r.cliente_id, r.servicio_id, r.producto_id, r.canal_id, r.moneda_id, r.tipo_alerta, r.fecha_resolucion || ''].join('|');
+      var g = idx[k];
+      if (!g) { g = idx[k] = { id: r.alerta_id, ids: [], filas: [], sev: r.severidad_maxima || r.severidad, desde: r.ventana_inicio, ult: r, det: r.primera_deteccion, asig: null }; out.push(g); }
+      g.ids.push(r.alerta_id); g.filas.push(r);
+      if (SEV_N[r.severidad_maxima || r.severidad] < SEV_N[g.sev]) g.sev = r.severidad_maxima || r.severidad;
+      if (r.ventana_inicio < g.desde) g.desde = r.ventana_inicio;
+      if (r.primera_deteccion && r.primera_deteccion < g.det) g.det = r.primera_deteccion;
+      if (r.ventana_inicio > g.ult.ventana_inicio) g.ult = r;
+      if (r.asignado_en && (r.asignado_usuario_id != null || r.asignado_equipo_id != null) && (!g.asig || r.asignado_en > g.asig.asignado_en)) g.asig = r;
+    });
+    out.forEach(function (g) {
+      g.a = g.asig || g.ult;
+      g.eventos = (datos.eventos || []).filter(function (e) { return g.ids.indexOf(e.alerta_id) >= 0; });
+      var ult = g.eventos[g.eventos.length - 1];
+      g.tomada = g.filas.every(function (r) { return r.estado === 'RECONOCIDA'; });
+      g.estado = g.tomada ? 'curso' : g.asig ? 'asig' : ult && ult.accion === 'DEVOLVER' ? 'dev' : 'sin';
+      g.cambio = g.estado === 'curso' ? (g.a.fecha_reconocimiento || g.a.asignado_en) : g.estado === 'asig' ? g.a.asignado_en : g.estado === 'dev' ? ult.fecha : g.det;
+      g.crit = umbralDe(g.ult.cliente_id, g.ult.servicio_id, 'criticidad') || 'MEDIA';
+      g.prio = (MATRIZ_PRIORIDAD[g.sev] || MATRIZ_PRIORIDAD.BAJA)[g.crit] || 4;
+      g.nota = g.eventos.filter(function (e) { return e.comentario; }).pop() || null;
+      grupos[g.id] = g;
+    });
+    return out;
+  }
+  var ACC_TXT = { DERIVAR: 'derivó', TOMAR: 'la tomó', COMENTAR: 'comentó', DEVOLVER: 'la devolvió', RESOLVER: 'la resolvió' };
+  function textoEvento(e) {
+    var dest = e.accion === 'DERIVAR' ? ' a ' + [e.destino_nombre, e.equipo_destino_nombre ? 'equipo ' + e.equipo_destino_nombre : ''].filter(Boolean).join(', ') : '';
+    return '<li><time>' + esc(diaHora(e.fecha)) + '</time><b>' + esc(e.usuario_nombre || 'Sistema') + '</b> ' + esc(ACC_TXT[e.accion] || e.accion) + esc(dest) +
+      (e.comentario ? '<q>' + esc(e.comentario) + '</q>' : '') + '</li>';
+  }
+  function quienTxt(g) {
+    var a = g.a;
+    if (g.estado === 'sin' || g.estado === 'dev') return '<span class="gris">Nadie</span>';
+    var p = a.asignado_nombre ? '<b>' + esc(a.asignado_nombre) + '</b>' : '<b>Todo el equipo</b>';
+    return '<span class="quien">' + p + (a.equipo_nombre ? '<small>Equipo ' + esc(a.equipo_nombre) + '</small>' : '') +
+      (a.asignado_por_nombre ? '<small>Derivó ' + esc(a.asignado_por_nombre) + '</small>' : '') + '</span>';
+  }
+
+  function filtrar() {
+    var est = $('f-estado').value, eq = $('f-equipo').value, pe = $('f-persona').value, cl = $('f-cliente').value;
+    return abiertas.filter(function (g) {
+      return (!est || g.estado === est) && (!eq || String(g.a.asignado_equipo_id) === eq && g.asig) &&
+        (!pe || String(g.a.asignado_usuario_id) === pe && g.asig) && (!cl || g.ult.cliente_id === cl);
+    });
+  }
+  function pintarTabla() {
+    var gs = filtrar(), acciones = puedo('derivar');
+    document.querySelectorAll('#resumen button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.estado === $('f-estado').value && b.dataset.estado ? 'true' : 'false'); });
+    $('t-seg').innerHTML = gs.length ? '<thead><tr><th>Prioridad</th><th>Alerta</th><th>Cliente y servicio</th><th>Estado</th><th>Quién la tiene</th><th>Hace</th><th>Última novedad</th><th></th></tr></thead><tbody>' +
+      gs.map(function (g) {
+        var m = minutosDesde(g.cambio), e = ESTADO[g.estado], acc = '';
+        if (acciones) {
+          acc += '<button class="btn chico" data-acc="derivar" data-id="' + g.id + '">' + (g.asig ? 'Reasignar' : 'Derivar') + '</button>';
+          acc += '<button class="btn chico" data-acc="comentar" data-id="' + g.id + '">Comentar</button>';
+          acc += '<button class="btn chico" data-acc="resolver" data-id="' + g.id + '">Resolver</button>';
+        }
+        if (g.eventos.length) acc += '<button class="btn chico enlace" data-acc="historial" data-id="' + g.id + '">Historial</button>';
+        return '<tr><td data-t="Prioridad">' + prioChip(g) + '</td>' +
+          '<td><span class="sev ' + esc(g.sev) + '">' + esc(SEV_TXT[g.sev]) + '</span> ' + esc(frase(g.ult.tipo_alerta, g.ult)) + '<br><small>desde las ' + esc(hora(g.desde)) + ' · ' + g.filas.length + (g.filas.length === 1 ? ' ventana' : ' ventanas') + '</small></td>' +
+          '<td data-t="Cliente">' + esc(g.ult.cliente_id) + '<br><small>' + esc(servicio(g.ult)) + '</small></td>' +
+          '<td data-t="Estado"><span class="' + e[0] + '">' + e[1] + '</span>' + (g.estado === 'asig' ? '<br><small>sin tomar</small>' : '') + '</td>' +
+          '<td data-t="Quién la tiene">' + quienTxt(g) + '</td>' +
+          '<td data-t="Hace"><span class="tiempo' + (m >= DEMORA[g.estado] ? ' demora' : '') + '" title="En este estado desde ' + esc(diaHora(g.cambio)) + '">' + esc(dur(m)) + '</span></td>' +
+          '<td data-t="Novedad" class="nota-seg">' + (g.nota ? '<small>' + esc(g.nota.usuario_nombre || 'Sistema') + ', ' + esc(diaHora(g.nota.fecha)) + '</small><q>' + esc(g.nota.comentario) + '</q>' : '<span class="gris">—</span>') + '</td>' +
+          '<td class="acc">' + acc + '</td></tr>';
+      }).join('') + '</tbody>'
+      : '<tbody><tr><td class="vacio">' + (abiertas.length ? 'Ninguna alerta abierta con esos filtros.' : 'No hay alertas abiertas.') + '</td></tr></tbody>';
+  }
+  function pintarEquipos() {
+    var html = (datos.equipos || []).map(function (eq) {
+      var gs = abiertas.filter(function (g) { return g.asig && g.a.asignado_equipo_id === eq.id; });
+      var porPersona = {};
+      gs.forEach(function (g) { if (g.a.asignado_usuario_id != null) { var k = g.a.asignado_nombre; porPersona[k] = porPersona[k] || { curso: 0, asig: 0 }; porPersona[k][g.estado === 'curso' ? 'curso' : 'asig']++; } });
+      var miembros = (datos.miembros || []).filter(function (m) { return m.equipo_id === eq.id; });
+      var lista = miembros.map(function (m) {
+        var x = porPersona[m.nombre];
+        return '<li><span>' + esc(m.nombre) + (m.id === eq.responsable_id ? ' <small class="gris">(responsable)</small>' : '') + '</span><span>' +
+          (x ? [x.curso ? x.curso + ' en curso' : '', x.asig ? x.asig + ' sin tomar' : ''].filter(Boolean).join(' · ') : 'libre') + '</span></li>';
+      }).join('');
+      var sinTomar = gs.filter(function (g) { return g.estado === 'asig'; }).length, curso = gs.length - sinTomar;
+      return '<div class="eq"><h3>' + esc(eq.nombre) + '</h3><div class="cifras-eq"><span><b>' + sinTomar + '</b>sin tomar</span><span><b>' + curso + '</b>en curso</span></div>' +
+        (lista ? '<ul>' + lista + '</ul>' : '<p class="vacio" style="padding:4px 0">Sin miembros.</p>') + '</div>';
+    }).join('');
+    // Alertas asignadas a personas sin equipo
+    var sueltas = abiertas.filter(function (g) { return g.asig && g.a.asignado_equipo_id == null; });
+    if (sueltas.length) {
+      var pp = {};
+      sueltas.forEach(function (g) { pp[g.a.asignado_nombre] = (pp[g.a.asignado_nombre] || 0) + 1; });
+      html += '<div class="eq"><h3>Sin equipo</h3><div class="cifras-eq"><span><b>' + sueltas.length + '</b>asignadas a personas</span></div><ul>' +
+        Object.keys(pp).map(function (n) { return '<li><span>' + esc(n) + '</span><span>' + pp[n] + '</span></li>'; }).join('') + '</ul></div>';
+    }
+    $('equipos').innerHTML = html || '<p class="vacio">Todavía no hay equipos. Se crean en Administración.</p>';
+  }
+  function pintarResueltas() {
+    var gs = agrupar(datos.resueltas || [], true).sort(function (x, y) { return x.filas[0].fecha_resolucion < y.filas[0].fecha_resolucion ? 1 : -1; });
+    $('t-res').innerHTML = gs.length ? '<thead><tr><th>Alerta</th><th>Cliente y servicio</th><th>Cómo se resolvió</th><th>Quién la tenía</th><th>Duró</th></tr></thead><tbody>' +
+      gs.map(function (g) {
+        var r = g.filas[0], m = Math.round((aFecha(r.fecha_resolucion) - aFecha(g.desde)) / 60000);
+        return '<tr><td><span class="sev ' + esc(g.sev) + '">' + esc(SEV_TXT[g.sev]) + '</span> ' + esc(frase(g.ult.tipo_alerta, g.ult)) + '</td>' +
+          '<td data-t="Cliente">' + esc(g.ult.cliente_id) + '<br><small>' + esc(servicio(g.ult)) + '</small></td>' +
+          '<td data-t="Cómo" class="nota-seg">' + (r.motivo_resolucion === 'MANUAL' ? '<b>' + esc(r.resuelta_por || '') + '</b>' + (r.comentario_resolucion ? '<q>' + esc(r.comentario_resolucion) + '</q>' : '') : esc(MOTIVO[r.motivo_resolucion] || r.motivo_resolucion)) +
+          '<small>' + esc(diaHora(r.fecha_resolucion)) + '</small></td>' +
+          '<td data-t="La tenía">' + (g.asig ? esc(g.a.asignado_nombre || ('equipo ' + (g.a.equipo_nombre || ''))) + (g.a.asignado_nombre && g.a.equipo_nombre ? '<br><small>Equipo ' + esc(g.a.equipo_nombre) + '</small>' : '') : '<span class="gris">Nadie</span>') + '</td>' +
+          '<td data-t="Duró">' + esc(dur(m)) + '</td></tr>';
+      }).join('') + '</tbody>' : '<tbody><tr><td class="vacio">No se resolvieron alertas en las últimas 24 horas.</td></tr></tbody>';
+    return gs.length;
+  }
+
+  function pintar(d) {
+    datos = d; grupos = {};
+    (d.reglas_personalizadas || []).forEach(function (r) { FRASE['PERS_' + r.id] = r.nombre; });
+    abiertas = agrupar(d.abiertas || []).sort(function (x, y) { return x.prio - y.prio || SEV_N[x.sev] - SEV_N[y.sev] || (x.desde < y.desde ? -1 : 1); });
+    var n = { sin: 0, dev: 0, asig: 0, curso: 0 };
+    abiertas.forEach(function (g) { n[g.estado]++; });
+    var resueltas = pintarResueltas();
+    $('resumen').innerHTML = [['sin', 'sin asignar', true], ['dev', n.dev === 1 ? 'devuelta' : 'devueltas', true], ['asig', 'asignadas sin tomar'], ['curso', 'en curso']]
+      .map(function (x) { return '<button type="button" data-estado="' + x[0] + '" class="' + (n[x[0]] ? 'hay' + (x[2] ? ' alerta' : '') : '') + '"><b>' + n[x[0]] + '</b>' + x[1] + '</button>'; }).join('') +
+      '<button type="button" data-ir="t-res"><b>' + resueltas + '</b>resueltas (24 h)</button>';
+    var pend = n.sin + n.dev;
+    $('bajada').textContent = (pend ? pend + (pend === 1 ? ' alerta espera' : ' alertas esperan') + ' que alguien la derive. ' : 'Todas las alertas tienen a alguien asignado. ') +
+      'Acá ves quién tiene cada alerta, en qué estado está y desde cuándo.' + (d.reloj_simulado ? ' (Reloj de demostración: ' + hora(d.ahora) + ')' : '');
+    // Filtros con lo que hay
+    opciones($('f-equipo'), (d.equipos || []).map(function (e) { return { v: e.id, t: e.nombre }; }), 'Todos');
+    var personas = {}; abiertas.forEach(function (g) { if (g.asig && g.a.asignado_usuario_id != null) personas[g.a.asignado_usuario_id] = g.a.asignado_nombre; });
+    opciones($('f-persona'), Object.keys(personas).map(function (k) { return { v: k, t: personas[k] }; }).sort(function (a, b) { return a.t < b.t ? -1 : 1; }), 'Todas');
+    var clis = {}; abiertas.forEach(function (g) { clis[g.ult.cliente_id] = 1; });
+    opciones($('f-cliente'), Object.keys(clis).sort().map(function (c) { return { v: c, t: c }; }), 'Todos');
+    pintarTabla(); pintarEquipos();
+    document.title = (pend ? '(' + pend + ') ' : '') + 'Helios · Seguimiento';
+  }
+  function cargar() { return pedir('/api/seguimiento').then(pintar).catch(function (e) { toast(e.message, true); }); }
+  $('btn-actualizar').addEventListener('click', function () { var b = this; b.disabled = true; cargar().then(function () { b.disabled = false; toast('Datos actualizados.'); }); });
+  ['f-estado', 'f-equipo', 'f-persona', 'f-cliente'].forEach(function (id) { $(id).addEventListener('change', pintarTabla); });
+  $('f-limpiar').addEventListener('click', function () { ['f-estado', 'f-equipo', 'f-persona', 'f-cliente'].forEach(function (id) { $(id).value = ''; }); pintarTabla(); });
+  $('resumen').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.ir) { $(b.dataset.ir).scrollIntoView({ behavior: 'smooth' }); return; }
+    $('f-estado').value = $('f-estado').value === b.dataset.estado ? '' : b.dataset.estado; pintarTabla();
+  });
+
+  // Derivar / reasignar
+  function personasDe(eq) {
+    var ids = eq ? asignablesCache.miembros.filter(function (m) { return m.equipo_id === eq; }).map(function (m) { return m.usuario_id; }) : null;
+    return asignablesCache.usuarios.filter(function (u) { return !ids || ids.indexOf(u.id) >= 0; });
+  }
+  function llenarPersonas(sel) {
+    var eq = $('d-equipo').value ? Number($('d-equipo').value) : null, ps = personasDe(eq);
+    $('d-persona').innerHTML = '<option value="">' + (eq ? 'Todo el equipo (la toma el primero)' : 'Elegí una persona') + '</option>' +
+      ps.map(function (u) { return '<option value="' + u.id + '">' + esc(u.nombre) + '</option>'; }).join('');
+    $('d-persona').value = sel && ps.some(function (u) { return u.id === sel; }) ? String(sel) : '';
+  }
+  function abrirDerivar(g) {
+    actual = g;
+    (asignablesCache ? Promise.resolve(asignablesCache) : pedir('/api/asignables').then(function (r) { asignablesCache = r; return r; })).then(function (r) {
+      $('f-derivar').reset(); errorForm('d-error');
+      $('d-titulo').textContent = g.asig ? 'Reasignar alerta' : 'Derivar alerta';
+      $('d-guardar').textContent = g.asig ? 'Reasignar' : 'Derivar';
+      $('d-alerta').textContent = frase(g.ult.tipo_alerta, g.ult) + ' · ' + g.ult.cliente_id + ', ' + servicio(g.ult);
+      $('d-equipo').innerHTML = '<option value="">Ninguno</option>' + r.equipos.map(function (e) { return '<option value="' + e.id + '">' + esc(e.nombre) + '</option>'; }).join('');
+      $('d-equipo').value = g.asig && g.a.asignado_equipo_id ? String(g.a.asignado_equipo_id) : '';
+      llenarPersonas(g.asig ? g.a.asignado_usuario_id : null);
+      $('dlg-derivar').showModal();
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  $('d-equipo').addEventListener('change', function () { llenarPersonas(Number($('d-persona').value) || null); });
+  $('f-derivar').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('d-error');
+    var b = $('d-guardar'); b.disabled = true;
+    pedir('/api/alertas/' + actual.id + '/derivar', { equipo_id: $('d-equipo').value ? Number($('d-equipo').value) : null, usuario_id: $('d-persona').value ? Number($('d-persona').value) : null, comentario: $('d-texto').value.trim() })
+      .then(function () { $('dlg-derivar').close(); toast('Alerta derivada.'); return cargar(); })
+      .catch(function (e) { errorForm('d-error', e.message); }).then(function () { b.disabled = false; });
+  });
+  // Comentar / resolver
+  var NOTA = {
+    comentar: { t: 'Comentar', e: 'Comentario', a: 'Le llega a quien tiene la alerta.', b: 'Guardar comentario', ok: 'Comentario guardado.' },
+    resolver: { t: 'Resolver alerta', e: '¿Qué se hizo?', a: 'Obligatorio: queda en el historial de la alerta.', b: 'Marcar como resuelta', ok: 'Alerta resuelta.' }
+  };
+  function abrirNota(acc, g) {
+    var n = NOTA[acc]; actual = g; actual.acc = acc;
+    $('f-nota').reset(); errorForm('n-error');
+    $('n-titulo').textContent = n.t; $('n-etiqueta').textContent = n.e; $('n-ayuda').textContent = n.a; $('n-guardar').textContent = n.b;
+    $('n-alerta').textContent = frase(g.ult.tipo_alerta, g.ult) + ' · ' + g.ult.cliente_id + ', ' + servicio(g.ult);
+    $('dlg-nota').showModal(); $('n-texto').focus();
+  }
+  $('f-nota').addEventListener('submit', function (ev) {
+    ev.preventDefault(); errorForm('n-error');
+    var b = $('n-guardar'), g = actual; b.disabled = true;
+    pedir('/api/alertas/' + g.id + '/' + g.acc, { comentario: $('n-texto').value.trim() })
+      .then(function () { $('dlg-nota').close(); toast(NOTA[g.acc].ok); return cargar(); })
+      .catch(function (e) { errorForm('n-error', e.message); }).then(function () { b.disabled = false; });
+  });
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-acc]'); if (!b) return;
+    var g = grupos[b.dataset.id], acc = b.dataset.acc;
+    if (acc === 'derivar') abrirDerivar(g);
+    else if (acc === 'historial') {
+      $('h-alerta').textContent = frase(g.ult.tipo_alerta, g.ult) + ' · ' + g.ult.cliente_id + ', ' + servicio(g.ult);
+      $('h-lista').innerHTML = g.eventos.map(textoEvento).join('');
+      $('dlg-hist').showModal();
+    } else abrirNota(acc, g);
+  });
+
+  pedir('/api/yo').then(function (r) {
+    yo = r.usuario; permisos = r.permisos || [];
+    if (yo.debe_cambiar || !puedo('seguimiento')) { location.href = '/'; return; }
+    $('avatar-ini').textContent = iniciales(yo.nombre);
+    $('menu-nombre').textContent = yo.nombre; $('menu-perfil').textContent = PERFIL_TXT[yo.perfil] || yo.perfil;
+    $('lnk-admin').hidden = !puedo('admin_panel');
+    $('lnk-mis').hidden = !puedo('mis_alertas');
+    return cargar();
+  }).catch(function (e) { toast(e.message, true); });
+})();
+</script>
+</body>
+</html>

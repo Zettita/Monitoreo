@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helios · Ingresar</title>
+<style>
+:root {
+  --bg: #EDF1F0; --panel: #FFFFFF; --ink: #13262E; --ink-2: #4A5D66; --ink-3: #7C8D94;
+  --line: #D5DEDC; --accent: #1E5A73; --sobre-accent: #FFFFFF; --critica: #C8203A; --critica-bg: #FBE6E9;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0F1B21; --panel: #15252D; --ink: #E5EEF0; --ink-2: #A9BAC0; --ink-3: #7F939A;
+    --line: #263A43; --accent: #6FB3CF; --sobre-accent: #0F1B21; --critica: #FF5D72; --critica-bg: #3A1720; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5; padding: 16px; }
+.caja { width: 100%; max-width: 380px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 28px 26px; }
+.marca { display: flex; align-items: baseline; gap: 8px; margin-bottom: 18px; }
+.marca b { font-size: 20px; } .marca span { color: var(--ink-3); font-size: 14px; }
+h1 { font-size: 21px; margin: 0 0 4px; }
+p.bajada { margin: 0 0 18px; color: var(--ink-2); font-size: 14px; }
+label { display: block; font-size: 13.5px; font-weight: 600; margin: 12px 0 5px; }
+input { width: 100%; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; }
+input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+button { width: 100%; margin-top: 20px; font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px; cursor: pointer;
+  background: var(--accent); color: var(--sobre-accent); }
+button:disabled { opacity: .6; cursor: default; }
+.error { margin: 14px 0 0; padding: 9px 11px; border-radius: 8px; background: var(--critica-bg); color: var(--critica); font-size: 13.5px; }
+.ayuda { margin-top: 6px; font-size: 12.5px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<main class="caja">
+  <div class="marca"><b>Helios</b><span>Monitoreo de operaciones</span></div>
+
+  <form id="f-login" hidden>
+    <h1>Ingresar</h1>
+    <p class="bajada">Usá el usuario y la contraseña que te dio el administrador.</p>
+    <label for="l-usuario">Usuario</label>
+    <input id="l-usuario" autocomplete="username" autocapitalize="none" required>
+    <label for="l-clave">Contraseña</label>
+    <input id="l-clave" type="password" autocomplete="current-password" required>
+    <button type="submit" id="l-boton">Ingresar</button>
+    <p class="error" id="l-error" hidden></p>
+  </form>
+
+  <form id="f-setup" hidden>
+    <h1>Configuración inicial</h1>
+    <p class="bajada">Todavía no hay usuarios. Creá el primer administrador; después vas a poder dar de alta al resto desde el panel.</p>
+    <label for="s-nombre">Nombre y apellido</label>
+    <input id="s-nombre" autocomplete="name" required>
+    <label for="s-usuario">Usuario</label>
+    <input id="s-usuario" autocomplete="username" autocapitalize="none" required>
+    <div class="ayuda">Entre 3 y 40 caracteres: letras, números, punto o guion.</div>
+    <label for="s-clave">Contraseña</label>
+    <input id="s-clave" type="password" autocomplete="new-password" required>
+    <div class="ayuda">Al menos 10 caracteres.</div>
+    <label for="s-clave2">Repetir contraseña</label>
+    <input id="s-clave2" type="password" autocomplete="new-password" required>
+    <button type="submit" id="s-boton">Crear administrador e ingresar</button>
+    <p class="error" id="s-error" hidden></p>
+  </form>
+</main>
+<script>
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function pedir(url, cuerpo) {
+    return fetch(url, cuerpo ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) } : undefined)
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('Error ' + r.status)); return j; }); });
+  }
+  function error(id, msg) { var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+  function entrar(usuario, clave, boton, idError) {
+    return pedir('/api/login', { usuario: usuario, clave: clave }).then(function () { location.href = '/' + location.search; })
+      .catch(function (e) { error(idError, e.message); boton.disabled = false; });
+  }
+  pedir('/api/setup').then(function (r) {
+    var f = r.necesita ? $('f-setup') : $('f-login');
+    f.hidden = false; f.querySelector('input').focus();
+  }).catch(function () { $('f-login').hidden = false; });
+
+  $('f-login').addEventListener('submit', function (ev) {
+    ev.preventDefault(); error('l-error');
+    var b = $('l-boton'); b.disabled = true;
+    entrar($('l-usuario').value.trim(), $('l-clave').value, b, 'l-error');
+  });
+  $('f-setup').addEventListener('submit', function (ev) {
+    ev.preventDefault(); error('s-error');
+    if ($('s-clave').value !== $('s-clave2').value) return error('s-error', 'Las contraseñas no coinciden.');
+    var b = $('s-boton'); b.disabled = true;
+    var datos = { nombre: $('s-nombre').value.trim(), usuario: $('s-usuario').value.trim(), clave: $('s-clave').value };
+    pedir('/api/setup', datos).then(function () { return entrar(datos.usuario, datos.clave, b, 's-error'); })
+      .catch(function (e) { error('s-error', e.message); b.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

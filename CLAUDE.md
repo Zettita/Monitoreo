@@ -1,0 +1,110 @@
+# Helios · Monitoreo de alertas — guía para Claude Code
+
+Contexto completo del sistema (qué es, tablas, reglas, pantallas, permisos, pendientes):
+@05_Documentacion/contexto_helios_para_ia.md
+
+Mapa de carpetas y para qué sirve cada archivo: @LEEME.md
+
+## Cómo trabajar conmigo
+- Respondé en español rioplatense, conciso y práctico. Los textos de la interfaz también, sin jerga técnica.
+- Antes de cambios grandes, resumí el plan en pocos pasos.
+- Nombres de tablas y columnas **completos, sin abreviar** (`historico_metricas`, no `hist_metricas`; `numero_dia_habil`, no `habil_n`).
+- Documentos para personas: Word con el estilo de la compañera (ver `07_Codigo_fuente/word/SKILL_documentos_word_helios.md`); presentaciones en PowerPoint.
+- **Nada de tablas de demo**: los datos entran por `core_metricas_observadas` y todo lo demás se calcula.
+- **Sin Power BI** (decidido el 11/11): el análisis es solo el tablero HTML. Lo de Power BI quedó en `99_Archivo_viejo/power_bi/`.
+
+## Entorno real
+- Cloudflare, plan gratuito. Base D1 `helios-monitoring-dev`; Worker `worker-alertas-cron` (todo el sistema). `worker-api-bi` (Power BI) ya no se usa: borrarlo del panel.
+- **El Cron Trigger está apagado** (se quitó hace tiempo para no gastar lecturas): hoy las revisiones solo corren a mano (botón "Revisar alertas ahora" o escenas de la demo). Lo que figure en el uso de D1 viene de cargas manuales o del tablero.
+- Límites D1 free: 500 MB por base, 5 GB por cuenta, **100.000 filas escritas/día**, 5 M filas leídas/día; 50 consultas por invocación; sentencia de hasta 100 KB; 100 parámetros; Workers 10 ms de CPU; `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+- Consola de D1: **una sentencia por línea, sin comentarios**. Por eso los scripts para D1 se entregan como `.txt` con bloques numerados de una línea.
+- Publicar el Worker: pegando el código en "Edit code" del panel (no con el cargador de archivos). Primero se corre el SQL nuevo, después se publica el Worker.
+- No volver a correr el SQL viejo de objetos (`originales/alertas_d1_objetos_consola.txt`): pisa parámetros y reglas.
+
+## Código fuente (`07_Codigo_fuente/`)
+El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**: se genera aplicando parches sobre el Worker original.
+
+```
+07_Codigo_fuente/
+  worker/
+    originales/worker_alertas_cron_original.js   punto de partida (no tocar)
+    build.py            aplica demo_server.js y patch9.py … patch27.py → w.mjs
+    patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
+                        constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
+    *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
+    patch24.py          modelo v2: el motor compara contra perfil_comportamiento y no usa vistas
+                        (SQL_ALERTAS_OBSERVADAS, SQL_ALERTAS_FALTANTES, SQL_PREALERTAS, armados desde las vistas viejas)
+    patch25.py          qué ve cada perfil (tabla PERMISOS), Panorama por cliente, "Avisar" de pre-alertas (/api/prealertas/avisar),
+                        página de inicio por perfil (/inicio) y avisos del navegador en la campanita
+    patch27.py          diálogo de umbrales con textos más claros y un ejemplo "En la práctica" por campo (solo página)
+    patch26.py          avisos push (llegan con Helios cerrado) e instalar como app: push_server.js (cifrado RFC 8291 y
+                        firma VAPID con crypto.subtle), sw.js (service worker), manifiesto e íconos (iconos.py arma, con Pillow, el caballo de iconos/logo_helios_system.png → iconos/*.png)
+    push_d1.sql         tabla suscripciones_push (02_Base_de_datos_D1/10_avisos_push_d1.txt)
+    generar_clave_push.mjs  genera la clave VAPID (secreto VAPID_JWK del Worker; no se guarda en el proyecto)
+    reglas_pers.js      SQL de reglas personalizadas
+    *.html              páginas (admin, mis_alertas, seguimiento, campanita, login, tema)
+    *_d1_tablas.sql / vistas_fecha.sql / prealertas_prod.sql / umbrales_d1.sql / feriados_d1.sql
+                        el SQL de cada etapa, una sentencia por línea (lo usa mkdb.mjs para armar la base de prueba)
+    umbrales_sql.py, feriados_sql.py   generan umbrales_d1.sql / feriados_d1.sql y su .txt para la consola
+    modelo_v2_sql.py    genera modelo_v2_d1.sql y 02_Base_de_datos_D1/09_modelo_v2_d1.txt (índice del perfil, borrado de
+                        vistas y tablas sin uso, vacía alertas y métricas: la demo arranca sin datos recibidos)
+    mkdb.mjs            arma una base SQLite de prueba: base.sqlite + todos los .sql de las etapas
+                        (incluye 03_Modelo_v2_perfil/perfil_comportamiento_d1.sql y modelo_v2_d1.sql)
+    test_auth.mjs       recorre la demo completa (se compara con pruebas/out_a.txt)
+    servidor_local.mjs  corre w.mjs en Node con una base SQLite para verlo en el navegador (http://localhost:8787)
+  pruebas/
+    base.sqlite         la base como estaba antes del modelo v2 (mkdb le aplica las etapas encima)
+    *test.mjs           pruebas por módulo (umbrales, seguimiento, feriados, admin, asignación, avisos, caché, perfiles, push)
+    motor.mjs           para las pruebas: el SQL del motor sacado de w.mjs (reemplaza a las vistas)
+    referencia_tablero.mjs  consultas del tablero anterior, para que cachetest compare el cache
+    gen.py              generador original de la base de la demo (series, curva horaria, escenas)
+  modelo_v2/            modelo nuevo: generar_historico.py, perfil_comportamiento_postgres.sql, correr_perfil_pglite.mjs,
+                        armar_d1.py, feriados.csv
+  word/                 helper de Word con el estilo de la compañera e índice real (helios_docx.js, indice.py)
+```
+
+### Construir y probar (Python 3.11+ y Node 22.5+, que trae `node:sqlite`)
+En Windows, Python tiene que leer los archivos como UTF-8: `export PYTHONUTF8=1` (o `set PYTHONUTF8=1` en cmd) antes del build.
+```bash
+cd 07_Codigo_fuente/worker
+python build.py originales/worker_alertas_cron_original.js w.mjs     # genera el Worker
+# comparar w.mjs con 01_Worker/worker_alertas_cron.js; si está bien, copiarlo ahí para publicar
+
+node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
+node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
+
+cd ../pruebas
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest; do
+  node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
+done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
+```
+Para un cambio nuevo: crear `patch28.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+
+## Perfiles (11/11, patch25) — publicado
+- Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
+- Analista: tablero completo, Seguimiento, deriva, resuelve, "Avisar a Soporte" en pre-alertas, reglas de derivación. Sin reglas de alerta.
+- Soporte: solo Mis alertas (`/` lo redirige, `/api/dashboard` da 403, historial solo de lo suyo o de su equipo).
+- Administrador: arranca en Administración; tablero y Seguimiento en lectura; no recibe alertas ni tiene campanita.
+- Avisos del navegador desde la campanita (con la página abierta). Pendiente: push con el navegador cerrado, mail, SMS o app (lo investiga la compañera).
+- Sin SQL nuevo: solo publicar `01_Worker/worker_alertas_cron.js` (puede ir junto con el del modelo v2, después del script 09).
+
+## Avisos push (12/11, patch26) — publicado
+- Los avisos de la campanita llegan al celular o la PC aunque Helios esté cerrado (Web Push, gratis). Android y PC con Chrome/Edge/Firefox; iPhone solo con Helios agregado a la pantalla de inicio (iOS 16.4+). Helios se puede instalar como app (manifiesto, ícono del caballo de ajedrez del logo "Helios System", service worker `/sw.js`; el mismo caballo es el logo de la barra superior y del login).
+- Tabla nueva `suscripciones_push` (una fila por dispositivo; 21 tablas). Secreto nuevo del Worker `VAPID_JWK` (JSON de la clave P-256). Sin el secreto todo sigue como antes.
+- Después de cada POST que crea avisos (y en el cron) se mandan los push: contenido cifrado, máximo 25 dispositivos por pedido, 3 avisos por push + "y N más". 2 consultas extra por POST solo si hay secreto. 404/410 borra la suscripción. Desuscribir no pide sesión (la dirección del dispositivo es la credencial) y se hace al cerrar sesión.
+- Solo se aceptan servicios de push conocidos (Google, Apple, Mozilla, Microsoft), así el Worker no le manda pedidos a cualquier dirección.
+- Probado: entrega real en PC con Chrome; cifrado (se descifra como el navegador), firma VAPID, service worker simulado y regresión completa.
+- Aplicado en Cloudflare el 12/11 (script 10, secreto, Worker) y probado en PC con Chrome. En PC, Chrome tiene que quedar corriendo en segundo plano. La última versión ("Revisando…" en la campanita) puede faltar publicar.
+
+## Dónde estamos (modelo nuevo, 3 etapas)
+1. **Feriados — hecho.** Tabla `feriados` (API argentinadatos), opción "silenciar en feriados" por cliente/servicio.
+2. **Perfil de comportamiento — hecho en código; falta aplicarlo en Cloudflare.**
+   - Perfil por serie × día de la semana (0 = domingo) × franja de 15 min (hora ARG, 0–95) × tercio del mes (por día del calendario: 1–10 / 11–20 / 21 a fin de mes; columna `tercio_mes`), entrenado fuera de D1 con 12 meses de historia ficticia. Todas las celdas tienen entre 13 y 19 muestras de su propio tercio. Ya está cargado en D1 (26.208 filas, 11/11).
+   - El motor (patch24) compara cada ventana con su celda del perfil por clave primaria; un feriado se compara como domingo. **No hay vistas**: su SQL está en el Worker. La demo de 19 escenas da exactamente las mismas alertas y pre-alertas que antes. Arranca **sin datos recibidos**: el perfil está entrenado hasta el lunes 26/10 10:00 y la escena 1 es la primera llegada; por eso la ventana faltante solo avisa desde el primer dato que mandó cada serie, y el tablero dice "desde las 10:00" en vez de "del día" ("Cliente nuevo" queda solo para el que no tiene perfil).
+   - **Pendiente de Uriel, en este orden:** ~~(1) correr el script 09~~ y ~~(2) publicar el Worker~~ (hechos el 11/11; también se corrió el 08 de feriados, que faltaba: solo bloques 1–26 y 35); (3) Preparar demo y recorrer las escenas; (4) borrar el Worker `worker-api-bi` del panel.
+   - Quedan 20 tablas y 0 vistas. Se borraron `core_metricas_esperadas`, `historico_metricas`, `calendario` (el día de la semana y el tercio se calculan de la fecha), `raw_metricas_recibidas` y `demo_escenarios`.
+3. **Revisión incremental + limpieza — pendiente.** Cada revisión procesa solo lo recibido desde la anterior (marca de agua + estado por serie, ~50 filas en vez de ~6.500), botón "Recalcular últimas 24 h". Limpieza que queda: `tablero_cache` pasa a ser una columna de `alerta_parametros`, y `alerta_reglas` se junta con `alerta_reglas_personalizadas` en `reglas_alerta` (queda en 18 tablas).
+
+Decidido (11/11): el tercio es por día del calendario, no por día hábil. El día de la semana ya separa hábiles de fines de semana; por día hábil el tercio 3 tenía 0 a 3 días por mes.
+
+Para reentrenar el perfil sin PostgreSQL instalado: `generar_historico.py` → `correr_perfil_pglite.mjs` (corre `perfil_comportamiento_postgres.sql` en PGlite, Postgres dentro de Node) → `python armar_d1.py <salida_postgres.sql> 03_Modelo_v2_perfil` → cargar `perfil_comportamiento_d1.txt` en D1.

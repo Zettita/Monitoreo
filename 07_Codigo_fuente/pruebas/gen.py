@@ -1,0 +1,85 @@
+# Genera carga_baseline_demo_consola.txt (bloques de una sola línea para la Console de D1)
+import re
+H0 = '2026-10-18T03:00:00Z'   # domingo 18/10 00:00 ARG
+H1 = '2026-10-25T03:00:00Z'   # domingo 25/10 00:00 ARG (fin de la historia, 672 ventanas)
+D  = '2026-10-26T13:00:00Z'   # lunes 26/10 10:00 ARG (arranque de la demo)
+HORAS_PRED = 24
+
+series = """(1, 'CLI_001', 'TRANSFERENCIAS', 'BILLETERA', 'MOBILE', 'ARS', 1200, 20000, 0.95, 0.04, 0.01, 320), (2, 'CLI_001', 'TRANSFERENCIAS', 'BILLETERA', 'WEB', 'ARS', 600, 25000, 0.95, 0.04, 0.01, 350), (3, 'CLI_002', 'PAGO_SERVICIOS', 'BILLETERA', 'WEB', 'ARS', 700, 15000, 0.96, 0.03, 0.01, 380), (4, 'CLI_002', 'PAGO_SERVICIOS', 'BILLETERA', 'MOBILE', 'ARS', 900, 15000, 0.96, 0.03, 0.01, 300), (5, 'CLI_003', 'RECARGA_CELULAR', 'BILLETERA', 'MOBILE', 'ARS', 800, 5000, 0.96, 0.03, 0.01, 250), (6, 'CLI_003', 'RECARGA_TRANSPORTE', 'BILLETERA', 'API', 'ARS', 1100, 5000, 0.96, 0.03, 0.01, 200), (7, 'CLI_004', 'TRANSFERENCIAS', 'BILLETERA', 'API', 'ARS', 800, 30000, 0.95, 0.04, 0.01, 300), (8, 'CLI_004', 'RECARGA_CELULAR', 'BILLETERA', 'WEB', 'ARS', 400, 5000, 0.96, 0.03, 0.01, 280), (9, 'CLI_005', 'PAGO_SERVICIOS', 'BILLETERA', 'MOBILE', 'ARS', 700, 12000, 0.96, 0.03, 0.01, 330), (10, 'CLI_005', 'RECARGA_TRANSPORTE', 'BILLETERA', 'MOBILE', 'ARS', 1300, 3000, 0.96, 0.03, 0.01, 220), (11, 'CLI_006', 'TRANSFERENCIAS', 'BILLETERA', 'MOBILE', 'ARS', 900, 18000, 0.95, 0.04, 0.01, 310), (12, 'CLI_006', 'PAGO_SERVICIOS', 'BILLETERA', 'API', 'ARS', 500, 14000, 0.96, 0.03, 0.01, 360), (13, 'CLI_007', 'RECARGA_CELULAR', 'BILLETERA', 'MOBILE', 'ARS', 600, 4000, 0.96, 0.03, 0.01, 240)"""
+
+curva = "CASE CAST(strftime('%H', v.ini_epoch - 10800, 'unixepoch') AS INTEGER) WHEN 0 THEN 0.22 WHEN 1 THEN 0.16 WHEN 2 THEN 0.15 WHEN 3 THEN 0.15 WHEN 4 THEN 0.15 WHEN 5 THEN 0.18 WHEN 6 THEN 0.30 WHEN 7 THEN 0.50 WHEN 8 THEN 0.75 WHEN 9 THEN 0.92 WHEN 10 THEN 1.00 WHEN 11 THEN 1.00 WHEN 12 THEN 0.95 WHEN 13 THEN 0.88 WHEN 14 THEN 0.90 WHEN 15 THEN 0.95 WHEN 16 THEN 1.00 WHEN 17 THEN 1.00 WHEN 18 THEN 0.97 WHEN 19 THEN 0.88 WHEN 20 THEN 0.75 WHEN 21 THEN 0.58 WHEN 22 THEN 0.42 ELSE 0.30 END"
+
+def obs_sql(i_desde, i_hasta, origen, pref, lote, ruido_tasas=50.0):
+  return f"""INSERT INTO core_metricas_observadas ( metrica_id, recepcion_id, lote_id, collector_id, ventana_inicio, ventana_fin, duracion_ventana_minutos, cliente_id, servicio_id, producto_id, canal_id, moneda_id, ambiente, cantidad_total, cantidad_exitos, cantidad_rechazos, cantidad_errores, tasa_aprobacion, tasa_rechazo, tasa_error, importe_total, importe_promedio, tiempo_respuesta_promedio, tiempo_respuesta_maximo, ultimo_evento_exitoso, origen_dato, schema_version, fecha_recepcion )
+WITH RECURSIVE series(serie, cliente_id, servicio_id, producto_id, canal_id, moneda_id, volumen_pico, ticket, aprob, rech, err, latencia) AS ( VALUES {series} ),
+w(i) AS (SELECT {i_desde} UNION ALL SELECT i + 1 FROM w WHERE i < {i_hasta}),
+v AS ( SELECT w.i, CAST(strftime('%s', '{H0}') AS INTEGER) + w.i * 900 AS ini_epoch FROM w ),
+sv AS ( SELECT s.*, v.i, v.ini_epoch, v.ini_epoch + 900 AS fin_epoch, s.volumen_pico * {curva} AS normal, (((v.i * 7 + s.serie * 13) % 13) - 6) / 200.0 AS n1, (((v.i * 5 + s.serie * 3) % 11) - 5) / {ruido_tasas} AS n2, (((v.i * 3 + s.serie * 7) % 9) - 4) / 133.0 AS n3 FROM series s CROSS JOIN v ),
+t AS ( SELECT sv.*, CAST(ROUND(sv.normal * (1 + sv.n1)) AS INTEGER) AS total, sv.rech * (1 + sv.n2) AS p_rech, sv.err * (1 + sv.n2) AS p_err FROM sv ),
+x AS ( SELECT t.*, CAST(t.total * t.p_rech AS INTEGER) AS rechazos, CAST(t.total * t.p_err AS INTEGER) AS errores FROM t ),
+y AS ( SELECT x.*, x.total - x.rechazos - x.errores AS exitos, ROUND(x.total * x.ticket * (1 + x.n3), 2) AS importe, ROUND(x.latencia * (1 + x.n3), 1) AS lat FROM x )
+SELECT '{pref}' || printf('%07d', ROW_NUMBER() OVER (ORDER BY y.ini_epoch, y.serie)), {'\'REC-BF-0001\'' if origen == 'BACKFILL' else "'REC-' || strftime('%Y%m%d%H%M', y.fin_epoch, 'unixepoch')"}, {lote}, 'COLLECTOR-LOCAL-001', strftime('%Y-%m-%dT%H:%M:%fZ', y.ini_epoch, 'unixepoch'), strftime('%Y-%m-%dT%H:%M:%fZ', y.fin_epoch, 'unixepoch'), 15, y.cliente_id, y.servicio_id, y.producto_id, y.canal_id, y.moneda_id, 'PROD', y.total, y.exitos, y.rechazos, y.errores, ROUND(1.0 * y.exitos / y.total, 6), ROUND(1.0 * y.rechazos / y.total, 6), ROUND(1.0 * y.errores / y.total, 6), y.importe, ROUND(y.importe / y.total, 2), y.lat, CAST(ROUND(y.lat * 2.2) AS INTEGER), strftime('%Y-%m-%dT%H:%M:%fZ', y.fin_epoch - 7, 'unixepoch'), '{origen}', '1.0', strftime('%Y-%m-%dT%H:%M:%fZ', y.fin_epoch + 40, 'unixepoch') FROM y;"""
+
+esp = f"""INSERT OR REPLACE INTO core_metricas_esperadas ( prediccion_id, ventana_inicio, ventana_fin, duracion_ventana_minutos, cliente_id, servicio_id, producto_id, canal_id, moneda_id, ambiente, cantidad_total_esperada, cantidad_total_minima, cantidad_total_maxima, tasa_aprobacion_esperada, tasa_aprobacion_minima, tasa_aprobacion_maxima, tasa_rechazo_esperada, tasa_rechazo_maxima, tasa_error_esperada, tasa_error_maxima, importe_total_esperado, importe_total_minimo, importe_total_maximo, tiempo_respuesta_esperado, tiempo_respuesta_maximo, modelo_id, modelo_version, fecha_generacion, origen_prediccion, estado_prediccion )
+WITH RECURSIVE corte AS ( SELECT ((MAX(CAST(strftime('%s', ventana_fin) AS INTEGER)) - 10800) / 86400) * 86400 + 10800 AS corte_epoch FROM core_metricas_observadas WHERE duracion_ventana_minutos = 15 ),
+historia AS ( SELECT o.ambiente, o.cliente_id, o.servicio_id, o.producto_id, o.canal_id, o.moneda_id, (CAST(strftime('%s', o.ventana_inicio) AS INTEGER) % 86400) / 900 AS franja, o.cantidad_total, 1.0 * o.cantidad_exitos / o.cantidad_total AS aprob, 1.0 * o.cantidad_rechazos / o.cantidad_total AS rech, 1.0 * o.cantidad_errores / o.cantidad_total AS err, o.importe_total, o.tiempo_respuesta_promedio AS latencia FROM core_metricas_observadas o, corte c WHERE o.duracion_ventana_minutos = 15 AND o.cantidad_total > 0 AND CAST(strftime('%s', o.ventana_inicio) AS INTEGER) >= c.corte_epoch - 7 * 86400 AND CAST(strftime('%s', o.ventana_inicio) AS INTEGER) < c.corte_epoch AND NOT EXISTS ( SELECT 1 FROM alertas_historico h WHERE h.ambiente = o.ambiente AND h.cliente_id = o.cliente_id AND h.servicio_id = o.servicio_id AND h.producto_id = o.producto_id AND h.canal_id = o.canal_id AND h.moneda_id = o.moneda_id AND h.duracion_ventana_minutos = o.duracion_ventana_minutos AND h.ventana_inicio = strftime('%Y-%m-%dT%H:%M:%SZ', o.ventana_inicio) AND h.tipo_alerta NOT IN ('SIN_PREDICCION', 'DATO_TARDIO', 'VENTANA_FALTANTE') ) ),
+base AS ( SELECT ambiente, cliente_id, servicio_id, producto_id, canal_id, moneda_id, franja, AVG(cantidad_total) AS cant_prom, MIN(cantidad_total) AS cant_min, MAX(cantidad_total) AS cant_max, AVG(aprob) AS aprob_prom, MIN(aprob) AS aprob_min, AVG(rech) AS rech_prom, MAX(rech) AS rech_max, AVG(err) AS err_prom, MAX(err) AS err_max, AVG(importe_total) AS imp_prom, MIN(importe_total) AS imp_min, MAX(importe_total) AS imp_max, AVG(latencia) AS lat_prom, MAX(latencia) AS lat_max FROM historia GROUP BY ambiente, cliente_id, servicio_id, producto_id, canal_id, moneda_id, franja HAVING COUNT(*) >= 3 ),
+ventanas(ini_epoch) AS ( SELECT corte_epoch FROM corte UNION ALL SELECT ini_epoch + 900 FROM ventanas, corte WHERE ini_epoch + 900 < corte.corte_epoch + 48 * 3600 )
+SELECT 'PRED-' || strftime('%Y%m%d%H%M', v.ini_epoch, 'unixepoch') || '-' || b.cliente_id || '-' || b.servicio_id || '-' || b.canal_id, strftime('%Y-%m-%dT%H:%M:%fZ', v.ini_epoch, 'unixepoch'), strftime('%Y-%m-%dT%H:%M:%fZ', v.ini_epoch + 900, 'unixepoch'), 15, b.cliente_id, b.servicio_id, b.producto_id, b.canal_id, b.moneda_id, b.ambiente, ROUND(b.cant_prom, 1), ROUND(b.cant_min * 0.85, 1), ROUND(MAX(b.cant_max * 1.15, b.cant_prom), 1), ROUND(b.aprob_prom, 4), ROUND(MAX(0, b.aprob_min - 0.035), 4), 1.0, ROUND(b.rech_prom, 4), ROUND(MIN(1, b.rech_max + 0.03), 4), ROUND(b.err_prom, 4), ROUND(MIN(1, b.err_max + 0.015), 4), ROUND(b.imp_prom, 2), ROUND(b.imp_min * 0.75, 2), ROUND(b.imp_max * 1.20, 2), ROUND(b.lat_prom, 1), ROUND(b.lat_max * 1.15, 1), 'LINEA_BASE_HORARIA', '1', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'REGLA_MANUAL', 'ACTIVA' FROM ventanas v JOIN base b ON b.franja = (v.ini_epoch % 86400) / 900;"""
+
+one = lambda s: re.sub(r'\s*\n\s*', ' ', s).strip()
+
+obs_hist = obs_sql(0, 671, 'BACKFILL', 'MET-BF-', "'LOTE-BF-20261024-001'")
+obs_dom = obs_sql(672, 807, 'API', 'MET-API-', "'LOTE-' || strftime('%Y%m%d', y.ini_epoch - 10800, 'unixepoch') || '-001'", 100.0)
+bloques = [
+ ("PARTE A", None),
+ ("1. Limpieza: histórico de alertas", "DELETE FROM alertas_historico;"),
+ ("2. Limpieza: métricas esperadas", "DELETE FROM core_metricas_esperadas;"),
+ ("3. Limpieza: métricas observadas", "DELETE FROM core_metricas_observadas;"),
+ ("4. Configuración: reloj en el arranque de la demo (lunes 26/10 10:00 ARG) y parámetros por defecto",
+  f"UPDATE alerta_parametros SET ahora = '{D}', volumen_minimo = 20, gracia_minutos = 5, horizonte_horas = 24, tolerancia_tasa = 0.001 WHERE id = 1;"),
+ ("5. Configuración: todas las reglas activas", "UPDATE alerta_reglas SET activa = 1;"),
+ ("PARTE B", None),
+ ("6. Historia: 7 días completos que llegaron de los clientes (domingo 18/10 a sábado 24/10, horario ARG), 13 series", one(obs_hist)),
+ ("7. Modelo (reentrenamiento al cierre del sábado 24): con los 7 días anteriores predice domingo 25 y lunes 26 (48 h)", one(esp)),
+ ("8. Lo que llegó después del reentrenamiento: domingo 25 completo y lunes 26 hasta las 10:00 ARG (día normal, sin incidentes)", one(obs_dom)),
+]
+verif = "SELECT (SELECT COUNT(*) FROM core_metricas_observadas) AS observadas, (SELECT MAX(ventana_fin) FROM core_metricas_observadas) AS datos_hasta, (SELECT COUNT(*) FROM core_metricas_esperadas) AS esperadas, (SELECT MIN(ventana_inicio) FROM core_metricas_esperadas) AS predice_desde, (SELECT MAX(ventana_fin) FROM core_metricas_esperadas) AS predice_hasta, (SELECT COUNT(*) FROM alertas_historico) AS alertas, (SELECT ahora FROM alerta_parametros WHERE id = 1) AS reloj;"
+conteo = "SELECT (SELECT COUNT(*) FROM core_metricas_observadas) AS observadas, (SELECT COUNT(*) FROM core_metricas_esperadas) AS esperadas, (SELECT COUNT(*) FROM alertas_historico) AS alertas;"
+
+head = """CARGA BASELINE PARA LA DEMO - VERSIÓN PARA LA CONSOLE DE D1
+
+Arma la base como si el sistema ya estuviera funcionando (horario ARG):
+  - Bloque 6: llegaron 7 días completos de los clientes (domingo 18/10 a sábado 24/10), 13 series, sin incidentes.
+  - Bloque 7: al cierre del sábado 24 se reentrena el modelo. Toma los 7 días anteriores (sin las ventanas con
+    alerta) y predice las 48 h siguientes: domingo 25 y lunes 26. No tiene fechas escritas: detecta solo el último
+    día completo, así que es la misma consulta que se corre cada noche para reentrenar.
+  - Bloque 8: llegaron los datos normales del domingo 25 completo y del lunes 26 hasta las 10:00.
+  - Reloj: lunes 26/10 10:00. "Preparar demo" arranca ahí y cada escena avanza 15 min (10:00 a 14:45).
+  - CLI_008 no tiene historia a propósito: es el "cliente nuevo" de la escena 17.
+Las fechas son fijas: se carga una sola vez y sirve para hacer la demo cualquier día, todas las veces que haga falta.
+
+En el panel de Cloudflare: D1 > helios-monitoring-dev > Console.
+Copiar cada bloque (es una sola línea: clic al inicio y Shift + Fin), pegarlo y hacer clic en Execute. En orden.
+IMPORTANTE: el bloque 7 va antes que el 8 (si no, el modelo tomaría otro día como último día completo).
+
+CUPO DIARIO DE ESCRITURAS (100.000, se reinicia a las 21:00 ARG). Cada fila cuenta también sus índices:
+  - Parte A (borrar): depende de lo que haya hoy. Con la carga anterior de 9 días son unas 55.000.
+  - Parte B (cargar): unas 50.000 (8.736 + 1.768 observadas x 4 + 2.496 esperadas x 3).
+  Antes de empezar, ejecutar el CONTEO y calcular: observadas x 4 + esperadas x 3 + alertas x 4.
+  Si eso da menos de 45.000, se pueden hacer A y B el mismo día. Si da más, hacer A hoy y B mañana después de las 21.
+
+Antes de empezar, ejecutar /bookmark en la Console y guardar el código (permite volver atrás con /restore <código>).
+
+--- CONTEO (antes de empezar) ---
+""" + conteo + "\n"
+
+out = [head]
+for t, sql in bloques:
+    if sql is None:
+        out.append(f"\n=============== {t} ===============\n")
+        continue
+    out.append(f"\n--- {t} ---\n{sql}\n")
+out.append("\n--- VERIFICAR (al terminar la parte B) ---\n" + verif + "\nResultado esperado (en UTC, 3 h más que ARG): observadas 10504, datos_hasta 2026-10-26T13:00:00.000Z (lunes 10:00 ARG), esperadas 2496, predice_desde 2026-10-25T03:00:00.000Z (domingo 00:00 ARG), predice_hasta 2026-10-27T03:00:00.000Z (martes 00:00 ARG), alertas 0, reloj 2026-10-26T13:00:00Z.\n")
+open('carga_baseline_demo_consola.txt','w').write(''.join(out))
+print('ok')
