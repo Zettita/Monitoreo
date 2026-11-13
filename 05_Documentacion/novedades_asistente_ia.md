@@ -63,6 +63,15 @@ ASISTENTE_LOCAL=simulado node --no-warnings servidor_local.mjs prueba.sqlite
 
 En modo simulado, el asistente no razona: muestra qué datos recibió. Sirve para ver la pantalla y comprobar los permisos de cada perfil. En Windows (cmd): `set ASISTENTE_LOCAL=simulado` antes del segundo comando.
 
+## Ajustes después de las pruebas reales (parche 29e, 13/11)
+
+Sin SQL: solo publicar el Worker.
+- Las preguntas sugeridas responden con una estructura fija y más corta (por ejemplo, el Resumen del turno: **Ahora**, **Quién tiene qué**, **Demoradas**, **Viene empeorando**, **Para hacer**).
+- "¿Qué está sin asignar?" ya no confunde una alerta asignada sin tomar con una sin asignar.
+- Soporte recibe el botón **Hacerlo** para tomar la primera alerta pendiente.
+- Umbrales: 100 % se explica como "la banda del modelo, sin cambios".
+- Contexto externo: títulos en español, en **Helios** solo lo que la afecta (Workers, D1, Workers AI), **Qué vigilar** concreto y calendario con la fecha real aunque esté el reloj de la demo. Para que el calendario siga el reloj de la demo (por ejemplo, para mostrar un feriado), agregar la variable `CONTEXTO_CALENDARIO` = `demo`.
+
 ## Contexto externo (parche 29, 13/11)
 
 **Qué se le puede preguntar:** "¿Hay algo de afuera que pueda afectar hoy o mañana?", "¿qué eventos hay la semana que viene?", "¿mañana es feriado?", "¿hay problemas con algún proveedor?". También aparece como pregunta sugerida en los 4 perfiles.

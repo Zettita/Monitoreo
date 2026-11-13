@@ -46,6 +46,21 @@ async function ctxTraer(url, texto, tope) {
   if (texto) return t;
   try { return JSON.parse(t); } catch (e) { throw new Error('no devolvió datos válidos'); }
 }
+// Título en español: lo arma el servidor a partir de palabras clave (el modelo no siempre traducía).
+// Si el título ya está en español, queda como está. El original queda en titulo_original.
+const CTX_ES = /\b(de|del|en|los|las|para|por|con|demoras?|caída|fallas?|errores|mantenimiento)\b/i;
+function ctxTituloEs(t, tipo) {
+  t = String(t || '');
+  if (CTX_ES.test(t) && !/\b(the|with|for|and|of|on|to|in)\b/i.test(t)) return t;
+  const qué = /maintenance/i.test(t) || tipo === 'Mantenimiento programado' ? 'Mantenimiento programado' : /outage|\bdown\b|unavailable|not (working|available)/i.test(t) ? 'Caída' : /error|fail/i.test(t) ? 'Más errores' :
+    /latenc|slow|delay/i.test(t) ? 'Demoras' : /degrad/i.test(t) ? 'Funcionamiento degradado' : /not producing|missing|not (being )?(sent|delivered)/i.test(t) ? 'Falla' : 'Problemas';
+  const dónde = /workers ai/i.test(t) ? 'en Workers AI (el asistente de Helios)' : /\bD1\b/.test(t) ? 'en D1 (la base de Helios)' :
+    /workers?\b[\s\S]*startup|startup[\s\S]*workers?\b/i.test(t) ? 'al iniciar Workers (donde corre Helios)' : /\bworkers?\b/i.test(t) ? 'en Workers (donde corre Helios)' :
+    /\bdns\b/i.test(t) ? 'en el DNS' : /verif|otp|2fa|lookup/i.test(t) ? 'en los códigos de verificación' : /\bsms\b/i.test(t) ? 'en el envío de SMS' :
+    /voice|call/i.test(t) ? 'en las llamadas' : /e-?mail/i.test(t) ? 'en el envío de correos' : /dashboard/i.test(t) ? 'en el panel' : /\bapi\b/i.test(t) ? 'en la API' : '';
+  const lugar = /argentin|buenos aires|\bEZE\b/i.test(t) ? ' en Argentina' : /latin ?america|south america|\blatam\b/i.test(t) ? ' en Latinoamérica' : '';
+  return (qué + (dónde ? ' ' + dónde : '') + lugar).trim();
+}
 const ctxEntidades = (t) => String(t || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 function ctxProveedores(env) {
   try {
@@ -62,10 +77,10 @@ async function ctxBajarProveedores(env, ahoraMs) {
     try {
       const [inc, man] = await Promise.all([ctxTraer(p.base + '/api/v2/incidents/unresolved.json'), ctxTraer(p.base + '/api/v2/scheduled-maintenances/upcoming.json').catch(() => ({}))]);
       for (const i of (inc.incidents || []).slice(0, 12))
-        out.push({ proveedor: p.nombre, tipo: 'Incidente', titulo: String(i.name || '').slice(0, 160), impacto: CTX_IMPACTO[i.impact] || i.impact, estado: CTX_ESTADO[i.status] || i.status,
+        out.push({ proveedor: p.nombre, tipo: 'Incidente', titulo: String(i.name || '').slice(0, 160), titulo_es: ctxTituloEs(i.name, 'Incidente'), impacto: CTX_IMPACTO[i.impact] || i.impact, estado: CTX_ESTADO[i.status] || i.status,
           desde: ctxHoraArg(i.created_at), afecta: (i.components || []).slice(0, 8).map((c) => c.name).join(', ') || undefined, link: i.shortlink || undefined });
       for (const m of (man.scheduled_maintenances || []).filter((m) => Date.parse(m.scheduled_for) - ahoraMs < 48 * 3600000).slice(0, 12))
-        out.push({ proveedor: p.nombre, tipo: 'Mantenimiento programado', titulo: String(m.name || '').slice(0, 160), desde: ctxHoraArg(m.scheduled_for), hasta: ctxHoraArg(m.scheduled_until), link: m.shortlink || undefined });
+        out.push({ proveedor: p.nombre, tipo: 'Mantenimiento programado', titulo: String(m.name || '').slice(0, 160), titulo_es: ctxTituloEs(m.name, 'Mantenimiento programado'), desde: ctxHoraArg(m.scheduled_for), hasta: ctxHoraArg(m.scheduled_until), link: m.shortlink || undefined });
     } catch (e) { errores.push(p.nombre + ': ' + (e.name === 'TimeoutError' ? 'no respondió a tiempo' : e.message)); }
   }));
   return { consultados: ctxProveedores(env).map((p) => p.nombre), novedades: out, errores };
@@ -123,14 +138,17 @@ async function ctxFuente(env, filas, fuente, bajar) {
 const CTX_AR_TITULO = /argentin|buenos aires|\bEZE\b/i;
 const CTX_ARGENTINA = /argentin|buenos aires|\bEZE\b|latin ?america|\blatam\b|south america|sudam[eé]rica|am[eé]rica latina/i;
 const CTX_HELIOS = /\bworkers?\b|\bD1\b|workers ai|\bKV\b|durable objects/i;
+// Partes de Cloudflare que Helios no usa: aunque digan "Workers", no afectan a la plataforma
+const CTX_NO_HELIOS = /subscription|\bevents?\b|\bbuilds?\b|\blogs?\b|logpush|analytics|\bpages\b|queues|\bR2\b|images|stream|observability|\btail\b|workflows|containers|vectorize|hyperdrive|browser rendering|email routing|zaraz/i;
 const CTX_OTRO_PAIS = /\b(UK|U\.K\.|United Kingdom|England|Ireland|Philippines|Costa Rica|India|Russia|Italy|Singapore|Japan|China|Korea|Taiwan|Hong Kong|Germany|France|Spain|Portugal|Netherlands|Belgium|Switzerland|Austria|Poland|Czech|Romania|Hungary|Greece|Ukraine|Turkey|Sweden|Norway|Denmark|Finland|Mexico|Colombia|Peru|Chile|Brazil|Uruguay|Paraguay|Bolivia|Ecuador|Venezuela|Guatemala|Panama|Dominican|Puerto Rico|Canada|United States|USA|US|Australia|New Zealand|Indonesia|Vietnam|Thailand|Malaysia|Pakistan|Bangladesh|Saudi|UAE|Emirates|Israel|Egypt|Nigeria|Kenya|South Africa|Europe|Asia|APAC|EMEA|North America)\b|^[A-Z]{3} \(/;
 function ctxRelevantes(prov) {
   const out = { afectan_a_helios: [], argentina_o_region: [], globales_importantes: [], otros_paises_descartados: 0, menores_sin_lugar_descartados: 0 };
-  for (const n of prov.novedades || []) {
+  for (const n0 of prov.novedades || []) {
+    const n = n0.titulo_es ? n0 : { ...n0, titulo_es: ctxTituloEs(n0.titulo, n0.tipo) };
     const t = n.titulo + ' ' + (n.afecta || '');
     // Si el título nombra otro país (aunque el componente diga "Latin America"), no es de Argentina
     if (CTX_OTRO_PAIS.test(n.titulo) && !CTX_AR_TITULO.test(n.titulo)) { out.otros_paises_descartados++; continue; }
-    if (/^Cloudflare/.test(n.proveedor) && CTX_HELIOS.test(t) && !(CTX_OTRO_PAIS.test(t) && !CTX_ARGENTINA.test(t))) out.afectan_a_helios.push(n);
+    if (/^Cloudflare/.test(n.proveedor) && CTX_HELIOS.test(t) && !CTX_NO_HELIOS.test(t) && !(CTX_OTRO_PAIS.test(t) && !CTX_ARGENTINA.test(t))) out.afectan_a_helios.push(n);
     else if (CTX_ARGENTINA.test(t)) out.argentina_o_region.push(n);
     else if (CTX_OTRO_PAIS.test(t)) out.otros_paises_descartados++;
     else if (n.tipo === 'Incidente' && (n.impacto === 'importante' || n.impacto === 'grave')) out.globales_importantes.push(n);
@@ -174,7 +192,10 @@ function ctxCalendario(hoy, dias, feriados, eventos) {
 async function contextoExterno(env, yo, a) {
   const dias = Math.min(7, Math.max(1, Number(a && a.dias) || 3));
   const ah = await asistAhora(env);
-  const hoy = new Date(Date.parse(ah.ahora) - 3 * 3600000).toISOString().slice(0, 10);   // fecha de Argentina según el reloj de Helios
+  // Fecha de Argentina. Con el reloj de la demo puesto, el calendario usa la fecha real (como proveedores y noticias),
+  // salvo CONTEXTO_CALENDARIO = "demo" (para mostrar en una demo cómo avisa un feriado en la fecha simulada).
+  const usarDemo = ah.simulado && String(env.CONTEXTO_CALENDARIO || '').toLowerCase() === 'demo';
+  const hoy = new Date((usarDemo || !ah.simulado ? Date.parse(ah.ahora) : Date.now()) - 3 * 3600000).toISOString().slice(0, 10);
   const desde = ctxSumar(hoy.slice(0, 8) + '01', -7) < ctxSumar(hoy, -7) ? ctxSumar(hoy.slice(0, 8) + '01', -7) : ctxSumar(hoy, -7);
   const hasta = ctxSumar(hoy, dias + 7);
   const q = [
@@ -194,7 +215,8 @@ async function contextoExterno(env, yo, a) {
   const enlaces = {}, cuenta = { E: 0, N: 0 };
   const conRef = (n, pre) => { if (!n.link) return n; const k = pre + (++cuenta[pre]); enlaces[k] = n.link; const c = { ...n, ref: '[' + k + ']' }; delete c.link; return c; };
   if (rel) for (const g of ['afectan_a_helios', 'argentina_o_region', 'globales_importantes']) rel[g] = rel[g].map((n) => conRef(n, 'E'));
-  const nov = (n) => n.proveedor + ': ' + n.titulo + (n.impacto ? ' (impacto ' + n.impacto + (n.estado ? ', ' + n.estado : '') + ')' : '') + (n.desde ? ', desde ' + n.desde : '') + (n.hasta ? ' hasta ' + n.hasta : '') + (n.ref ? ' ' + n.ref : '');
+  const corto = (x) => String(x).replace(/\s*\(.*\)\s*/g, '');
+  const nov = (n) => corto(n.proveedor) + ': ' + (n.titulo_es || n.titulo) + (n.impacto ? ' (impacto ' + n.impacto + (n.estado ? ', ' + n.estado : '') + ')' : '') + (n.desde ? ', desde ' + n.desde : '') + (n.hasta ? ' hasta ' + n.hasta : '') + (n.ref ? ' ' + n.ref : '');
   const calendario = ctxCalendario(hoy, dias, r[0].results, r[1].results);
   const puntos = [];
   if (rel && rel.afectan_a_helios.length) puntos.push('HELIOS MISMO (corre en Cloudflare Workers y D1, puede fallar la plataforma): ' + rel.afectan_a_helios.map(nov).join(' | '));
@@ -203,18 +225,35 @@ async function contextoExterno(env, yo, a) {
   else {
     const reg = rel.argentina_o_region.concat(rel.globales_importantes);
     const desc = rel.otros_paises_descartados + rel.menores_sin_lugar_descartados;
-    puntos.push('PROVEEDORES (' + (proveedores.consultados || []).join(', ') + '): ' + (reg.length ? reg.map(nov).join(' | ') : 'sin incidentes ni mantenimientos que afecten a Argentina.') +
+    const nombres = (proveedores.consultados || []).map(corto);
+    const quienes = nombres.length > 1 ? nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1] : nombres[0] || 'Los proveedores';
+    puntos.push('PROVEEDORES: ' + (reg.length ? reg.map(nov).join(' | ') : quienes + ': sin incidentes ni mantenimientos que afecten a Argentina.') +
       (desc ? ' (' + desc + ' novedades de otros países o menores sin relación: no las menciones).' : '') + (proveedores.errores && proveedores.errores.length ? ' No respondieron: ' + proveedores.errores.join('; ') + '.' : ''));
   }
   const nots = (noticias.noticias || []).slice(0, 5).map((n) => conRef(n, 'N'));
   puntos.push('NOTICIAS (últimas 48 h' + (noticias.fuente ? ', ' + noticias.fuente : '') + ', no verificadas por Helios): ' + (noticias.apagado ? 'no se consultan.' : nots.length ? nots.map((n) => n.titulo + ' (' + n.medio + (n.fecha ? ', ' + n.fecha : '') + ')' + (n.ref ? ' ' + n.ref : '')).join(' | ') + ' — mencioná solo las que puedan afectar pagos, transferencias, recargas o el acceso; si ninguna, decí que no hay noticias relevantes.' : noticias.error ? 'no se pudieron consultar (' + noticias.error + ').' : 'no hay noticias relevantes.'));
+  // Qué vigilar: lo arma el servidor cruzando lo de afuera con cómo se ve en Helios (el modelo lo hacía genérico)
+  const vig = [];
+  if (rel && rel.afectan_a_helios.length) {
+    vig.push('Si el tablero, "Revisar alertas ahora" o el asistente dan error o tardan, puede ser el incidente de Cloudflare y no un problema de los clientes.');
+    if (rel.afectan_a_helios.some((n) => /workers ai/i.test(n.titulo))) vig.push('El asistente puede fallar o tardar mientras dure el incidente de Workers AI.');
+  }
+  const notasCal = calendario.slice(0, 2).map((c) => c.notas.join(' ')).join(' ');
+  if (/Feriado|Fin de semana largo/.test(notasCal)) vig.push('Feriado o fin de semana largo: se espera menos tráfico; una alerta de volumen bajo puede ser por eso (revisá si el servicio silencia feriados).');
+  if (/Primer día hábil después/.test(notasCal)) vig.push('Primer día hábil después del fin de semana largo: es esperable más tráfico de lo normal en transferencias y pagos.');
+  if (/día hábil del mes|aguinaldo/.test(notasCal)) vig.push('Cobro de sueldos o aguinaldo: es esperable más tráfico en transferencias, pagos y recargas; una alerta de volumen alto puede ser por eso.');
+  for (const e of r[1].results) vig.push(e.nombre + ': ' + (e.efecto_esperado === 'MENOS_TRAFICO' ? 'se espera menos tráfico' : 'se espera más tráfico; una alerta de volumen alto puede ser por eso') + (e.cliente_id ? ' en ' + e.cliente_id : '') + '.');
+  if (rel) for (const n of rel.argentina_o_region.concat(rel.globales_importantes).slice(0, 2))
+    vig.push(/sms|verif|otp|lookup/i.test(n.titulo) ? 'Si bajan las aprobaciones o suben los rechazos en la app, puede ser que no lleguen los códigos por SMS (' + corto(n.proveedor) + ').' : 'Si aparecen alertas mientras dure "' + (n.titulo_es || n.titulo) + '" de ' + corto(n.proveedor) + ', revisá si coinciden.');
+  if (nots.length) vig.push('Si alguna noticia (paro, corte de luz, caída de un banco o billetera) coincide con alertas abiertas, mencionalo al derivar o comentar.');
+  puntos.push('QUÉ VIGILAR: ' + (vig.length ? vig.slice(0, 4).join(' | ') : 'Nada fuera de lo común: seguí el monitoreo habitual.'));
   const out = {
     puntos_clave: puntos,
-    reloj_helios: asistFecha(ah.ahora) + (ah.simulado ? ' (reloj de la demo: el calendario es de esa fecha; proveedores y noticias son de hoy real)' : ''),
+    reloj_helios: asistFecha(ah.ahora) + (ah.simulado ? (usarDemo ? ' (reloj de la demo: el calendario es de esa fecha; proveedores y noticias son de hoy real)' : ' (reloj de la demo; el calendario, los proveedores y las noticias son de la fecha real)') : ''),
     calendario,
     proveedores: rel ? { ...rel, errores: proveedores.errores, actualizado: proveedores.actualizado, error: proveedores.error } : proveedores,
     noticias: { noticias: nots, fuente: noticias.fuente, actualizado: noticias.actualizado, error: noticias.error, apagado: noticias.apagado },
-    como_usarlo: 'Respondé solo con puntos_clave, en bloques cortos con estos títulos exactos en negrita: **Helios** (este bloque va únicamente si puntos_clave trae HELIOS MISMO; si no, no lo pongas), **Calendario**, **Proveedores**, **Noticias** y **Qué vigilar** (una o dos líneas). Debajo de cada título, una lista con "- ". Traducí al español los títulos en inglés. No agregues nada que no esté en puntos_clave ni incidentes de otros países. Para el enlace de cada incidente o noticia escribí solo su código entre corchetes, tal cual, por ejemplo [E1] o [N2]: Helios lo convierte en el enlace. Nunca escribas direcciones web. Si podés, cruzalo con las alertas o servicios del cliente (por ejemplo, SMS de Twilio = códigos de verificación al entrar a la app).',
+    como_usarlo: 'Respondé solo con puntos_clave, en bloques cortos con estos títulos exactos en negrita: **Helios** (este bloque va únicamente si puntos_clave trae HELIOS MISMO; si no, no lo pongas), **Calendario**, **Proveedores**, **Noticias** y **Qué vigilar** (con lo de QUÉ VIGILAR, sin agregar consejos genéricos). Debajo de cada título, una lista con "- ". Usá los títulos de las novedades tal como vienen (ya están en español). No agregues nada que no esté en puntos_clave ni incidentes de otros países. Para el enlace de cada incidente o noticia escribí solo su código entre corchetes, tal cual, por ejemplo [E1] o [N2]: Helios lo convierte en el enlace. Nunca escribas direcciones web. Si podés, cruzalo con las alertas o servicios del cliente (por ejemplo, SMS de Twilio = códigos de verificación al entrar a la app).',
   };
   if (r[3]) {
     const fmt = (x) => x.cliente_id === '*' ? 'todos los clientes' : x.cliente_id + (x.servicio_id && x.servicio_id !== '*' ? ' / ' + x.servicio_id : '');

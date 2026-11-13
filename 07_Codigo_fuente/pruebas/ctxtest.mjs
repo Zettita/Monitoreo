@@ -52,7 +52,7 @@ globalThis.fetch = async (url, op) => {
 const pedidos = []; let guion = [];
 const AI = { async run(modelo, p) { pedidos.push({ modelo, p: JSON.parse(JSON.stringify(p)) }); const f = guion.shift(); return f ? f(p) : { response: 'Respuesta de prueba.' }; } };
 const texto = (t) => ({ choices: [{ message: { content: t } }] });
-let env = { DB, AI };
+let env = { DB, AI, CONTEXTO_CALENDARIO: 'demo' };   // el calendario sigue el reloj de la prueba (sin esto usa la fecha real)
 const call=async(ck,m,p,body)=>{const r=await worker.fetch(new Request('https://x'+p,{method:m,headers:{'content-type':'application/json',cookie:ck||''},body:body?JSON.stringify(body):undefined,redirect:'manual'}),env,{waitUntil(){}});const sc=r.headers.get('set-cookie');let j;try{j=await r.clone().json()}catch(e){j=r.status+' html'}return {s:r.status,j,ck:sc?sc.split(';')[0]:null};};
 let fallas=0; const ok=(t,c,x)=>{console.log((c?'OK  ':'FALLA ')+t+(x!==undefined?'  → '+(typeof x==='string'?x:JSON.stringify(x).slice(0,300)):''));if(!c)fallas++;};
 const login=async(u,c)=>(await call('','POST','/api/login',{usuario:u,clave:c})).ck;
@@ -65,7 +65,14 @@ for (const [u,n,p] of [['ana','Ana Lista','ANALISTA'],['sol','Sol Porte','SOPORT
 await call(A,'POST','/api/demo/preparar');
 db.prepare("UPDATE umbrales_config SET criticidad = 'ALTA' WHERE cliente_id = '*' AND servicio_id = '*'").run();
 const reloj=(iso)=>db.prepare('UPDATE alerta_parametros SET ahora = ?1 WHERE id = 1').run(iso);
-const datos=(i)=>{ const c=pedidos[i].p.messages.at(-1).content; const k=c.indexOf('Datos de Helios para responder (JSON):\n'); return JSON.parse(c.slice(k+39).replace(/ \/no_think$/,'')); };
+const datos=(i)=>{ const c=pedidos[i].p.messages.at(-1).content; const k=c.indexOf('Datos de Helios para responder (JSON):\n'); return JSON.parse(c.slice(k+39).split('\n\nCómo responder:')[0].replace(/ \/no_think$/,'')); };
+
+// ---------- Calendario: con el reloj de la demo usa la fecha real (caso real 13/11: mezclaba 26/10 con proveedores de hoy) ----------
+{ const e0=env; env={ DB, AI, CONTEXTO_EXTERNO: 'apagado' }; reloj('2026-10-26T13:00:00Z'); pedidos.length=0; guion=[()=>texto('ok')];
+  await call(ck.gero,'POST','/api/asistente',{sugerencia:'contexto'});
+  const hoyReal=new Date(Date.now()-3*3600000).toISOString(); const dd=hoyReal.slice(8,10)+'/'+hoyReal.slice(5,7);
+  const c=datos(0).contexto_externo; ok('calendario con la fecha real si el reloj de la demo está puesto', c.calendario[0].fecha===dd && /fecha real/.test(c.reloj_helios), [c.calendario[0].fecha, c.reloj_helios]);
+  env=e0; }
 
 // ---------- Sugerencia en todos los perfiles ----------
 for (const u of ['ADMIN','ana','sol','gero']) { const r=await call(ck[u],'GET','/api/asistente'); ok(u+': tiene la pregunta "¿Hay algo de afuera…?"', r.j.sugerencias.some(s=>s.id==='contexto'), r.j.sugerencias.map(s=>s.texto)); }
@@ -80,10 +87,19 @@ ok('consulta 2 proveedores (incidentes y mantenimientos) y noticias: 5 pedidos a
 ok('calendario: fin de semana largo del 21 al 23 y feriado del lunes', JSON.stringify(d.calendario).includes('Fin de semana largo (3 días, del 21/11 al 23/11)') , d.calendario.map(x=>x.fecha+': '+x.notas.join(' | ')));
 ok('proveedores: lo de Argentina (DNS en EZE, mantenimiento de SMS) queda, con impacto y lugar', d.proveedores.argentina_o_region.some(x=>/DNS/.test(x.titulo)&&x.impacto==='importante'&&/EZE/.test(x.afecta)) && d.proveedores.argentina_o_region.some(x=>x.tipo==='Mantenimiento programado'), d.proveedores);
 // Caso real (13/11): la respuesta listó incidentes de Reino Unido, Filipinas, Costa Rica, India y un mantenimiento en Singapur
-ok('caso real: lo de otros países se descarta, también Costa Rica y Colombia aunque digan "Latin America", y lo menor sin lugar', d.proveedores.otros_paises_descartados===6 && d.proveedores.menores_sin_lugar_descartados===1 && !JSON.stringify(d.proveedores.argentina_o_region).match(/Kingdom|Costa Rica|Philippines|Singapore|Microsoft/), d.proveedores);
-ok('caso real: los errores de Cloudflare Workers van aparte y primero, como algo que afecta a Helios mismo', d.proveedores.afectan_a_helios.length===2 && /^HELIOS MISMO/.test(d.puntos_clave[0]) && /Workers startup/.test(d.puntos_clave[0]), d.puntos_clave[0]);
+ok('caso real: lo de otros países se descarta, también Costa Rica y Colombia aunque digan "Latin America", y lo menor sin lugar', d.proveedores.otros_paises_descartados===6 && d.proveedores.menores_sin_lugar_descartados===2 && !JSON.stringify(d.proveedores.argentina_o_region).match(/Kingdom|Costa Rica|Philippines|Singapore|Microsoft/), d.proveedores);
+ok('caso real: los errores de Cloudflare Workers van aparte y primero, como algo que afecta a Helios mismo', d.proveedores.afectan_a_helios.length===1 && /^HELIOS MISMO/.test(d.puntos_clave[0]) && /Más errores al iniciar Workers/.test(d.puntos_clave[0]), d.puntos_clave[0]);
+// Caso real (13/11, parche 29e): "Event Subscription" de Workers figuraba como que afectaba a Helios (Helios no usa esa función)
+ok('caso real: "subscription events" de Workers no va en Helios (no lo usa) y se descarta como menor', !/subscription/i.test(JSON.stringify(d.proveedores.afectan_a_helios)), d.proveedores.afectan_a_helios);
+// Caso real (13/11, 29e): los títulos de Cloudflare quedaban en inglés; ahora el servidor los pasa al español
+ok('títulos en español armados en el servidor (el original queda aparte)', !/Elevated errors/.test(d.puntos_clave.join(' ')) && d.proveedores.afectan_a_helios[0].titulo==='Elevated errors on Workers startup', d.puntos_clave[0]);
+ok('título que ya está en español queda igual', d.proveedores.argentina_o_region.some(x=>x.titulo_es==='Demoras en el DNS de Sudamérica'));
+// Caso real (13/11, 29e): el modelo copiaba "Proveedores (Cloudflare, Twilio (SMS y códigos de verificación)):"; ahora la frase viene armada
+ok('proveedores: nombres cortos, sin la etiqueta con paréntesis', /^PROVEEDORES: /.test(d.puntos_clave[2]) && !/\(SMS y códigos/.test(d.puntos_clave[2]), d.puntos_clave[2]);
+// Caso real (13/11, 29e): "Qué vigilar" salía genérico; ahora el servidor lo cruza con lo que se ve en Helios
+ok('qué vigilar concreto: incidente de Workers → el tablero puede fallar; mantenimiento de SMS → códigos', /^QUÉ VIGILAR: /.test(d.puntos_clave.at(-1)) && /tablero/.test(d.puntos_clave.at(-1)) && /códigos por SMS/.test(d.puntos_clave.at(-1)), d.puntos_clave.at(-1));
 ok('caso real: los puntos clave siempre traen calendario, proveedores y noticias', /^CALENDARIO: hoy \(viernes 20\/11\)/.test(d.puntos_clave[1]) && /^PROVEEDORES/.test(d.puntos_clave[2]) && /no las menciones/.test(d.puntos_clave[2]) && /^NOTICIAS/.test(d.puntos_clave[3]) && /Ámbito/.test(d.puntos_clave[3]), d.puntos_clave);
-ok('las instrucciones piden títulos exactos (Helios solo si hay algo, sin copiar la aclaración), traducir, enlaces y no sumar otros países', /títulos exactos/.test(d.como_usarlo) && /únicamente si puntos_clave trae HELIOS MISMO/.test(d.como_usarlo) && /Traducí/.test(d.como_usarlo) && /otros países/.test(d.como_usarlo));
+ok('las instrucciones piden títulos exactos (Helios solo si hay algo, sin copiar la aclaración), traducir, enlaces y no sumar otros países', /títulos exactos/.test(d.como_usarlo) && /únicamente si puntos_clave trae HELIOS MISMO/.test(d.como_usarlo) && /ya están en español/.test(d.como_usarlo) && /QUÉ VIGILAR/.test(d.como_usarlo) && /otros países/.test(d.como_usarlo));
 ok('noticias de Google Noticias: título sin el medio, medio aparte, entidades resueltas y sin las de más de 48 h', d.noticias.noticias.length===2 && d.noticias.noticias[0].titulo==='La Bancaria anunció un paro para el lunes' && d.noticias.noticias[0].medio==='Ámbito' && d.noticias.noticias[1].titulo==='Mercado Pago & billeteras: cambios en transferencias' && /Google Noticias/.test(d.noticias.fuente), d.noticias);
 ok('soporte no recibe la lista de servicios críticos de los clientes', d.servicios_criticos===undefined);
 const sis=pedidos[0].p.messages[0].content;
@@ -127,10 +143,10 @@ googleCaido=false;
 
 // ---------- Apagado: no sale a internet ----------
 db.prepare("DELETE FROM contexto_externo").run();
-env = { DB, AI, CONTEXTO_EXTERNO: 'apagado' }; pedidosWeb.length=0; guion=[()=>texto('ok')];
+env = { DB, AI, CONTEXTO_EXTERNO: 'apagado', CONTEXTO_CALENDARIO: 'demo' }; pedidosWeb.length=0; guion=[()=>texto('ok')];
 r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'contexto'});
 ok('con CONTEXTO_EXTERNO=apagado solo usa el calendario', pedidosWeb.length===0 && datos(pedidos.length-1).contexto_externo.proveedores.apagado===true);
-env = { DB, AI };
+env = { DB, AI, CONTEXTO_CALENDARIO: 'demo' };
 
 // ---------- Calendario ----------
 reloj('2026-11-22T15:00:00Z');   // domingo 22/11

@@ -115,13 +115,16 @@ pedidos.length=0; guion=[()=>texto('Tenés 1 para tomar.')];
 r=await call(ck.pedro,'POST','/api/asistente',{sugerencia:'mis_pendientes'});
 const msjS=pedidos[0].p.messages.pop().content;
 ok('soporte "¿Qué tengo pendiente?": una llamada y sus datos', pedidos.length===1 && /"mis_alertas"/.test(msjS) && /Suben los rechazos/.test(msjS), msjS.slice(0,200));
+// Caso real (13/11, 29e): terminaba con "¿Querés que te ayude a tomarla?" sin botón; ahora el servidor deja la propuesta lista
+ok('soporte: deja el botón para tomar la primera (propuesta, no la toma)', r.j.acciones.length===1 && r.j.acciones[0].tipo==='tomar' && /Te dejo el botón/.test(msjS) && /Ya le dejamos/.test(msjS) && db.prepare("select count(*) n from alertas_historico where estado='RECONOCIDA'").get().n===0, r.j.acciones);
+ok('soporte: los datos traen cuánto lleva cada una en su estado', /lleva_en_este_estado/.test(msjS));
 pedidos.length=0; guion=[()=>texto('Resumen.')]; consultas=0;
 r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'resumen_turno'});
 ok('analista "Resumen del turno": alertas, carga y pre-alertas en una llamada', pedidos.length===1 && ['alertas_abiertas','carga_equipos','prealertas'].every(n=>r.j.herramientas.includes(n)), r.j.herramientas);
 ok('…con pocas consultas a la base (límite del plan: 50)', consultas<=20, consultas);
 pedidos.length=0; guion=[()=>texto('Informe.')];
 r=await call(ck.gero,'POST','/api/asistente',{sugerencia:'ranking_clientes'});
-const inc=JSON.parse(pedidos[0].p.messages.pop().content.split('(JSON):\n')[1].replace(/ \/no_think$/,'')).incidentes;
+const inc=JSON.parse(pedidos[0].p.messages.pop().content.split('(JSON):\n')[1].split('\n\nCómo responder:')[0].replace(/ \/no_think$/,'')).incidentes;
 ok('gerente "¿Qué cliente tuvo más problemas?": incidentes de 30 días por cliente', inc.periodo_dias===30 && inc.por_cliente.length>0 && inc.por_cliente[0].incidentes>=inc.por_cliente[inc.por_cliente.length-1].incidentes, inc.por_cliente.slice(0,3));
 pedidos.length=0; guion=[()=>texto('Está subiendo el rechazo.')];
 r=await call(ck.ana,'POST','/api/asistente',{alerta_id:AL});
@@ -130,9 +133,25 @@ r=await call(ck.sol,'POST','/api/asistente',{alerta_id:AL});
 ok('"¿Qué está pasando?" de una alerta ajena: no da datos', r.s===200 && /no está disponible/.test(JSON.stringify(pedidos[pedidos.length-1].p.messages)));
 pedidos.length=0; guion=[()=>texto('Ajustes.')];
 r=await call(A,'POST','/api/asistente',{sugerencia:'ajustes'});
-ok('administrador "¿Qué umbrales revisar?": trae los umbrales configurados', /umbrales_configurados/.test(pedidos[0].p.messages.pop().content));
+const msjA=pedidos[0].p.messages.pop().content;
+ok('administrador "¿Qué umbrales revisar?": trae los umbrales configurados', /umbrales_configurados/.test(msjA));
+// Caso real (13/11, 29e): leyó el 100 % como "muy amplio" y habló del "cliente general"
+ok('administrador: el 100 % llega explicado (banda del modelo) y la fila general no parece un cliente', /Configuración general/.test(msjA) && /no es \\"amplia\\"|no es "amplia"/.test(msjA) && /valores de fábrica/.test(msjA) && !/"cliente":"general"/.test(msjA), msjA.slice(0,300));
+// Caso real (13/11, 29e): "¿Qué está sin asignar?" dijo que había una sin asignar que estaba asignada a Soporte1
+pedidos.length=0; guion=[()=>texto('ok')];
+r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'});
+const msjN=pedidos[0].p.messages.pop().content, dN=JSON.parse(msjN.split('(JSON):\n')[1].split('\n\nCómo responder:')[0]);
+ok('analista "sin asignar": conteos ya separados y la guía distingue asignada sin tomar', dN.alertas_abiertas.cuantas && typeof dN.alertas_abiertas.cuantas.sin_asignar==='number' && /No hay nada sin asignar/.test(msjN) && /asignada sin tomar no está sin asignar/.test(msjN), dN.alertas_abiertas.cuantas);
+// Caso real (13/11, 29e): "¿Cómo está la operación?" listaba los clientes sin problemas y copiaba "Peor gravedad", "Cantidad"
+pedidos.length=0; guion=[()=>texto('ok')];
+r=await call(ck.gero,'POST','/api/asistente',{sugerencia:'operacion_hoy'});
+const msjO=pedidos[0].p.messages.pop().content, dO=JSON.parse(msjO.split('(JSON):\n')[1].split('\n\nCómo responder:')[0]).estado_clientes;
+ok('gerente "operación": frases armadas, el resto contado (no listado) y guía corta', !('sin_problemas' in dO) && !/"peor"|"cantidad"/.test(JSON.stringify(dO)) && (dO.con_problemas||[]).every(c=>c.problemas.every(p=>/^problema /.test(p))) && /6 renglones/.test(msjO), dO);
 
 // ---------- Respuestas del modelo: formatos y limpieza ----------
+pedidos.length=0; guion=[()=>texto('### Sugerencia:\nEmpezá por CLI_004.\n#### Detalle\n- uno')];
+r=await call(ck.pedro,'POST','/api/asistente',{pregunta:'¿por dónde empiezo?'});
+ok('títulos ### se muestran como negrita (el panel no los convierte)', !/#/.test(r.j.respuesta) && /\*\*Sugerencia:\*\*/.test(r.j.respuesta) && /\*\*Detalle\*\*/.test(r.j.respuesta), r.j.respuesta);
 guion=[()=>({ response: '<think>razono…</think>Todo en orden.' })];
 r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿todo bien?'}); ok('formato propio de Workers AI y sin el "pensamiento"', r.j.respuesta==='Todo en orden.', r.j.respuesta);
 guion=[()=>({ response: '', tool_calls: [{ name: 'estado_clientes', arguments: {} }] }), ()=>({ response: 'Hay problemas en CLI_002.' })];
