@@ -1,0 +1,172 @@
+<style>
+/* Asistente de IA (parche 28) */
+.asis-boton { position: fixed; right: 20px; bottom: 20px; z-index: 40; display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px;
+  padding: 11px 18px 11px 14px; background: var(--accent); color: var(--sobre-accent); font: inherit; font-weight: 650; font-size: 14.5px; cursor: pointer; box-shadow: var(--shadow-overlay, 0 6px 18px rgba(0,0,0,.2)); }
+.asis-boton:hover { filter: brightness(1.08); }
+.asis-boton svg { width: 18px; height: 18px; }
+.asis-panel { position: fixed; right: 16px; bottom: 16px; z-index: 41; width: min(420px, calc(100vw - 32px)); height: min(640px, calc(100vh - 32px));
+  display: flex; flex-direction: column; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-overlay, 0 10px 30px rgba(0,0,0,.25)); overflow: hidden; }
+.asis-panel[hidden], .asis-boton[hidden] { display: none; }
+.asis-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.asis-cab b { font-size: 15.5px; }
+.asis-cab small { display: block; color: var(--ink-3); font-size: 12px; }
+.asis-cab button { border: 0; background: transparent; color: var(--ink-2); font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.asis-cab button:hover { background: var(--track); }
+.asis-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.asis-m { max-width: 92%; padding: 9px 12px; border-radius: 12px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.asis-m.u { align-self: flex-end; background: var(--accent); color: var(--sobre-accent); border-bottom-right-radius: 4px; }
+.asis-m.a { align-self: flex-start; background: var(--track); border-bottom-left-radius: 4px; }
+.asis-m.a p { margin: 0 0 6px; } .asis-m.a p:last-child { margin: 0; }
+.asis-m.a ul { margin: 4px 0 6px; padding-left: 18px; }
+.asis-m.error { background: var(--critica-bg); color: var(--critica-txt, var(--critica)); }
+.asis-m.pensando { color: var(--ink-3); font-style: italic; }
+.asis-sug { display: flex; flex-wrap: wrap; gap: 6px; }
+.asis-sug button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.asis-sug button:hover { border-color: var(--accent); }
+.asis-acc { align-self: stretch; border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; background: var(--panel); font-size: 13.5px; }
+.asis-acc b { display: block; font-size: 14px; }
+.asis-acc .q { color: var(--ink-2); margin: 2px 0 6px; }
+.asis-acc textarea { width: 100%; min-height: 54px; resize: vertical; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--input-bg, var(--panel)); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.asis-acc .bot { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+.asis-acc .res { margin-top: 6px; font-size: 13px; }
+.asis-pie { border-top: 1px solid var(--line); padding: 10px; }
+.asis-pie form { display: flex; gap: 6px; }
+.asis-pie textarea { flex: 1; resize: none; height: 42px; font: inherit; font-size: 14px; color: var(--ink); background: var(--input-bg, var(--panel)); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+.asis-pie .nota { margin: 6px 2px 0; font-size: 11.5px; color: var(--ink-3); }
+.asis-btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 13.5px; cursor: pointer; }
+.asis-btn.prim { background: var(--accent); border-color: var(--accent); color: var(--sobre-accent); font-weight: 600; }
+.asis-btn:disabled { opacity: .55; cursor: default; }
+.asis-explicar { border: 1px solid var(--line); background: var(--panel); color: var(--accent); border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 13px; cursor: pointer; margin-left: 4px; }
+.asis-explicar:hover { border-color: var(--accent); }
+@media (max-width: 640px) {
+  .asis-panel { right: 0; bottom: 0; width: 100vw; height: 100dvh; border-radius: 0; border: 0; }
+  .asis-boton { right: 14px; bottom: 14px; }
+}
+</style>
+<button class="asis-boton" id="asis-boton" type="button" aria-haspopup="dialog" title="Asistente de IA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Asistente</button>
+<section class="asis-panel" id="asis-panel" role="dialog" aria-label="Asistente de IA" hidden>
+  <div class="asis-cab"><div><b>Asistente Helios</b><small id="asis-sub">Responde con lo que tu perfil puede ver</small></div><button type="button" id="asis-cerrar" aria-label="Cerrar">×</button></div>
+  <div class="asis-msgs" id="asis-msgs" aria-live="polite"></div>
+  <div class="asis-pie">
+    <form id="asis-form"><textarea id="asis-txt" maxlength="600" placeholder="Escribí tu pregunta…" aria-label="Pregunta"></textarea><button class="asis-btn prim" type="submit" id="asis-enviar">Enviar</button></form>
+    <p class="nota">Puede equivocarse. No hace nada solo: las acciones las confirmás vos.</p>
+  </div>
+</section>
+<script>
+// Asistente de IA (parche 28): chat al costado y "¿Qué está pasando?" en las alertas.
+// No ejecuta nada: las acciones que propone se hacen recién con el botón "Hacerlo", por la ruta de siempre.
+(function () {
+  var $a = function (id) { return document.getElementById(id); };
+  var escA = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var historia = [], info = null, ocupado = false;
+  function api(url, cuerpo) {
+    return fetch(url, cuerpo === undefined ? undefined : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) })
+      .then(function (r) {
+        if (r.status === 401) { location.href = '/login'; throw new Error('Tu sesión venció.'); }
+        return r.json().then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || 'Error ' + r.status); return j; });
+      });
+  }
+  // Texto del asistente: se escapa todo y solo se interpretan **negrita** y listas con "- "
+  function formato(t) {
+    var lineas = escA(t).split('\n'), html = '', lista = false;
+    lineas.forEach(function (l) {
+      l = l.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+      var m = l.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+      if (m) { if (!lista) { html += '<ul>'; lista = true; } html += '<li>' + m[1] + '</li>'; return; }
+      if (lista) { html += '</ul>'; lista = false; }
+      if (l.trim()) html += '<p>' + l + '</p>';
+    });
+    return html + (lista ? '</ul>' : '');
+  }
+  function agregar(clase, html) {
+    var d = document.createElement('div'); d.className = clase; d.innerHTML = html;
+    var c = $a('asis-msgs'); c.appendChild(d); c.scrollTop = c.scrollHeight; return d;
+  }
+  function restantes(n) { if (n != null) $a('asis-sub').textContent = 'Responde con lo que tu perfil puede ver · te quedan ' + n + ' preguntas esta hora'; }
+  function abrir() {
+    $a('asis-panel').hidden = false; $a('asis-boton').hidden = true; $a('asis-txt').focus();
+    if (info) return Promise.resolve();
+    return api('/api/asistente').then(function (r) {
+      info = r; restantes(r.restantes);
+      if (!r.disponible) { agregar('asis-m a error', escA('El asistente todavía no está listo. ' + (r.motivo || ''))); return; }
+      agregar('asis-m a', formato('Hola ' + r.nombre + '. Preguntame sobre lo que ves en Helios. Si te sugiero hacer algo, lo confirmás vos con un botón.'));
+      if (r.sugerencias.length) {
+        var s = agregar('asis-sug', r.sugerencias.map(function (x) { return '<button type="button" data-asis-sug="' + escA(x.id) + '">' + escA(x.texto) + '</button>'; }).join(''));
+        s.addEventListener('click', function (ev) {
+          var b = ev.target.closest('[data-asis-sug]'); if (!b) return;
+          preguntar({ sugerencia: b.getAttribute('data-asis-sug') }, b.textContent);
+        });
+      }
+    }).catch(function (e) { agregar('asis-m a error', escA(e.message)); });
+  }
+  function cerrar() { $a('asis-panel').hidden = true; $a('asis-boton').hidden = false; }
+  function preguntar(cuerpo, mostrar) {
+    if (ocupado) return;
+    ocupado = true; $a('asis-enviar').disabled = true;
+    agregar('asis-m u', escA(mostrar));
+    var espera = agregar('asis-m a pensando', 'Pensando…');
+    if (!cuerpo.sugerencia && !cuerpo.alerta_id) cuerpo.historia = historia.slice(-6);
+    api('/api/asistente', cuerpo).then(function (r) {
+      espera.remove();
+      agregar('asis-m a', formato(r.respuesta));
+      historia.push({ rol: 'usuario', texto: mostrar }, { rol: 'asistente', texto: r.respuesta });
+      (r.acciones || []).forEach(tarjetaAccion);
+      restantes(r.restantes);
+    }).catch(function (e) { espera.remove(); agregar('asis-m a error', escA(e.message)); })
+      .then(function () { ocupado = false; $a('asis-enviar').disabled = false; });
+  }
+  var ACC_TXT = { derivar: 'Derivar', tomar: 'Tomar', comentar: 'Comentar', devolver: 'Devolver', resolver: 'Resolver' };
+  var ACC_OBLIG = { devolver: 1, resolver: 1 };
+  function tarjetaAccion(p) {
+    var conTexto = p.tipo !== 'tomar';
+    var d = agregar('asis-acc', '<b>Sugerencia: ' + escA(p.titulo) + (p.destino ? ' a ' + escA(p.destino) : '') + '</b>' +
+      '<div class="q">' + escA(p.alerta) + (p.motivo ? '<br>' + escA(p.motivo) : '') + '</div>' +
+      (conTexto ? '<textarea aria-label="Comentario" placeholder="Comentario' + (ACC_OBLIG[p.tipo] ? ' (obligatorio)' : ' (opcional)') + '">' + escA(p.comentario) + '</textarea>' : '') +
+      '<div class="bot"><button type="button" class="asis-btn" data-no>Descartar</button><button type="button" class="asis-btn prim" data-si>Hacerlo: ' + ACC_TXT[p.tipo] + '</button></div><div class="res" hidden></div>');
+    var res = d.querySelector('.res');
+    d.querySelector('[data-no]').addEventListener('click', function () { d.querySelector('.bot').remove(); res.hidden = false; res.textContent = 'Descartada: no se hizo nada.'; });
+    d.querySelector('[data-si]').addEventListener('click', function () {
+      var t = d.querySelector('textarea'), comentario = t ? t.value.trim() : '';
+      if (ACC_OBLIG[p.tipo] && !comentario) { res.hidden = false; res.textContent = 'Escribí el comentario: es obligatorio para ' + ACC_TXT[p.tipo].toLowerCase() + '.'; return; }
+      var b = this; b.disabled = true;
+      var cuerpo = { comentario: comentario || null };
+      if (p.tipo === 'derivar') { cuerpo.usuario_id = p.usuario_id; cuerpo.equipo_id = p.equipo_id; }
+      // La acción va por la ruta de siempre: con sus permisos, historial y auditoría
+      api('/api/alertas/' + p.alerta_id + '/' + p.tipo, cuerpo).then(function () {
+        d.querySelector('.bot').remove(); if (t) t.disabled = true;
+        res.hidden = false; res.innerHTML = 'Listo. <button type="button" class="asis-btn" data-recargar>Actualizar la página</button>';
+        res.querySelector('[data-recargar]').addEventListener('click', function () { location.reload(); });
+      }).catch(function (e) { b.disabled = false; res.hidden = false; res.textContent = e.message; });
+    });
+  }
+  $a('asis-boton').addEventListener('click', abrir);
+  $a('asis-cerrar').addEventListener('click', cerrar);
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$a('asis-panel').hidden) cerrar(); });
+  $a('asis-form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var t = $a('asis-txt').value.trim(); if (!t || ocupado) return;
+    $a('asis-txt').value = '';
+    abrir().then(function () { if (info && info.disponible) preguntar({ pregunta: t }, t); });
+  });
+  $a('asis-txt').addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); $a('asis-form').requestSubmit(); } });
+  // "¿Qué está pasando?" junto a las acciones de cada alerta (tablero, Mis alertas y Seguimiento)
+  function marcar() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-id]'), function (b) {
+      var id = b.getAttribute('data-id'), cont = b.parentNode;
+      if (!/^[0-9a-f]{32}$/.test(id) || !cont || cont.querySelector('[data-asis-alerta]')) return;
+      var x = document.createElement('button');
+      x.type = 'button'; x.className = 'asis-explicar'; x.setAttribute('data-asis-alerta', id); x.textContent = '¿Qué está pasando?';
+      cont.appendChild(x);
+    });
+  }
+  var pend = null;
+  new MutationObserver(function () { if (!pend) pend = setTimeout(function () { pend = null; marcar(); }, 150); }).observe(document.body, { childList: true, subtree: true });
+  marcar();
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-asis-alerta]'); if (!b) return;
+    ev.preventDefault(); ev.stopPropagation();
+    var id = b.getAttribute('data-asis-alerta');
+    abrir().then(function () { if (info && info.disponible) preguntar({ alerta_id: id }, '¿Qué está pasando con esta alerta?'); });
+  }, true);
+})();
+</script>

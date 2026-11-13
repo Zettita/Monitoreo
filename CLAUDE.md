@@ -34,7 +34,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch27.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch28.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -46,6 +46,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch26.py          avisos push (llegan con Helios cerrado) e instalar como app: push_server.js (cifrado RFC 8291 y
                         firma VAPID con crypto.subtle), sw.js (service worker), manifiesto e íconos (iconos.py arma, con Pillow, el caballo de iconos/logo_helios_system.png → iconos/*.png)
     push_d1.sql         tabla suscripciones_push (02_Base_de_datos_D1/10_avisos_push_d1.txt)
+    patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
+                        acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
+    asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
     generar_clave_push.mjs  genera la clave VAPID (secreto VAPID_JWK del Worker; no se guarda en el proyecto)
     reglas_pers.js      SQL de reglas personalizadas
     *.html              páginas (admin, mis_alertas, seguimiento, campanita, login, tema)
@@ -57,10 +60,11 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     mkdb.mjs            arma una base SQLite de prueba: base.sqlite + todos los .sql de las etapas
                         (incluye 03_Modelo_v2_perfil/perfil_comportamiento_d1.sql y modelo_v2_d1.sql)
     test_auth.mjs       recorre la demo completa (se compara con pruebas/out_a.txt)
-    servidor_local.mjs  corre w.mjs en Node con una base SQLite para verlo en el navegador (http://localhost:8787)
+    servidor_local.mjs  corre w.mjs en Node con una base SQLite para verlo en el navegador (http://localhost:8787);
+                        con ASISTENTE_LOCAL=simulado el asistente usa un modelo de mentira (para ver pantalla y permisos)
   pruebas/
     base.sqlite         la base como estaba antes del modelo v2 (mkdb le aplica las etapas encima)
-    *test.mjs           pruebas por módulo (umbrales, seguimiento, feriados, admin, asignación, avisos, caché, perfiles, push)
+    *test.mjs           pruebas por módulo (umbrales, seguimiento, feriados, admin, asignación, avisos, caché, perfiles, push, asistente)
     motor.mjs           para las pruebas: el SQL del motor sacado de w.mjs (reemplaza a las vistas)
     referencia_tablero.mjs  consultas del tablero anterior, para que cachetest compare el cache
     gen.py              generador original de la base de la demo (series, curva horaria, escenas)
@@ -80,11 +84,11 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch28.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch29.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -101,6 +105,14 @@ Para un cambio nuevo: crear `patch28.py` con una función `aplicar(s)` (como los
 - Solo se aceptan servicios de push conocidos (Google, Apple, Mozilla, Microsoft), así el Worker no le manda pedidos a cualquier dirección.
 - Probado: entrega real en PC con Chrome; cifrado (se descifra como el navegador), firma VAPID, service worker simulado y regresión completa.
 - Aplicado en Cloudflare el 12/11 (script 10, secreto, Worker) y probado en PC con Chrome. En PC, Chrome tiene que quedar corriendo en segundo plano. La última versión ("Revisando…" en la campanita) puede faltar publicar.
+
+## Asistente de IA (13/11, patch28) — hecho y probado; falta aplicarlo en Cloudflare
+- Botón "Asistente" en todas las páginas y "¿Qué está pasando?" junto a las acciones de cada alerta. Workers AI (enlace `AI`; modelo en `ASISTENTE_MODELO`, por defecto `@cf/qwen/qwen3-30b-a3b-fp8`).
+- Responde solo con lo que el perfil puede ver: herramientas de solo lectura en el servidor, cada una con el permiso de la pantalla equivalente (el modelo no ve las que no corresponden y, si las pide, el servidor las rechaza).
+- **Nunca ejecuta nada:** propone acciones (`sugerir_accion`, validadas en el servidor) y la página muestra "Hacerlo", que llama a las rutas de siempre. Gerente y Administrador no reciben propuestas.
+- Cuidado de D1: caché e índices, ~15-20 consultas y 2 escrituras por pregunta (`asistente_uso` + auditoría `ASISTENTE`). Límites: 20 por persona por hora (`ASISTENTE_POR_HORA`) y 150 por día en total (`ASISTENTE_POR_DIA`), para el cupo gratuito de 10.000 neuronas.
+- **Pendiente, en este orden:** (1) correr `11_asistente_d1.txt`; (2) Settings → Bindings → Add binding → Workers AI, variable `AI`; (3) publicar el Worker; (4) probar las preguntas sugeridas de cada perfil y ajustar el prompt o el modelo si hace falta.
+- Si se agrega una herramienta: que exija un permiso de `PERMISOS`, lea poco (caché o índice, con LIMIT) y devuelva datos ya resumidos (horas en Argentina, valores formateados) para gastar pocas neuronas.
 
 ## Dónde estamos (modelo nuevo, 3 etapas)
 1. **Feriados — hecho.** Tabla `feriados` (API argentinadatos), opción "silenciar en feriados" por cliente/servicio.

@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS asistente_uso ( hora TEXT NOT NULL, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), preguntas INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (hora, usuario_id) ) WITHOUT ROWID;

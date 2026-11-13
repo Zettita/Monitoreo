@@ -9,6 +9,8 @@ if (!sinUmbrales) arch.push('umbrales_d1.sql', 'feriados_d1.sql');
 if (!sinUmbrales) arch.push('../../03_Modelo_v2_perfil/perfil_comportamiento_d1.sql', 'modelo_v2_d1.sql');
 // Avisos push en el dispositivo (parche 26)
 if (!sinUmbrales) arch.push('push_d1.sql');
+// Asistente de IA (parche 28)
+if (!sinUmbrales) arch.push('asistente_d1.sql');
 for (const f of arch)
   for (const l of fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8').split('\n')) if (l.trim()) db.exec(l);
 console.log('db lista', dst, sinUmbrales ? '(sin umbrales)' : '');

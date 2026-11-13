@@ -1,6 +1,7 @@
 // Servidor local para probar el Worker en el navegador, sin Cloudflare.
 // Corre w.mjs con Node y una base SQLite como D1 (la misma idea que la Fase 1 de la migración).
 // Uso:  node --no-warnings servidor_local.mjs prueba.sqlite [puerto]
+//   Asistente de IA con un modelo simulado: ASISTENTE_LOCAL=simulado node --no-warnings servidor_local.mjs prueba.sqlite
 //   (prueba.sqlite se arma con mkdb.mjs; el primer ingreso pide crear el administrador)
 import http from 'node:http';
 import fs from 'node:fs';
@@ -37,7 +38,26 @@ if (!process.env.VAPID_JWK && !fs.existsSync(archivoClave)) {
   const j = await crypto.subtle.exportKey('jwk', par.privateKey);
   fs.writeFileSync(archivoClave, JSON.stringify({ kty: j.kty, crv: j.crv, x: j.x, y: j.y, d: j.d }) + '\n');
 }
+// Asistente de IA (parche 28): sin Cloudflare no hay Workers AI. Con ASISTENTE_LOCAL=simulado se usa un modelo de mentira
+// que solo muestra qué datos recibió (sirve para ver la pantalla y los permisos, no la calidad de las respuestas).
+const AI_SIMULADO = {
+  async run(modelo, p) {
+    const ult = p.messages[p.messages.length - 1];
+    const tools = (p.tools || []).map((t) => t.function.name);
+    if (ult.role === 'tool' || /Datos de Helios/.test(ult.content || '')) {
+      const datos = ult.role === 'tool' ? ult.name : (ult.content.match(/"([a-z_]+)":\{/g) || []).map((x) => x.slice(1, -3)).join(', ');
+      const id = ((ult.content || '').match(/"alerta_id":"([0-9a-f]{32})"/) || [])[1];
+      if (id && tools.includes('sugerir_accion') && !p.messages.some((m) => m.role === 'tool' && m.name === 'sugerir_accion'))
+        return { choices: [{ message: { content: '**(Modo simulado)** Recibí estos datos: ' + datos + '.\n- Revisá primero las últimas ventanas.\n- Te dejo una propuesta para confirmar.',
+          tool_calls: [{ id: 's1', type: 'function', function: { name: 'sugerir_accion', arguments: JSON.stringify({ tipo: 'comentar', alerta_id: id, comentario: 'Revisando con el asistente', motivo: 'Dejar registro de que se está mirando' }) } }] } }] };
+      return { choices: [{ message: { content: '**(Modo simulado)** Recibí estos datos: ' + datos + '. Con Workers AI, acá va la respuesta real.' } }] };
+    }
+    if (tools[0] && tools[0] !== 'sugerir_accion') return { choices: [{ message: { content: '', tool_calls: [{ id: 't1', type: 'function', function: { name: tools.includes('estado_clientes') ? 'estado_clientes' : tools[0], arguments: '{}' } }] } }] };
+    return { choices: [{ message: { content: '(Modo simulado) Hola.' } }] };
+  },
+};
 const env = {
+  AI: process.env.ASISTENTE_LOCAL === 'simulado' ? AI_SIMULADO : undefined,
   VAPID_JWK: process.env.VAPID_JWK || fs.readFileSync(archivoClave, 'utf8').trim(),
   DB: {
     prepare: preparar,

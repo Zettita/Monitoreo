@@ -1,0 +1,12 @@
+ASISTENTE DE IA (para la Console de D1: helios-monitoring-dev) — parche 28
+
+Qué hace: crea la tabla asistente_uso, donde se cuenta cuántas preguntas hace cada persona por hora.
+Sirve para limitar el uso (20 preguntas por hora por persona y 150 por día en total) y no pasar el cupo
+gratuito diario de Workers AI. Cada pregunta escribe 1 fila acá (o suma 1) y 1 en auditoría.
+
+Orden: 1) correr este bloque; 2) conectar Workers AI al Worker (Settings → Bindings → Add binding →
+Workers AI, nombre de variable AI); 3) publicar 01_Worker/worker_alertas_cron.js.
+Es 1 escritura: no hace falta /bookmark. Se puede repetir sin problema.
+
+--- 1. Tabla de uso del asistente ---
+CREATE TABLE IF NOT EXISTS asistente_uso ( hora TEXT NOT NULL, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), preguntas INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (hora, usuario_id) ) WITHOUT ROWID;

@@ -1,6 +1,6 @@
 # Helios: contexto del sistema para asistentes de IA
 
-> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **12 de noviembre de 2026**, con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
+> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **13 de noviembre de 2026** (el asistente de IA, parche 28, está hecho y probado; falta aplicarlo en Cloudflare), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
 
 ---
 
@@ -51,6 +51,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 | Cron Trigger | **Apagado** (se quitó para no gastar lecturas). Si se vuelve a configurar: cada 15 min (`5-59/15 * * * *`) | Con `alerta_parametros.ahora` con fecha (reloj simulado) no procesa |
 | `worker-api-bi` | **Ya no se usa** (sin Power BI desde el 11/11): hay que borrarlo del panel. Su código quedó en `99_Archivo_viejo/power_bi/` | — |
 | Avisos push (Web Push) | Los avisos de la campanita llegan al celular o la PC aunque Helios esté cerrado (parche 26) | Estándar de los navegadores, gratis: los entregan Google (Chrome, Edge en Android, Samsung), Apple (iPhone con Helios instalado), Mozilla o Microsoft. El Worker firma con la clave VAPID (secreto `VAPID_JWK`) y cifra el contenido |
+| Workers AI (asistente, parche 28) | Modelo de lenguaje del asistente de IA. Enlace (binding) `AI` del Worker; modelo en la variable `ASISTENTE_MODELO` (por defecto `@cf/qwen/qwen3-30b-a3b-fp8`) | Cupo gratuito: 10.000 neuronas por día para toda la cuenta. Una pregunta usa unas 30 a 70 neuronas con ese modelo: el Worker limita a 150 preguntas por día y 20 por persona por hora |
 | D1 `helios-monitoring-dev` | Toda la persistencia | SQLite administrado. En la cuenta hay otra base, `cliente-demo-transaccional-dev`, que este trabajo no usa |
 | Perfil de comportamiento (modelo v2) | Esperado, mínimo y máximo por serie × día de la semana × franja de 15 min × tercio del mes (ver sección 6) | Se entrena fuera de D1 (PostgreSQL o PGlite) y se carga con `perfil_comportamiento_d1.txt` |
 
@@ -65,8 +66,9 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
+- **Asistente de IA (13/11, parche 28): falta aplicar.** En este orden: correr `02_Base_de_datos_D1/11_asistente_d1.txt` (tabla `asistente_uso`, quedan 22 tablas); en el Worker, Settings → Bindings → Add binding → **Workers AI**, nombre de variable `AI`; publicar `01_Worker/worker_alertas_cron.js`. Sin el enlace, el resto funciona igual y el panel del asistente avisa que falta configurarlo. Guía: `novedades_asistente_ia.md`.
 - **Cómo verificar la base desde la consola de D1** (una línea, solo lee): `SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type = 'view') AS vistas, (SELECT COUNT(*) FROM sqlite_master WHERE name = 'ix_perfil_comportamiento_franja') AS indice_perfil, (SELECT COUNT(*) FROM feriados) AS feriados, (SELECT ahora FROM alerta_parametros WHERE id = 1) AS reloj;` → 0, 1, 23 o más, y el reloj de la demo.
-- **Código fuente:** repositorio privado en GitHub `Zettita/Monitoreo` (rama `main`, desde el 12/11), compartido con Ale; cada cambio probado se sube ahí junto con este archivo actualizado. El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 27) y se prueba con la demo de 19 escenas y 8 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
+- **Código fuente:** repositorio privado en GitHub `Zettita/Monitoreo` (rama `main`, desde el 12/11), compartido con Ale; cada cambio probado se sube ahí junto con este archivo actualizado. El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 28) y se prueba con la demo de 19 escenas y 10 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
 
 ---
 
@@ -105,6 +107,7 @@ Hoy pesa unos 7 MB (13 series con historia, unos 9 días). Casi todo son métric
 | `auditoria` | Quién hizo qué | `id`, `fecha`, `usuario_id`, `accion`, `detalle` |
 | `tablero_cache` · `series_estado` · `prealertas_estado` | **Cache del tablero.** Cada revisión de alertas (cron, botón, escena de la demo) y "Preparar demo" cambian `tablero_cache.revision`. La primera carga del tablero después recalcula las series de 24 h y las pre-alertas y las guarda; las demás cargas solo leen estas tablas | Las escribe el Worker; no se tocan a mano. Si una ingesta nueva carga métricas sin pasar por la revisión, tiene que marcar `revision` |
 | `suscripciones_push` | **Avisos push (parche 26, script 10).** Un dispositivo (celular o PC) que activó los avisos desde la campanita. Si el servicio de push responde que ya no existe (404/410), se borra sola; también al cerrar sesión o tocar "Desactivar" | `endpoint` (PK: la dirección del dispositivo en Google, Apple, Mozilla o Microsoft), `usuario_id`, `clave_p256dh` y `clave_auth` (claves del navegador para cifrar el contenido), `creada`, `actualizada`. Índice `ix_suscripciones_push_usuario` |
+| `asistente_uso` | **Asistente de IA (parche 28, script 11).** Cuántas preguntas hizo cada persona en cada hora (para los límites de uso). `WITHOUT ROWID` | PK (`hora` = `AAAA-MM-DDTHH` en UTC, `usuario_id`), `preguntas` |
 | `meta_diccionario_datos` | Diccionario de datos: `capa`, `tipo_objeto`, `objeto_nombre`, `campo_nombre`, `descripcion` | Del equipo; vacía: hay que completarla |
 
 ### Sin vistas (desde el 11/11)
@@ -230,6 +233,33 @@ Nadie recibe aviso de lo que hizo él mismo. El Gerente y el Administrador no ti
 
 ---
 
+### Asistente de IA (parche 28, 13/11)
+
+Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimiento y Administración (en el celular ocupa toda la pantalla), y botón **"¿Qué está pasando?"** junto a las acciones de cada alerta. Corre en **Workers AI** dentro de Cloudflare.
+
+- **Responde según el perfil:** el modelo no consulta la base; usa herramientas del servidor (`asistente_server.js`) y cada una exige el permiso de la pantalla equivalente. Si una herramienta no corresponde al perfil, no se le ofrece al modelo y, si igual la pide, el servidor la rechaza.
+
+| Herramienta (solo lectura) | Permiso | Admin | Analista | Soporte | Gerente |
+|---|---|---|---|---|---|
+| `estado_clientes` (problemas abiertos y "viene empeorando" por cliente, servicio y canal) | `tablero` | Sí | Sí | No | Sí |
+| `incidentes` (por cliente, graves, abiertos, tiempo de resolución, hasta 30 días; informe de un cliente) | `tablero` | Sí | Sí | No | Sí |
+| `alertas_abiertas` (problemas por prioridad, estado y asignación) · `prealertas` | `alertas_abiertas` | Sí | Sí | No | No |
+| `carga_equipos` (sin asignar y carga por equipo y persona) | `seguimiento` | Sí | Sí | No | No |
+| `opciones_derivacion` (equipos y personas de Soporte con su carga) | `derivar` | No | Sí | No | No |
+| `mis_alertas` (en curso, para tomar, resueltas en 24 h) | `mis_alertas` | No | No | Sí | No |
+| `detalle_alerta` (últimas ventanas, historial, casos parecidos resueltos, otros problemas del cliente) | `tablero`, o Soporte solo lo suyo o de su equipo (misma regla que el historial) | Sí | Sí | Lo suyo | Sí |
+| `ajustes_sugeridos` (posibles falsas alarmas de 30 días y umbrales configurados) | `admin_umbrales` | Sí | No | No | No |
+
+- **Nunca ejecuta nada.** Puede **proponer** derivar, tomar, comentar, devolver o resolver (`sugerir_accion`), solo si el perfil puede hacerlo; el servidor valida la alerta y el destino. La página muestra la propuesta con el comentario editable y un botón **"Hacerlo"**: recién con ese clic se llama a la ruta de siempre (`/api/alertas/{id}/...`), con sus permisos, historial y auditoría. El Gerente y el Administrador no reciben propuestas (no trabajan alertas); al Administrador le recomienda ajustes en texto y los hace él en Administración.
+- **Preguntas sugeridas por perfil** (traen los datos directo, una sola llamada al modelo): Soporte "¿Qué tengo pendiente y por dónde empiezo?"; Analista "Resumen del turno", "¿Qué está sin asignar y a quién lo derivo?", "¿Hay alertas relacionadas entre sí?", "¿Qué pre-alertas conviene avisar a Soporte?"; Gerente "¿Cómo está la operación ahora?", "¿Qué cliente tuvo más problemas este mes?"; Administrador "¿Qué umbrales conviene revisar?" y "¿Cómo está la operación ahora?". Las preguntas libres usan hasta 3 vueltas con el modelo y 5 herramientas.
+- **Cuida D1:** lee del caché del tablero (`series_estado`, `prealertas_estado`) y por índice, con límite de filas; cada pregunta escribe 2 filas (`asistente_uso` y `auditoria` con acción `ASISTENTE` y el texto de la pregunta). Unas 15 a 20 consultas por pregunta (tope del plan: 50).
+- **Límites:** 600 caracteres por pregunta; 6 mensajes de historia (solo de la persona y del asistente); `ASISTENTE_POR_HORA` (20) por persona y `ASISTENTE_POR_DIA` (150) en total, para no pasar el cupo diario gratuito de Workers AI. Al pasarlos responde 429 con un mensaje claro.
+- **Seguridad:** lo que devuelven las herramientas (comentarios, nombres) va como dato y el sistema le indica que no son órdenes; igual, aunque un texto lo "convenza", no puede leer fuera del perfil ni ejecutar nada. La respuesta se muestra escapada (solo negrita y listas). Si el modelo falla responde 502 y nada cambia.
+- **Modelo:** variable `ASISTENTE_MODELO` (por defecto `@cf/qwen/qwen3-30b-a3b-fp8`: buena relación calidad / neuronas y soporta herramientas). Acepta las respuestas en formato OpenAI o en el propio de Workers AI, y si un modelo no acepta mensajes de herramienta reintenta con los datos como texto. Para cambiar a otro modelo (por ejemplo `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, mejor en español pero unas 5 veces más caro en neuronas) alcanza con la variable.
+- **Probar sin Cloudflare:** `ASISTENTE_LOCAL=simulado node --no-warnings servidor_local.mjs prueba.sqlite` usa un modelo de mentira que muestra qué datos recibió (sirve para ver la pantalla y los permisos).
+
+---
+
 ## 8. Pantallas
 
 | Pantalla | Quién | Qué muestra |
@@ -266,6 +296,7 @@ Nadie recibe aviso de lo que hizo él mismo. El Gerente y el Administrador no ti
 | Campanita | No | Sí (lleva a Seguimiento) | Sí (lleva a Mis alertas) | No |
 | Avisos push en el dispositivo | No | Sí | Sí | No |
 | Instalar Helios como app | Sí | Sí | Sí | Sí |
+| Asistente de IA (responde con lo que el perfil puede ver; propone, no ejecuta) | Sí (sin propuestas de acción) | Sí | Sí | Sí (sin propuestas de acción) |
 | Recibir alertas (destino de una derivación) | **No** | No | Sí | No |
 | Reglas de alerta (del sistema y personalizadas) | Sí | **No** | No | No |
 | Reglas de derivación, ver modelo | Sí | Sí | No | No |
@@ -298,6 +329,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `GET /api/avisos` · `GET /api/avisos/contador` · `POST /api/avisos/{id}/leido` · `POST /api/avisos/leer-todos` | Campanita |
 | `GET /api/push/clave` · `POST /api/push/suscribir` · `POST /api/push/desuscribir` | Avisos push: clave pública VAPID (null sin secreto o sin campanita), suscribir el dispositivo (body `{suscripcion, anterior?}`, lo que entrega `pushManager.subscribe()`), dejar de recibir (body `{endpoint}`, **pública**) |
 | `GET /sw.js` · `/manifest.webmanifest` · `/icono-192.png` · `/icono-512.png` · `/apple-touch-icon.png` · `/icono-insignia.png` · `/favicon.ico` | **Públicas:** service worker, manifiesto e íconos para instalar Helios como app |
+| `GET /api/asistente` · `POST /api/asistente` | Asistente de IA (todos los perfiles): estado, preguntas sugeridas del perfil y preguntas que quedan; preguntar con body `{pregunta, historia?}`, `{sugerencia}` o `{alerta_id}`. Devuelve `{respuesta, acciones, herramientas, restantes}`. Las `acciones` son propuestas: se ejecutan desde la página con las rutas de `/api/alertas/{id}/...`. 503 sin Workers AI, 429 al pasar los límites, 502 si el modelo falla |
 | `GET /admin` · `/api/admin/usuarios`, `/equipos`, `/reglas`, `/derivacion`, `/modelo`, `/auditoria` | Administración |
 | `GET /api/admin/umbrales` · `GET /api/admin/umbrales/recomendacion?cliente=&servicio=` · `POST /api/admin/umbrales` · `POST /api/admin/umbrales/borrar` | Umbrales (solo Administrador). El POST recibe `cliente_id`, `servicio_id` (vacíos = general) y los campos de `umbrales_config` en fracciones (0,25 = 25 %, 1 = banda del modelo); vacío = hereda |
 | `GET /api/demo` · `POST /api/demo/preparar` · `POST /api/demo/siguiente` | Modo demo (`/?demo`) |
@@ -359,7 +391,9 @@ La empresa no usa nube pública: el destino es **un servidor propio (máquina vi
 
 ---
 
-## 14. El agente de IA (todavía no definido)
+## 14. El agente de IA (primera versión: el asistente del parche 28)
+
+La primera versión es el **asistente del parche 28** (sección 7): corre en Workers AI, solo lee con los permisos de quien pregunta y propone acciones que confirma una persona. Lo que sigue vale para versiones más autónomas o fuera de Cloudflare.
 
 Requisitos para cualquier versión:
 
@@ -408,6 +442,7 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 - El Worker de alertas es un solo archivo. Se publica pegando el código en "Edit code" del panel (o con `wrangler deploy`), **no** con el cargador de archivos.
 - Primero se corre el SQL nuevo, después se publica el Worker.
+- **El asistente de IA solo lee y propone.** Cualquier herramienta nueva tiene que exigir el permiso de la pantalla equivalente y leer poco (caché o índice, con límite de filas); las acciones se ejecutan siempre desde la página, por las rutas de siempre.
 - **No hay vistas:** el SQL vive en el Worker. Si una consulta se repite, va como constante en el Worker, no como vista.
 
 ---
@@ -415,6 +450,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Asistente de IA (13/11, parche 28; falta aplicar en Cloudflare)**
+
+- Chat "Asistente" en todas las páginas y "¿Qué está pasando?" en cada alerta, con Workers AI. Responde solo con lo que el perfil puede ver (herramientas con el permiso de cada pantalla), propone acciones que se confirman con "Hacerlo" y nunca ejecuta nada solo. Ver "Asistente de IA" en la sección 7.
+- Tabla nueva `asistente_uso` (script `11_asistente_d1.txt`), enlace `AI` (Workers AI) en el Worker y variables opcionales `ASISTENTE_MODELO`, `ASISTENTE_POR_HORA`, `ASISTENTE_POR_DIA`. Quedan **22 tablas**.
+- Partes del Worker tocadas (`patch28.py`): permiso nuevo `asistente`; módulo `asistente_server.js` antes de `const TRABAJADOR`; la ruta `/api/asistente` después de las de push; el panel `asistente.html` antes de `</body>` en las cuatro páginas; la etiqueta "Consultó al asistente" en la auditoría. No se cambió nada de lo que ya existía.
+- Probado: la demo y las 9 pruebas dan lo mismo; `asistest.mjs` (permisos por perfil aunque el modelo insista, que no ejecuta nada, propuestas validadas, preguntas sugeridas en una llamada, límites, 2 escrituras por pregunta, formatos del modelo) y las páginas en Chromium con el modelo simulado. Falta probarlo con Workers AI de verdad.
 
 **Avisos push e instalar como app (12/11, parche 26)**
 
@@ -485,6 +527,8 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 |---|---|
 | `worker_alertas_cron.js` | Worker de alertas completo (páginas, API, proceso, demo). Es el que se publica |
 | `10_avisos_push_d1.txt` | Tabla `suscripciones_push` para los avisos push (ya corrido el 12/11) |
+| `11_asistente_d1.txt` | Tabla `asistente_uso` para los límites del asistente de IA (parche 28; falta correrlo) |
+| `novedades_asistente_ia.md` | Asistente de IA: cómo activarlo en Cloudflare, qué responde a cada perfil, límites y problemas comunes |
 | `novedades_avisos_push_y_app.md` | Avisos push, app instalable y logo nuevo: guía por dispositivo, problemas comunes, diagnóstico y cómo funciona |
 | `09_modelo_v2_d1.txt` | Etapa 2 del modelo nuevo (ya corrido el 11/11): índice del perfil, borra las vistas y las tablas sin uso, y vacía alertas y métricas (la demo arranca sin datos recibidos). Se corre antes de publicar el Worker. Reemplaza a `carga_baseline_demo_consola.txt` |
 | `acceso_d1_tablas.txt` · `admin_d1_tablas.txt` · `asignacion_d1_tablas.txt` · `avisos_d1_tablas.txt` | Tablas de login, administración, asignación y avisos (ya aplicadas) |
@@ -496,7 +540,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 | `perfil_comportamiento_d1.txt` · `perfil_comportamiento_d1.sql` | Modelo v2: crea `perfil_comportamiento` y su índice e inserta los perfiles (ya cargado el 11/11; sirve para recargarlo después de reentrenar). El `.sql` es para Wrangler |
 | `historico_metricas_demo.zip` · `perfil_comportamiento_postgres.sql` · `generar_historico_metricas.py` | Respaldo del modelo v2: historia ficticia, consulta que arma los perfiles y generador de la historia |
 | Carpeta `07_Codigo_fuente/` | Código con el que se genera el Worker (parches, páginas, SQL por etapa) y sus pruebas. Ver `CLAUDE.md` |
-| `Helios_inventario_de_tablas.docx` | Inventario de las 24 tablas y 7 vistas (anterior al modelo v2: hay que actualizarlo a 21 tablas (con `suscripciones_push`) y 0 vistas): para qué sirve cada una, quién la escribe y la lee, y sus columnas. También existe como documento editable en Claude |
+| `Helios_inventario_de_tablas.docx` | Inventario de las 24 tablas y 7 vistas (anterior al modelo v2: hay que actualizarlo a 22 tablas (con `suscripciones_push` y `asistente_uso`) y 0 vistas): para qué sirve cada una, quién la escribe y la lee, y sus columnas. También existe como documento editable en Claude |
 | `contexto_helios_para_ia.md` | Este archivo |
 | Carpeta `99_Archivo_viejo/power_bi/` | Lo de Power BI, que ya no se usa: consultas, medidas DAX, tema y `worker_api_powerbi.js` |
 | `demo_alertas.pptx` | Presentación de la demo, escena por escena, con inventario |
@@ -528,6 +572,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - [ ] Definir advertencia vs. alerta (por ejemplo, `MEDIA` y `BAJA` = advertencia).
 - [x] Prioridad P1–P4 en "Mis alertas" y en Seguimiento.
 - [ ] Validar que los equipos tengan solo gente de Soporte (hoy se puede sumar un analista, que no va a poder tomar lo que se derive al equipo).
+- [x] Asistente de IA con Workers AI, por perfil, que propone y no ejecuta (13/11, parche 28). Falta: aplicarlo en Cloudflare y probar la calidad de las respuestas con el modelo real; armar un set de 20 o 30 preguntas de prueba.
 - [ ] Ideas de IA ya ofrecidas: resumen del incidente en lenguaje natural, índice de riesgo por cliente y, más adelante, un modelo de machine learning para comparar contra la línea base.
 - [ ] Simulación en vivo para la demo: botones que provoquen una caída, suban los rechazos o corten el envío, con ventanas de 1 minuto.
 - [ ] Actualizar la presentación de venta y el guion a los clientes `CLI_00x`.
