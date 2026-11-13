@@ -196,7 +196,7 @@ Los mínimos y máximos los calcula el modelo; el Administrador solo puede ensan
 
 1. **Ingesta:** llega la métrica de la ventana.
 2. **Perfil:** el modelo ya tiene esperado, mínimo y máximo para esa ventana (su día de la semana, franja y tercio).
-3. **Revisión** (botón "Revisar alertas ahora" o escena de la demo; el cron está apagado), en un solo lote (`env.DB.batch`):
+3. **Revisión** (escena de la demo; el cron está apagado; desde el parche 34 no hay botón manual), en un solo lote (`env.DB.batch`):
    1. **Registrar:** `INSERT … ON CONFLICT DO UPDATE` desde el motor (reglas 1 a 11 y, en otra sentencia, la 12) y desde las reglas personalizadas. Actualiza valores, severidad, severidad máxima y última detección. Reabre las cerradas por `CONDICION_DESAPARECIDA`.
    2. **Heredar asignación:** las ventanas nuevas de un problema ya asignado copian su asignación.
    3. **Cerrar normalizadas:** si llegó una ventana posterior de la misma serie sin ese tipo de alerta. La fecha de resolución es el fin de esa ventana.
@@ -275,14 +275,14 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 
 | Pantalla | Quién | Qué muestra |
 |---|---|---|
-| Tablero (`/`) | Administrador (lectura), Analista y Gerente | Resumen arriba, **Estado por cliente** (Panorama: una tarjeta por cliente con cada servicio y canal en color: bien, viene empeorando, leve, importante, grave, sin datos o sin historia), barras de 24 h por cliente (con "Bien el X % del día" contra su objetivo), alertas abiertas por prioridad con estado y asignación, pre-alertas (con "Avisar a Soporte" para el analista), histórico. **El Gerente no ve** la lista de alertas abiertas ni las pre-alertas. Botones: Actualizar, Revisar alertas ahora (Admin y Analista), Derivar / Resolver (Analista) / Historial por alerta. Soporte que entra a `/` va a Mis alertas |
+| Tablero (`/`) | Administrador (lectura), Analista y Gerente | Resumen arriba, **Estado por cliente** (Panorama: una tarjeta por cliente con cada servicio y canal en color: bien, viene empeorando, leve, importante, grave, sin datos o sin historia), barras de 24 h por cliente (con "Bien el X % del día" contra su objetivo), alertas abiertas por prioridad con estado y asignación, pre-alertas (con "Avisar a Soporte" para el analista), histórico. **El Gerente no ve** la lista de alertas abiertas ni las pre-alertas. Botones: Actualizar, Derivar / Resolver (Analista) / Historial por alerta. Soporte que entra a `/` va a Mis alertas |
 | Mis alertas (`/mis-alertas`) | Soporte | Su única página (sin enlace al tablero). Tarjetas por prioridad: En curso, Para tomar, De mis equipos (si es responsable), Resueltas en 24 h. Acciones: tomar, comentar, devolver, resolver, reasignar dentro del equipo |
 | Seguimiento (`/seguimiento`) | Analista y Administrador (solo lectura) | Contadores (sin asignar, devueltas, asignadas sin tomar, en curso, resueltas 24 h) que filtran la tabla; filtros por estado, equipo, persona y cliente; tabla con prioridad, estado, quién la tiene, cuánto lleva en ese estado (en rojo si pasa 15 min sin asignar, 30 sin tomar o 2 h en curso) y última novedad; carga por equipo; resueltas en 24 h |
 | Detalle de alerta (`/alerta/<id>`) | Soporte (lo suyo o de su equipo) y Analista | **Parche 30.** Conversación completa (derivaciones, comentarios, archivos y resolución en orden), cuadro para comentar y adjuntar evidencia, datos de la alerta, evidencia, ventanas con problema (observado, esperado, límite) y acciones (tomar, derivar, reasignar, devolver, resolver). Resolver pide "¿Qué lo causó?" (una) y "¿Qué se hizo?" (una o más) con un clic; con las dos, el texto es opcional. Se llega con "Ver detalle" (Mis alertas, Seguimiento), "Detalle" (tablero), el título de la tarjeta, Resolver (`?resolver` abre el diálogo) y los avisos de la campanita y push |
 | Administración (`/admin`) | Administrador y Analista (pestañas según perfil) | Usuarios, Equipos, Reglas de alerta (solo Administrador), Derivación, **Umbrales** (solo Administrador), Modelo, Auditoría |
 | Login (`/login`) | Todos | Ingreso y cambio de contraseña temporal. Después del ingreso, `/inicio` lleva a la página de cada perfil: Administración (Administrador), Mis alertas (Soporte) o el tablero (Analista y Gerente); con `?demo`, al tablero de la demo |
 
-**Barra superior:** hora de los datos, Actualizar, Revisar alertas ahora, campanita y la foto de perfil. "Mis alertas", "Seguimiento" y "Administración" están **solo en el menú de la foto de perfil**, con el número de pendientes al lado; un punto rojo en la foto avisa que hay algo pendiente. En el mismo menú se elige el tema (claro, oscuro o sistema) y se cambia la contraseña.
+**Barra superior:** hora de los datos, Actualizar, campanita y la foto de perfil. "Mis alertas", "Seguimiento" y "Administración" están **solo en el menú de la foto de perfil**, con el número de pendientes al lado; un punto rojo en la foto avisa que hay algo pendiente. En el mismo menú se elige el tema (claro, oscuro o sistema) y se cambia la contraseña.
 
 **Estilo:** base neutra tipo Atlassian / InvGate (tipografía del sistema, bordes chicos, etiquetas de estado) con color principal verde azulado `#0F766E` (claro) / `#2DD4BF` (oscuro). Funciona en el celular sin desplazamiento horizontal.
 
@@ -315,7 +315,7 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 | Reglas de alerta (del sistema y personalizadas) | Sí | **No** | No | No |
 | Reglas de derivación, ver modelo | Sí | Sí | No | No |
 | Usuarios, equipos, auditoría, umbrales por cliente | Sí | No | No | No |
-| Revisar alertas ahora, modo demo | Sí | Sí | No | No |
+| Modo demo | Sí | Sí | No | No |
 
 El Administrador puede crear usuarios de cualquier perfil, incluso otros administradores. Siempre queda al menos un administrador activo y nadie puede quitarse a sí mismo el perfil ni desactivarse.
 
@@ -333,7 +333,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `GET /api/yo` · `POST /api/cambiar-clave` · `POST /api/logout` | Sesión actual, permisos e `inicio` (página de inicio del perfil) |
 | `GET /inicio` | Redirige a la página de inicio del perfil (la usa el login) |
 | `GET /` · `GET /api/dashboard` | Tablero y sus datos en un solo viaje a la base: abiertas con asignación, incidentes de 30 días, parámetros, pre-alertas y series (del cache), reglas personalizadas, eventos y `umbrales` (criticidad y objetivo). Soporte no puede usarlo (403). Los KPIs, el MTTR y los clientes se calculan en la página |
-| `POST /api/procesar` · `GET /procesar` | Correr el proceso de alertas; devuelve `{ok, registradas_o_actualizadas, resueltas, derivadas_automaticamente, filas_leidas, filas_escritas}` |
+| `POST /api/procesar` | **Solo para las pruebas de la PC** (parche 34: existe si el Worker tiene `PERMITIR_REVISION_MANUAL = '1'`; en Cloudflare no). Correr el proceso de alertas; devuelve `{ok, registradas_o_actualizadas, resueltas, derivadas_automaticamente, filas_leidas, filas_escritas}` |
 | `POST /api/alertas/{id}/derivar` | Body `{equipo_id?, usuario_id?, comentario?}` |
 | `POST /api/alertas/{id}/tomar` · `/comentar` · `/devolver` · `/resolver` | Body `{comentario}`; obligatorio al devolver. Al resolver, desde el parche 30, también `causa_id` y `acciones_ids` (del catálogo): con las dos el comentario es opcional; sin ellas, obligatorio. `/reconocer` sigue funcionando como sinónimo de `/tomar` |
 | `GET /api/alertas/{id}/historial` | Eventos de la alerta (Soporte, solo de las suyas o de su equipo) |
@@ -469,6 +469,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Sin botón "Revisar alertas ahora" (14/11, parche 34; sin SQL, falta publicar junto con el 32 y el 33)**
+
+- Se sacó el botón de la barra del tablero (Administrador y Analista). Cada revisión recorre hoy las últimas 24 h (~6.500 filas): el botón multiplicaba lecturas sin hacer falta, porque cada escena de la demo ya revisa sola y en producción revisará el cron o la llegada de datos. La ruta `POST /api/procesar` solo existe con `PERMITIR_REVISION_MANUAL = '1'` (pruebas de la PC); `GET /procesar` ya no existe. Un cambio de umbrales o reglas se aplica en la próxima revisión (escena o cron). **Pendiente (etapa 3):** revisión incremental, que mire solo la ventana nueva.
 
 **"Ver detalle" en las alertas resueltas (14/11, parche 33; sin SQL, falta publicar junto con el 32)**
 

@@ -22,7 +22,7 @@ Mapa de carpetas y para qué sirve cada archivo: @LEEME.md
 
 ## Entorno real
 - Cloudflare, plan gratuito. Base D1 `helios-monitoring-dev`; Worker `worker-alertas-cron` (todo el sistema). `worker-api-bi` (Power BI) ya no se usa: borrarlo del panel.
-- **El Cron Trigger está apagado** (se quitó hace tiempo para no gastar lecturas): hoy las revisiones solo corren a mano (botón "Revisar alertas ahora" o escenas de la demo). Lo que figure en el uso de D1 viene de cargas manuales o del tablero.
+- **El Cron Trigger está apagado** (se quitó hace tiempo para no gastar lecturas): hoy las revisiones solo corren con las escenas de la demo (el botón "Revisar alertas ahora" se sacó en el parche 34). Lo que figure en el uso de D1 viene de cargas manuales o del tablero.
 - Límites D1 free: 500 MB por base, 5 GB por cuenta, **100.000 filas escritas/día**, 5 M filas leídas/día; 50 consultas por invocación; sentencia de hasta 100 KB; 100 parámetros; Workers 10 ms de CPU; `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 - Consola de D1: **una sentencia por línea, sin comentarios**. Por eso los scripts para D1 se entregan como `.txt` con bloques numerados de una línea.
 - Publicar el Worker: pegando el código en "Edit code" del panel (no con el cargador de archivos). Primero se corre el SQL nuevo, después se publica el Worker.
@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch33.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch34.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch34.py          sin botón "Revisar alertas ahora"; POST /api/procesar solo con PERMITIR_REVISION_MANUAL = '1' (umbtest y fertest)
     patch33.py          "Ver detalle" en las resueltas (Seguimiento y Histórico del tablero) para Analista y Soporte;
                         Q_INCIDENTES_30D suma alerta_id (cachetest lo verifica y compara el resto igual que antes)
     patch32.py          tablero: el recuadro "Urgente" muestra el estado real (en curso / asignada sin tomar / devuelta / sin asignar)
@@ -101,7 +102,7 @@ for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest push
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch34.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch35.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -152,6 +153,9 @@ Para un cambio nuevo: crear `patch34.py` con una función `aplicar(s)` (como los
 ## Textos y Umbrales (14/11, patch31) — publicado el 14/11 junto con el parche 30
 - Tono: la app no nombra a la persona con "vos" ni "tuyo" ("Resuelta por Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en listas); las indicaciones siguen en rioplatense ("Elegí", "Tocá"). También los mensajes de error del servidor.
 - Umbrales: recuadro "Cómo decide Helios" (1 lo normal y su margen → 2 ¿hay alerta? → 3 ¿qué tan grave? → 4 ¿qué se atiende primero?) en la pestaña y en el diálogo; grupos del diálogo en ese orden; cada campo con "↑ Si lo subís / ↓ Si lo bajás"; tarjetas en frases simples. Sin SQL.
+
+## Sin botón "Revisar alertas ahora" (14/11, patch34) — hecho; falta publicar (junto con el 32 y el 33)
+- Decidido por Uriel: cada revisión lee hoy 24 h (~6.500 filas) y el botón no hacía falta (las escenas ya revisan; en producción, el cron o la ingesta). No volver a agregar un disparador manual en la barra; si hace falta, un "Recalcular últimas 24 h" para el Administrador junto con la etapa 3.
 
 ## "Ver detalle" en las resueltas (14/11, patch33) — hecho; falta publicar (junto con el 32)
 - El Analista no tenía forma de ver cómo se resolvió una alerta. Ahora: Seguimiento > Resueltas (24 h) y Tablero > Histórico tienen "Ver detalle" (conversación, evidencia, causa y qué se hizo). Solo para quien tiene `detalle_alerta`. Sin SQL.

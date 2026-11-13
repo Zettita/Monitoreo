@@ -142,4 +142,8 @@ r=await call(ck.ana,'GET','/seguimiento'); ok('Seguimiento tiene "Ver detalle"',
 r=await call(A,'GET','/admin'); ok('Administración tiene el catálogo', r.t.includes('id="cat-CAUSA"'));
 r=await call(ck.ana,'GET','/api/avisos'); ok('campanita: avisos con alerta_id para ir al detalle', (r.j.avisos||[]).some(a=>a.alerta_id), (r.j.avisos||[]).length);
 
+// Parche 34: sin botón ni ruta manual de revisión en Cloudflare (solo con PERMITIR_REVISION_MANUAL en pruebas)
+r=await call(A,'POST','/api/procesar'); ok('sin la variable, /api/procesar no revisa', r.s!==200 || r.j.registradas_o_actualizadas===undefined, r.s);
+r=await call(A,'GET','/procesar'); ok('GET /procesar ya no existe', r.s!==200 || !(r.j && r.j.registradas_o_actualizadas!==undefined), r.s);
+r=await call(ck.ana,'GET','/'); ok('el tablero no tiene el botón', r.t && !r.t.includes('btn-procesar') && !r.t.includes('Revisar alertas ahora'));
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');
