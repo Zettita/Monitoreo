@@ -62,3 +62,26 @@ ASISTENTE_LOCAL=simulado node --no-warnings servidor_local.mjs prueba.sqlite
 ```
 
 En modo simulado, el asistente no razona: muestra qué datos recibió. Sirve para ver la pantalla y comprobar los permisos de cada perfil. En Windows (cmd): `set ASISTENTE_LOCAL=simulado` antes del segundo comando.
+
+## Contexto externo (parche 29, 13/11)
+
+**Qué se le puede preguntar:** "¿Hay algo de afuera que pueda afectar hoy o mañana?", "¿qué eventos hay la semana que viene?", "¿mañana es feriado?", "¿hay problemas con algún proveedor?". También aparece como pregunta sugerida en los 4 perfiles.
+
+**De dónde saca los datos** (nunca de memoria):
+
+| Fuente | Qué trae | Costo |
+|---|---|---|
+| Calendario de Helios (tabla `feriados` y `eventos_comerciales`) | Feriados, fines de semana largos, primer día hábil después, cobro de sueldos (1.º a 4.º día hábil), aguinaldo, eventos comerciales | 1 consulta a la base |
+| Páginas de estado de proveedores (Cloudflare y Twilio; se cambian con la variable `CONTEXTO_PROVEEDORES`) | Incidentes abiertos y mantenimientos de las próximas 48 h | Una vez por hora como mucho |
+| Noticias (GDELT, buscador abierto y gratuito) | Titulares de Argentina de las últimas 48 h sobre paros bancarios, caídas, cortes de luz, BCRA, billeteras | Una vez por hora como mucho |
+
+**Cómo activarlo:** correr `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (5 bloques, uno por vez) y publicar el Worker. No hace falta ninguna clave.
+
+**Variables opcionales del Worker** (Settings → Variables): `CONTEXTO_EXTERNO = apagado` (solo calendario, sin salir a internet); `CONTEXTO_PROVEEDORES = [{"nombre":"Mi proveedor","base":"https://status.miproveedor.com"}]` (páginas de estado tipo Statuspage, hasta 6); `CONTEXTO_NOTICIAS_CONSULTA` (la búsqueda de noticias, en formato GDELT).
+
+**Eventos comerciales:** Administración → Umbrales → "Eventos comerciales" → "Agregar evento". Nombre, desde, hasta, cliente y servicio (opcionales) y si se espera más o menos tráfico.
+
+**Problemas comunes:**
+- *"Cloudflare: no respondió a tiempo"*: la página de estado tardó más de 5 segundos. Se usa lo último guardado y se vuelve a probar en una hora.
+- *Las noticias no tienen que ver*: son titulares automáticos; el asistente solo debería mencionar los que afectan pagos o transferencias. Se puede afinar la búsqueda con `CONTEXTO_NOTICIAS_CONSULTA`.
+- *En la demo el calendario dice otra fecha*: el calendario usa el reloj de Helios (en la demo, el 26/10); proveedores y noticias son siempre de hoy.

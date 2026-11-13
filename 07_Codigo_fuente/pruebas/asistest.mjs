@@ -56,8 +56,8 @@ const ofrecidas=(p)=>(p.tools||[]).map(t=>t.function.name).sort();
 const PERF={};
 for (const u of ['ADMIN','ana','sol','gero']) { pedidos.length=0; guion=[()=>texto('ok')]; await call(ck[u],'POST','/api/asistente',{pregunta:'¿qué podés hacer?'}); PERF[u]=ofrecidas(pedidos[0].p); }
 console.log('     herramientas:', JSON.stringify(PERF));
-ok('gerente: solo estado, incidentes y detalle; sin lista de alertas, carga, derivación ni acciones',
-  JSON.stringify(PERF.gero)===JSON.stringify(['detalle_alerta','estado_clientes','incidentes']));
+ok('gerente: solo estado, incidentes, detalle y contexto externo; sin lista de alertas, carga, derivación ni acciones',
+  JSON.stringify(PERF.gero)===JSON.stringify(['contexto_externo','detalle_alerta','estado_clientes','incidentes']));
 ok('soporte: sus alertas y el detalle; acciones de soporte; nada del tablero',
   PERF.sol.includes('mis_alertas') && PERF.sol.includes('detalle_alerta') && PERF.sol.includes('sugerir_accion') && !PERF.sol.some(n=>['estado_clientes','alertas_abiertas','incidentes','carga_equipos','opciones_derivacion','ajustes_sugeridos'].includes(n)));
 ok('analista: tablero, seguimiento y derivación; sin Mis alertas ni umbrales',

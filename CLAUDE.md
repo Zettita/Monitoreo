@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch28.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch29.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch29.py          contexto externo del asistente: contexto_server.js (herramienta contexto_externo: calendario, proveedores,
+                        noticias; eventos comerciales en Administración > Umbrales) y enlaces en el panel del asistente
+    contexto_d1.sql     tablas contexto_externo y eventos_comerciales (02_Base_de_datos_D1/12_contexto_externo_d1.txt)
     generar_clave_push.mjs  genera la clave VAPID (secreto VAPID_JWK del Worker; no se guarda en el proyecto)
     reglas_pers.js      SQL de reglas personalizadas
     *.html              páginas (admin, mis_alertas, seguimiento, campanita, login, tema)
@@ -85,11 +88,11 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch29.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch30.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -115,6 +118,17 @@ Para un cambio nuevo: crear `patch29.py` con una función `aplicar(s)` (como los
 - Aplicado en Cloudflare el 13/11 (script 11, enlace `AI` de Workers AI, Worker publicado); el panel abre bien como Administrador. **Pendiente:** probar las preguntas sugeridas de cada perfil con el modelo real y ajustar el prompt o el modelo si hace falta.
 - **Corrección 28b (13/11):** con Workers AI, Qwen3 a veces escribía la definición de las herramientas (`<tools>…</tools>`) en vez de usarlas. Ahora: la pregunta libre lleva siempre los datos principales del perfil (`ASIST_BASE`: Soporte `mis_alertas`, Analista `alertas_abiertas`, Gerente y Administrador `estado_clientes`), se leen llamadas escritas como `<tool_call>`, y si el modelo devuelve un eco se le pide la respuesta de nuevo sin herramientas; nunca se muestra ese texto. **28c:** el Analista preguntó por horarios y clientes y el modelo dijo que no tenía acceso: ahora, según las palabras de la pregunta (`ASIST_PALABRAS`), se suman los datos que hacen falta (máximo 3, siempre dentro del perfil), `incidentes` trae `por_horario` (hora de Argentina) y el prompt describe cada herramienta y prohíbe negarse sin pedirla. Sin SQL nuevo. Respaldo del publicado en `99_Archivo_viejo/worker_antes_parche28b/`; ramas `respaldo-antes-parche-28b`, `version-parche-28b-asistente-respuestas` (intermedia, no publicada) `version-parche-28c-asistente-datos-por-pregunta` (intermedia) y `version-parche-28d-asistente-tema-y-formato` (la que se publica). **28d:** solo habla de Helios (preguntó si Maradona vivía y contestó); nunca responde de memoria cosas del mundo; no muestra `alerta_id`, nombres de campos ni etiquetas tipo `<resumen_turno>` (instrucciones + limpieza en el servidor).
 - Si se agrega una herramienta: que exija un permiso de `PERMISOS`, lea poco (caché o índice, con LIMIT) y devuelva datos ya resumidos (horas en Argentina, valores formateados) para gastar pocas neuronas.
+
+## Contexto externo del asistente (13/11, patch29) — hecho y probado; falta aplicarlo en Cloudflare
+- Herramienta `contexto_externo` (todos los perfiles; permiso `asistente`) y pregunta sugerida "¿Hay algo de afuera que pueda afectar hoy o mañana?". Trae:
+  1. **Calendario** (de la base, con el reloj de Helios): feriados, fines de semana largos, primer día hábil después, 1.º a 4.º día hábil del mes (cobro de sueldos), aguinaldo (30/6 y 18/12) y eventos comerciales.
+  2. **Proveedores**: incidentes abiertos y mantenimientos de las próximas 48 h de páginas de estado tipo Statuspage (`/api/v2/incidents/unresolved.json` y `/api/v2/scheduled-maintenances/upcoming.json`). Por defecto Cloudflare y Twilio; variable `CONTEXTO_PROVEEDORES` = `[{"nombre":"…","base":"https://…"}]` (máx. 6).
+  3. **Noticias** de Argentina de las últimas 48 h (API abierta GDELT, sin clave; variable `CONTEXTO_NOTICIAS_CONSULTA`). Máx. 8 titulares, sin repetidos, solo https.
+  4. **Eventos comerciales**: tabla `eventos_comerciales`, sección nueva en Administración > Umbrales (solo Administrador, auditoría `ALTA_EVENTO` / `BORRAR_EVENTO`). Precargados CyberMonday (2–4/11) y Black Friday (27–30/11) 2026.
+- Cuidado del plan: proveedores y noticias se guardan una hora en `contexto_externo` (2 filas) y solo se consultan cuando alguien pregunta; si fallan, se usa lo último y no se reintenta hasta la hora. 5 s de tope por pedido, ~5 pedidos externos por hora como mucho. Con `CONTEXTO_EXTERNO=apagado` solo usa el calendario. Soporte no recibe los servicios críticos de los clientes.
+- La regla 6 de las instrucciones sigue limitando el tema a Helios, pero acepta lo de afuera que afecta la operación, solo con esa herramienta y citando la fuente. El panel del asistente vuelve tocables los enlaces https (texto escapado).
+- `ASIST_ARGS` (en `asistente_server.js`): parámetros que salen de la pregunta ("este mes" → 30 días; "la semana" → 7; "mañana" → 2).
+- **Pendiente, en este orden:** (1) correr `12_contexto_externo_d1.txt`; (2) publicar el Worker; (3) preguntar "¿Hay algo de afuera que pueda afectar hoy o mañana?" con cada perfil. Respaldo en `99_Archivo_viejo/worker_antes_parche29/`, ramas `respaldo-antes-parche-29` y `version-parche-29-contexto-externo`.
 
 ## Dónde estamos (modelo nuevo, 3 etapas)
 1. **Feriados — hecho.** Tabla `feriados` (API argentinadatos), opción "silenciar en feriados" por cliente/servicio.

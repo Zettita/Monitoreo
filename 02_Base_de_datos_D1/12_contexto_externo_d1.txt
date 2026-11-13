@@ -1,0 +1,24 @@
+CONTEXTO EXTERNO PARA EL ASISTENTE (para la Console de D1: helios-monitoring-dev) — parche 29
+
+Qué hace: crea 2 tablas para que el asistente pueda responder "¿hay algo de afuera que pueda afectar hoy o mañana?":
+- contexto_externo: guarda por una hora lo que se trajo de las páginas de estado de proveedores (Cloudflare, Twilio)
+  y de las noticias. Son 2 filas; se actualizan como mucho una vez por hora y solo cuando alguien pregunta.
+- eventos_comerciales: Black Friday, CyberMonday, Hot Sale, etc. Ya quedan cargados CyberMonday y Black Friday 2026.
+
+Orden: 1) correr estos 5 bloques, uno por vez; 2) publicar 01_Worker/worker_alertas_cron.js. No hace falta /bookmark
+(son pocas escrituras). Se pueden repetir sin problema: no duplica nada. Quedan 24 tablas.
+
+--- 1. Tabla contexto_externo (lo último que se trajo de proveedores y noticias; 1 fila por fuente) ---
+CREATE TABLE IF NOT EXISTS contexto_externo ( fuente TEXT PRIMARY KEY, actualizado TEXT NOT NULL, contenido TEXT NOT NULL, error TEXT ) WITHOUT ROWID;
+
+--- 2. Tabla eventos_comerciales (Black Friday, CyberMonday, Hot Sale…; se cargan en Administración > Umbrales) ---
+CREATE TABLE IF NOT EXISTS eventos_comerciales ( id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, fecha_desde TEXT NOT NULL, fecha_hasta TEXT NOT NULL, cliente_id TEXT, servicio_id TEXT, efecto_esperado TEXT NOT NULL DEFAULT 'MAS_TRAFICO' CHECK (efecto_esperado IN ('MAS_TRAFICO', 'MENOS_TRAFICO')), nota TEXT, creado_por INTEGER REFERENCES usuarios (id), creado TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), CHECK (fecha_hasta >= fecha_desde) );
+
+--- 3. Índice por fechas de los eventos ---
+CREATE INDEX IF NOT EXISTS ix_eventos_comerciales_fechas ON eventos_comerciales (fecha_hasta, fecha_desde);
+
+--- 4. Evento ya cargado: CyberMonday 2026 (2 al 4 de noviembre) ---
+INSERT INTO eventos_comerciales (nombre, fecha_desde, fecha_hasta, efecto_esperado, nota) SELECT 'CyberMonday 2026', '2026-11-02', '2026-11-04', 'MAS_TRAFICO', 'Organiza la CACE. Muchas marcas lo extienden hasta el domingo (Cyber Week).' WHERE NOT EXISTS (SELECT 1 FROM eventos_comerciales WHERE nombre = 'CyberMonday 2026');
+
+--- 5. Evento ya cargado: Black Friday 2026 (27 al 30 de noviembre) ---
+INSERT INTO eventos_comerciales (nombre, fecha_desde, fecha_hasta, efecto_esperado, nota) SELECT 'Black Friday 2026', '2026-11-27', '2026-11-30', 'MAS_TRAFICO', 'Día central viernes 27; muchos comercios lo extienden al fin de semana y al lunes.' WHERE NOT EXISTS (SELECT 1 FROM eventos_comerciales WHERE nombre = 'Black Friday 2026');

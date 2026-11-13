@@ -451,6 +451,8 @@ const ASIST_PALABRAS = [
   [/umbral|falsa|ajust|banda|configur/i, 'ajustes_sugeridos'],
   [/\bmis?\b|tomar|pendiente|tengo/i, 'mis_alertas'],
 ];
+// Parámetros que salen de las palabras de la pregunta (por ejemplo "este mes" → 30 días)
+const ASIST_ARGS = { incidentes: (q) => /mes\b|30/i.test(q) ? { dias: 30 } : {} };
 function asistElegir(pregunta, perfil, disponibles) {
   const out = (ASIST_BASE[perfil] || []).slice();
   for (const [re, n] of ASIST_PALABRAS) if (re.test(pregunta) && !out.includes(n)) out.push(n);
@@ -568,7 +570,7 @@ async function asistResponder(env, yo, entrada) {
   const directas = [];
   if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);
   if (entrada.sugerencia) for (const n of entrada.sugerencia.herramientas) directas.push([n, (entrada.sugerencia.args || {})[n] || {}]);
-  if (!directas.length) for (const n of asistElegir(entrada.pregunta, yo.perfil, disponibles)) directas.push([n, n === 'incidentes' && /mes\b|30/i.test(entrada.pregunta) ? { dias: 30 } : {}]);
+  if (!directas.length) for (const n of asistElegir(entrada.pregunta, yo.perfil, disponibles)) directas.push([n, ASIST_ARGS[n] ? ASIST_ARGS[n](entrada.pregunta) : {}]);
   if (directas.length) {
     const datos = {};
     for (const [n, a] of directas) datos[n] = await correrHerramienta(n, a);

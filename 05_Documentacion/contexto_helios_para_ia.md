@@ -1,6 +1,6 @@
 # Helios: contexto del sistema para asistentes de IA
 
-> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **13 de noviembre de 2026** (el asistente de IA, parche 28, ya está publicado en Cloudflare), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
+> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **13 de noviembre de 2026** (el asistente de IA, parche 28, ya está publicado en Cloudflare; su contexto externo, parche 29, está hecho y probado y falta aplicarlo), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
 
 ---
 
@@ -66,6 +66,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
+- **Contexto externo del asistente (13/11, parche 29): falta aplicar.** Correr `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (tablas `contexto_externo` y `eventos_comerciales`, quedan 24 tablas) y publicar el Worker. Incluye las correcciones 28b a 28d.
 - **Corrección del asistente (13/11, parches 28b a 28d): falta publicar el Worker** (sin SQL). Arregla respuestas que mostraban `<tools>…</tools>`, negativas falsas ("no tengo acceso"), respuestas fuera de tema y etiquetas o ids internos en el texto.
 - **Asistente de IA (13/11, parche 28): aplicado.** Se corrió `02_Base_de_datos_D1/11_asistente_d1.txt` (tabla `asistente_uso`, quedan 22 tablas); en el Worker, Settings → Bindings → Add binding → **Workers AI**, nombre de variable `AI`, y se publicó `01_Worker/worker_alertas_cron.js`. El panel abre bien como Administrador; falta probar las respuestas con cada perfil. Sin el enlace, el resto funciona igual y el panel del asistente avisa que falta configurarlo. Guía: `novedades_asistente_ia.md`.
 - **Cómo verificar la base desde la consola de D1** (una línea, solo lee): `SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type = 'view') AS vistas, (SELECT COUNT(*) FROM sqlite_master WHERE name = 'ix_perfil_comportamiento_franja') AS indice_perfil, (SELECT COUNT(*) FROM feriados) AS feriados, (SELECT ahora FROM alerta_parametros WHERE id = 1) AS reloj;` → 0, 1, 23 o más, y el reloj de la demo.
@@ -109,6 +110,8 @@ Hoy pesa unos 7 MB (13 series con historia, unos 9 días). Casi todo son métric
 | `tablero_cache` · `series_estado` · `prealertas_estado` | **Cache del tablero.** Cada revisión de alertas (cron, botón, escena de la demo) y "Preparar demo" cambian `tablero_cache.revision`. La primera carga del tablero después recalcula las series de 24 h y las pre-alertas y las guarda; las demás cargas solo leen estas tablas | Las escribe el Worker; no se tocan a mano. Si una ingesta nueva carga métricas sin pasar por la revisión, tiene que marcar `revision` |
 | `suscripciones_push` | **Avisos push (parche 26, script 10).** Un dispositivo (celular o PC) que activó los avisos desde la campanita. Si el servicio de push responde que ya no existe (404/410), se borra sola; también al cerrar sesión o tocar "Desactivar" | `endpoint` (PK: la dirección del dispositivo en Google, Apple, Mozilla o Microsoft), `usuario_id`, `clave_p256dh` y `clave_auth` (claves del navegador para cifrar el contenido), `creada`, `actualizada`. Índice `ix_suscripciones_push_usuario` |
 | `asistente_uso` | **Asistente de IA (parche 28, script 11).** Cuántas preguntas hizo cada persona en cada hora (para los límites de uso). `WITHOUT ROWID` | PK (`hora` = `AAAA-MM-DDTHH` en UTC, `usuario_id`), `preguntas` |
+| `contexto_externo` | **Asistente, contexto externo (parche 29, script 12).** Lo último que se trajo de las páginas de estado de proveedores y de las noticias; 1 fila por fuente (`proveedores`, `noticias`), se renueva como mucho una vez por hora y solo cuando alguien pregunta. `WITHOUT ROWID` | `fuente` (PK), `actualizado` (UTC), `contenido` (JSON ya resumido), `error` (si la última consulta falló) |
+| `eventos_comerciales` | **Eventos comerciales (parche 29, script 12).** Días con tráfico distinto al habitual (Black Friday, CyberMonday, Hot Sale, promos de un cliente). Los carga el Administrador en Umbrales; hoy solo los usa el asistente | `id`, `nombre`, `fecha_desde`, `fecha_hasta` (`AAAA-MM-DD`, hasta 31 días), `cliente_id` y `servicio_id` (NULL = todos), `efecto_esperado` (`MAS_TRAFICO` / `MENOS_TRAFICO`), `nota`, `creado_por`, `creado`. Índice `ix_eventos_comerciales_fechas` |
 | `meta_diccionario_datos` | Diccionario de datos: `capa`, `tipo_objeto`, `objeto_nombre`, `campo_nombre`, `descripcion` | Del equipo; vacía: hay que completarla |
 
 ### Sin vistas (desde el 11/11)
@@ -250,6 +253,7 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 | `mis_alertas` (en curso, para tomar, resueltas en 24 h) | `mis_alertas` | No | No | Sí | No |
 | `detalle_alerta` (últimas ventanas, historial, casos parecidos resueltos, otros problemas del cliente) | `tablero`, o Soporte solo lo suyo o de su equipo (misma regla que el historial) | Sí | Sí | Lo suyo | Sí |
 | `ajustes_sugeridos` (posibles falsas alarmas de 30 días y umbrales configurados) | `admin_umbrales` | Sí | No | No | No |
+| `contexto_externo` (parche 29: calendario con feriados, fines de semana largos, cobro de sueldos, aguinaldo y eventos comerciales; incidentes y mantenimientos de proveedores; noticias de Argentina de 48 h) | `asistente` (los servicios críticos de los clientes, solo con `tablero`) | Sí | Sí | Sí | Sí |
 
 - **Nunca ejecuta nada.** Puede **proponer** derivar, tomar, comentar, devolver o resolver (`sugerir_accion`), solo si el perfil puede hacerlo; el servidor valida la alerta y el destino. La página muestra la propuesta con el comentario editable y un botón **"Hacerlo"**: recién con ese clic se llama a la ruta de siempre (`/api/alertas/{id}/...`), con sus permisos, historial y auditoría. El Gerente y el Administrador no reciben propuestas (no trabajan alertas); al Administrador le recomienda ajustes en texto y los hace él en Administración.
 - **Preguntas sugeridas por perfil** (traen los datos directo, una sola llamada al modelo): Soporte "¿Qué tengo pendiente y por dónde empiezo?"; Analista "Resumen del turno", "¿Qué está sin asignar y a quién lo derivo?", "¿Hay alertas relacionadas entre sí?", "¿Qué pre-alertas conviene avisar a Soporte?"; Gerente "¿Cómo está la operación ahora?", "¿Qué cliente tuvo más problemas este mes?"; Administrador "¿Qué umbrales conviene revisar?" y "¿Cómo está la operación ahora?". Las preguntas libres usan hasta 3 vueltas con el modelo y 5 herramientas.
@@ -331,6 +335,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `GET /api/push/clave` · `POST /api/push/suscribir` · `POST /api/push/desuscribir` | Avisos push: clave pública VAPID (null sin secreto o sin campanita), suscribir el dispositivo (body `{suscripcion, anterior?}`, lo que entrega `pushManager.subscribe()`), dejar de recibir (body `{endpoint}`, **pública**) |
 | `GET /sw.js` · `/manifest.webmanifest` · `/icono-192.png` · `/icono-512.png` · `/apple-touch-icon.png` · `/icono-insignia.png` · `/favicon.ico` | **Públicas:** service worker, manifiesto e íconos para instalar Helios como app |
 | `GET /api/asistente` · `POST /api/asistente` | Asistente de IA (todos los perfiles): estado, preguntas sugeridas del perfil y preguntas que quedan; preguntar con body `{pregunta, historia?}`, `{sugerencia}` o `{alerta_id}`. Devuelve `{respuesta, acciones, herramientas, restantes}`. Las `acciones` son propuestas: se ejecutan desde la página con las rutas de `/api/alertas/{id}/...`. 503 sin Workers AI, 429 al pasar los límites, 502 si el modelo falla |
+| `GET /api/admin/eventos` · `POST /api/admin/eventos` · `POST /api/admin/eventos/borrar` | Eventos comerciales (solo Administrador, parche 29). Alta: `{nombre, fecha_desde, fecha_hasta?, cliente_id?, servicio_id?, efecto_esperado, nota?}`; baja: `{id}`. Quedan en auditoría |
 | `GET /admin` · `/api/admin/usuarios`, `/equipos`, `/reglas`, `/derivacion`, `/modelo`, `/auditoria` | Administración |
 | `GET /api/admin/umbrales` · `GET /api/admin/umbrales/recomendacion?cliente=&servicio=` · `POST /api/admin/umbrales` · `POST /api/admin/umbrales/borrar` | Umbrales (solo Administrador). El POST recibe `cliente_id`, `servicio_id` (vacíos = general) y los campos de `umbrales_config` en fracciones (0,25 = 25 %, 1 = banda del modelo); vacío = hereda |
 | `GET /api/demo` · `POST /api/demo/preparar` · `POST /api/demo/siguiente` | Modo demo (`/?demo`) |
@@ -443,6 +448,7 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 - El Worker de alertas es un solo archivo. Se publica pegando el código en "Edit code" del panel (o con `wrangler deploy`), **no** con el cargador de archivos.
 - Primero se corre el SQL nuevo, después se publica el Worker.
+- **El contexto externo se consulta poco:** proveedores y noticias, como mucho una vez por hora y solo cuando alguien pregunta (caché en `contexto_externo`). Nada de cron ni de consultas en cada carga de página. El asistente nunca responde de memoria cosas del mundo: lo de afuera, solo con esa herramienta y citando la fuente.
 - **El asistente de IA solo lee y propone.** Cualquier herramienta nueva tiene que exigir el permiso de la pantalla equivalente y leer poco (caché o índice, con límite de filas); las acciones se ejecutan siempre desde la página, por las rutas de siempre.
 - **No hay vistas:** el SQL vive en el Worker. Si una consulta se repite, va como constante en el Worker, no como vista.
 
@@ -451,6 +457,19 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Contexto externo del asistente (13/11, parche 29; falta aplicar en Cloudflare)**
+
+- Se le puede preguntar al asistente "¿hay algo de afuera que pueda afectar hoy o mañana?" (también es pregunta sugerida en los 4 perfiles). Responde con una herramienta nueva, `contexto_externo`, y cruza lo de afuera con las alertas y los servicios del cliente:
+  1. **Calendario** (de la base, gratis): feriados, fines de semana largos, el primer día hábil después, 1.º a 4.º día hábil del mes (cobro de sueldos), aguinaldo y eventos comerciales.
+  2. **Proveedores**: incidentes abiertos y mantenimientos de las próximas 48 h (páginas de estado públicas; por defecto Cloudflare y Twilio, configurable con `CONTEXTO_PROVEEDORES`).
+  3. **Noticias** de Argentina de las últimas 48 h (buscador abierto GDELT): paros bancarios, caídas, cortes de luz, BCRA, billeteras. Se muestran con medio, fecha y enlace, aclarando que no están verificadas por Helios.
+  4. **Eventos comerciales**: sección nueva en Administración > Umbrales. Ya cargados CyberMonday (2 al 4/11) y Black Friday (27 al 30/11) de 2026.
+- **Cuidado del plan gratuito:** proveedores y noticias se guardan una hora (`contexto_externo`, 2 filas) y solo se consultan cuando alguien pregunta; como mucho ~5 pedidos externos por hora, 5 s de tope cada uno. Si una fuente falla, usa lo último guardado y lo avisa. `CONTEXTO_EXTERNO=apagado` deja solo el calendario.
+- Sigue limitado a Helios: lo de afuera solo si afecta la operación y con la herramienta (nunca de memoria). Soporte no recibe la criticidad de los servicios de los clientes. Los enlaces del panel se pueden tocar (solo https; el resto sigue escapado).
+- Tablas nuevas `contexto_externo` y `eventos_comerciales` (script `12_contexto_externo_d1.txt`): quedan **24 tablas**.
+- Probado: `ctxtest.mjs` (35 controles, con internet y modelo simulados), la demo igual y las 10 pruebas; pantalla de eventos en PC y celular.
+- Respaldo: Worker anterior (28d) en `99_Archivo_viejo/worker_antes_parche29/`, ramas `respaldo-antes-parche-29` y `version-parche-29-contexto-externo`.
 
 **Corrección del asistente (13/11, parche 28b)**
 
@@ -537,6 +556,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 | `worker_alertas_cron.js` | Worker de alertas completo (páginas, API, proceso, demo). Es el que se publica |
 | `10_avisos_push_d1.txt` | Tabla `suscripciones_push` para los avisos push (ya corrido el 12/11) |
 | `11_asistente_d1.txt` | Tabla `asistente_uso` para los límites del asistente de IA (parche 28; ya corrido el 13/11) |
+| `12_contexto_externo_d1.txt` | Tablas `contexto_externo` y `eventos_comerciales` (parche 29; falta correrlo) |
 | `novedades_asistente_ia.md` | Asistente de IA: cómo activarlo en Cloudflare, qué responde a cada perfil, límites y problemas comunes |
 | `novedades_avisos_push_y_app.md` | Avisos push, app instalable y logo nuevo: guía por dispositivo, problemas comunes, diagnóstico y cómo funciona |
 | `09_modelo_v2_d1.txt` | Etapa 2 del modelo nuevo (ya corrido el 11/11): índice del perfil, borra las vistas y las tablas sin uso, y vacía alertas y métricas (la demo arranca sin datos recibidos). Se corre antes de publicar el Worker. Reemplaza a `carga_baseline_demo_consola.txt` |
@@ -582,6 +602,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - [x] Prioridad P1–P4 en "Mis alertas" y en Seguimiento.
 - [ ] Validar que los equipos tengan solo gente de Soporte (hoy se puede sumar un analista, que no va a poder tomar lo que se derive al equipo).
 - [x] Asistente de IA con Workers AI, por perfil, que propone y no ejecuta (13/11, parche 28). Publicado el 13/11. Falta: probar la calidad de las respuestas con el modelo real; armar un set de 20 o 30 preguntas de prueba.
+- [ ] Contexto externo del asistente (parche 29): aplicar en Cloudflare y probar con las fuentes reales. Más adelante: que los eventos comerciales también ajusten lo esperado (hoy solo los usa el asistente).
 - [ ] Ideas de IA ya ofrecidas: resumen del incidente en lenguaje natural, índice de riesgo por cliente y, más adelante, un modelo de machine learning para comparar contra la línea base.
 - [ ] Simulación en vivo para la demo: botones que provoquen una caída, suban los rechazos o corten el envío, con ventanas de 1 minuto.
 - [ ] Actualizar la presentación de venta y el guion a los clientes `CLI_00x`.
