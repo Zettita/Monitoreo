@@ -286,7 +286,7 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 
 **Estilo:** base neutra tipo Atlassian / InvGate (tipografía del sistema, bordes chicos, etiquetas de estado) con color principal verde azulado `#0F766E` (claro) / `#2DD4BF` (oscuro). Funciona en el celular sin desplazamiento horizontal.
 
-**Umbrales (Administración):** valores generales + excepciones por cliente o por cliente y servicio. El diálogo muestra qué espera el modelo para ese alcance (tráfico, tasas, latencia, demora de llegada), cómo quedaría la banda con el porcentaje elegido y un botón "Usar lo recomendado". Desde el parche 27 (12/11) cada campo explica en palabras simples qué hace y muestra un ejemplo "En la práctica" que se actualiza al escribir (por ejemplo: "si se esperan 537 operaciones, es Importante con 403 o menos"; "se toleran hasta 2 ventanas de 15 minutos con problemas por día"). Validaciones: Grave tiene que ser mayor que Importante; bandas entre 50 % y 300 %. Cada cambio marca el tablero para recalcular y queda en auditoría.
+**Umbrales (Administración):** valores generales + excepciones por cliente o por cliente y servicio. El diálogo muestra qué espera el modelo para ese alcance (tráfico, tasas, latencia, demora de llegada), cómo quedaría la banda con el porcentaje elegido y un botón "Usar lo recomendado". Desde el parche 31 (14/11) la pestaña y el diálogo empiezan con "Cómo decide Helios" en 4 pasos (1 lo normal y su margen, 2 ¿hay alerta?, 3 ¿qué tan grave?, 4 ¿qué se atiende primero?), los grupos del diálogo siguen ese orden y cada campo dice qué pasa si se sube o se baja. Desde el parche 27 (12/11) cada campo explica en palabras simples qué hace y muestra un ejemplo "En la práctica" que se actualiza al escribir (por ejemplo: "si se esperan 537 operaciones, es Importante con 403 o menos"; "se toleran hasta 2 ventanas de 15 minutos con problemas por día"). Validaciones: Grave tiene que ser mayor que Importante; bandas entre 50 % y 300 %. Cada cambio marca el tablero para recalcular y queda en auditoría.
 
 ---
 
@@ -469,6 +469,11 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Tono profesional y Umbrales explicado (14/11, parche 31; se publica junto con el 30, sin SQL)**
+
+- La app ya no nombra a la persona con "vos" ni "tuyo": "Resuelta por Sol Porte" (antes "La resolvió vos"), "En curso: Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en las listas, "alertas asignadas" en el menú, sin "Hola, Sol.". Las indicaciones siguen en rioplatense ("Elegí", "Tocá"). Mensajes del servidor: "asignada a tu usuario" en vez de "asignada a vos". **Regla para lo que venga:** no usar "vos"/"tuyo" para referirse a quien usa la app.
+- Umbrales: recuadro "Cómo decide Helios" en 4 pasos en la pestaña y en el diálogo; grupos del diálogo numerados en ese orden (1 Sensibilidad, 2 Llegada de datos y feriados, 3 Gravedad, 4 Importancia); cada campo con "↑ Si lo subís: … ↓ Si lo bajás: …"; tarjetas de la pestaña en frases simples y numeradas.
 
 **Ticketera: detalle de cada alerta, evidencia y resolución con causa (14/11, parche 30; falta aplicarlo en Cloudflare)**
 
