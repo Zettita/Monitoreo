@@ -35,6 +35,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 - `Helios_inventario_de_tablas.docx` — inventario y detalle de todas las tablas (estilo de los documentos del equipo).
 - `contexto_helios_para_ia.md` — contexto completo del proyecto para pasarle a otra IA.
 - `novedades_avisos_push_y_app.md` — avisos push, app instalable y logo nuevo (12/11): guía por dispositivo y problemas comunes.
+- `novedades_avisos_teams.md` — avisos en un canal de Teams (13/11): cómo crear el flujo de Workflows, cargar el secreto `TEAMS_WEBHOOK` y probarlo.
 - `novedades_asistente_ia.md` — asistente de IA (13/11): cómo activarlo, qué responde a cada perfil, límites y problemas comunes.
 - `demo_alertas.pptx`, `demo_alertas_paso_a_paso.pptx` — presentaciones de la demo.
 
@@ -42,7 +43,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 29 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 30 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
 - `word/` — helper para armar los Word con el estilo de la compañera.

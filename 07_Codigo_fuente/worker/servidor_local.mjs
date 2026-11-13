@@ -59,6 +59,7 @@ const AI_SIMULADO = {
 const env = {
   AI: process.env.ASISTENTE_LOCAL === 'simulado' ? AI_SIMULADO : undefined,
   VAPID_JWK: process.env.VAPID_JWK || fs.readFileSync(archivoClave, 'utf8').trim(),
+  TEAMS_WEBHOOK: process.env.TEAMS_WEBHOOK || undefined,   // avisos en Teams (parche 30): dirección del flujo de Workflows
   DB: {
     prepare: preparar,
     async batch(sts) { db.exec('BEGIN'); try { const r = sts.map((s) => s._exec()); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } },

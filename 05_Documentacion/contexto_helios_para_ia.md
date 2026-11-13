@@ -51,6 +51,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 | Cron Trigger | **Apagado** (se quitó para no gastar lecturas). Si se vuelve a configurar: cada 15 min (`5-59/15 * * * *`) | Con `alerta_parametros.ahora` con fecha (reloj simulado) no procesa |
 | `worker-api-bi` | **Ya no se usa** (sin Power BI desde el 11/11): hay que borrarlo del panel. Su código quedó en `99_Archivo_viejo/power_bi/` | — |
 | Avisos push (Web Push) | Los avisos de la campanita llegan al celular o la PC aunque Helios esté cerrado (parche 26) | Estándar de los navegadores, gratis: los entregan Google (Chrome, Edge en Android, Samsung), Apple (iPhone con Helios instalado), Mozilla o Microsoft. El Worker firma con la clave VAPID (secreto `VAPID_JWK`) y cifra el contenido |
+| Avisos en Teams (parche 30) | Los avisos importantes llegan como mensaje a un canal de Teams | Flujo de **Workflows** de Teams ("Publicar en un canal cuando se recibe una solicitud de webhook"); su dirección va en el secreto `TEAMS_WEBHOOK`. Gratis con Microsoft 365 |
 | Workers AI (asistente, parche 28) | Modelo de lenguaje del asistente de IA. Enlace (binding) `AI` del Worker; modelo en la variable `ASISTENTE_MODELO` (por defecto `@cf/qwen/qwen3-30b-a3b-fp8`) | Cupo gratuito: 10.000 neuronas por día para toda la cuenta. Una pregunta usa unas 30 a 70 neuronas con ese modelo: el Worker limita a 150 preguntas por día y 20 por persona por hora |
 | D1 `helios-monitoring-dev` | Toda la persistencia | SQLite administrado. En la cuenta hay otra base, `cliente-demo-transaccional-dev`, que este trabajo no usa |
 | Perfil de comportamiento (modelo v2) | Esperado, mínimo y máximo por serie × día de la semana × franja de 15 min × tercio del mes (ver sección 6) | Se entrena fuera de D1 (PostgreSQL o PGlite) y se carga con `perfil_comportamiento_d1.txt` |
@@ -66,6 +67,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
+- **Avisos en Teams (13/11, parche 30): listo para publicar** (sin SQL): cargar el secreto `TEAMS_WEBHOOK` (dirección de un flujo de Workflows del canal) y publicar el Worker. Guía: `novedades_avisos_teams.md`.
 - **Ajustes después de las pruebas reales (13/11, parche 29e): publicado el 13/11** (sin SQL): respuestas más cortas y en frases, sin asignar bien separado de asignada sin tomar, botón Tomar para Soporte, umbrales explicados, contexto externo en español, con fecha real y Qué vigilar concreto.
 - **Enlaces cortos (13/11, parche 29d): publicado y probado** con Workers AI: respuesta completa, enlaces que funcionan y filtrada a Argentina.
 - **Noticias y filtro por país (13/11, parche 29c): publicado.**
@@ -74,7 +76,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Corrección del asistente (13/11, parches 28b a 28d): publicada** junto con el parche 29. Arregla respuestas que mostraban `<tools>…</tools>`, negativas falsas ("no tengo acceso"), respuestas fuera de tema y etiquetas o ids internos en el texto.
 - **Asistente de IA (13/11, parche 28): aplicado.** Se corrió `02_Base_de_datos_D1/11_asistente_d1.txt` (tabla `asistente_uso`, quedan 22 tablas); en el Worker, Settings → Bindings → Add binding → **Workers AI**, nombre de variable `AI`, y se publicó `01_Worker/worker_alertas_cron.js`. El panel abre bien como Administrador; falta probar las respuestas con cada perfil. Sin el enlace, el resto funciona igual y el panel del asistente avisa que falta configurarlo. Guía: `novedades_asistente_ia.md`.
 - **Cómo verificar la base desde la consola de D1** (una línea, solo lee): `SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type = 'view') AS vistas, (SELECT COUNT(*) FROM sqlite_master WHERE name = 'ix_perfil_comportamiento_franja') AS indice_perfil, (SELECT COUNT(*) FROM feriados) AS feriados, (SELECT ahora FROM alerta_parametros WHERE id = 1) AS reloj;` → 0, 1, 23 o más, y el reloj de la demo.
-- **Código fuente:** repositorio privado en GitHub `Zettita/Monitoreo` (rama `main`, desde el 12/11), compartido con Ale; cada cambio probado se sube ahí junto con este archivo actualizado, dejando siempre respaldo de la versión anterior (copia en `99_Archivo_viejo/` y rama `respaldo-antes-parche-NN`) y de la nueva (rama `version-parche-NN-<tema>`). El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 29) y se prueba con la demo de 19 escenas y 10 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
+- **Código fuente:** repositorio privado en GitHub `Zettita/Monitoreo` (rama `main`, desde el 12/11), compartido con Ale; cada cambio probado se sube ahí junto con este archivo actualizado, dejando siempre respaldo de la versión anterior (copia en `99_Archivo_viejo/` y rama `respaldo-antes-parche-NN`) y de la nueva (rama `version-parche-NN-<tema>`). El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 30) y se prueba con la demo de 19 escenas y 12 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
 
 ---
 
@@ -239,6 +241,8 @@ Nadie recibe aviso de lo que hizo él mismo. El Gerente y el Administrador no ti
 - Solo se aceptan direcciones de servicios de push conocidos (Google, Apple, Mozilla, Microsoft).
 - Mail, SMS o app propia: pendiente (lo investiga la compañera); se engancharían en el mismo punto que el push.
 
+**Avisos en Teams** (parche 30, 13/11): con el secreto `TEAMS_WEBHOOK`, después de cada pedido que crea avisos se manda **un** mensaje a un canal de Teams con los hechos nuevos: grave sin asignar (en rojo), asignada, pre-alerta avisada a Soporte, devuelta y resuelta (los comentarios y "tomar" no). Agrupa por tipo y alerta, así una derivación a un equipo de 3 personas es un solo mensaje que dice a quiénes les llegó; hasta 6 hechos por mensaje. Tarjeta adaptable con botón "Abrir Helios" (`/inicio`). Solo direcciones de Microsoft; si Teams falla, la acción igual se hace. Guía: `novedades_avisos_teams.md`.
+
 ---
 
 ### Asistente de IA (parche 28, 13/11)
@@ -339,6 +343,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `GET /api/push/clave` · `POST /api/push/suscribir` · `POST /api/push/desuscribir` | Avisos push: clave pública VAPID (null sin secreto o sin campanita), suscribir el dispositivo (body `{suscripcion, anterior?}`, lo que entrega `pushManager.subscribe()`), dejar de recibir (body `{endpoint}`, **pública**) |
 | `GET /sw.js` · `/manifest.webmanifest` · `/icono-192.png` · `/icono-512.png` · `/apple-touch-icon.png` · `/icono-insignia.png` · `/favicon.ico` | **Públicas:** service worker, manifiesto e íconos para instalar Helios como app |
 | `GET /api/asistente` · `POST /api/asistente` | Asistente de IA (todos los perfiles): estado, preguntas sugeridas del perfil y preguntas que quedan; preguntar con body `{pregunta, historia?}`, `{sugerencia}` o `{alerta_id}`. Devuelve `{respuesta, acciones, herramientas, restantes}`. Las `acciones` son propuestas: se ejecutan desde la página con las rutas de `/api/alertas/{id}/...`. 503 sin Workers AI, 429 al pasar los límites, 502 si el modelo falla |
+| `GET /api/admin/teams` · `POST /api/admin/teams/probar` | Avisos en Teams (solo Administrador, parche 30): estado (`configurado`, `cargado`) y aviso de prueba al canal (auditoría `TEAMS_PRUEBA`) |
 | `GET /api/admin/eventos` · `POST /api/admin/eventos` · `POST /api/admin/eventos/borrar` | Eventos comerciales (solo Administrador, parche 29). Alta: `{nombre, fecha_desde, fecha_hasta?, cliente_id?, servicio_id?, efecto_esperado, nota?}`; baja: `{id}`. Quedan en auditoría |
 | `GET /admin` · `/api/admin/usuarios`, `/equipos`, `/reglas`, `/derivacion`, `/modelo`, `/auditoria` | Administración |
 | `GET /api/admin/umbrales` · `GET /api/admin/umbrales/recomendacion?cliente=&servicio=` · `POST /api/admin/umbrales` · `POST /api/admin/umbrales/borrar` | Umbrales (solo Administrador). El POST recibe `cliente_id`, `servicio_id` (vacíos = general) y los campos de `umbrales_config` en fracciones (0,25 = 25 %, 1 = banda del modelo); vacío = hereda |
@@ -461,6 +466,15 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Avisos en Teams (13/11, parche 30; sin SQL, falta publicar)**
+
+- Para la demo, un canal general de Teams recibe los avisos importantes: grave sin asignar (en rojo), asignada, pre-alerta avisada a Soporte, devuelta y resuelta. Un mensaje por acción (no uno por persona), con la tarjeta del problema y "Abrir Helios".
+- Los Incoming Webhook de Office 365 dejaron de funcionar en mayo de 2026: se usa un flujo de **Workflows** de Teams y su dirección va en el secreto `TEAMS_WEBHOOK`. Sin el secreto no cambia nada.
+- Administración > Equipos: recuadro "Avisos en Teams" con el estado y "Mandar aviso de prueba".
+- Partes tocadas (`patch30.py`): `teams_server.js` antes de `const TRABAJADOR`; el `fetch` y el `scheduled` (al lado del push); la ruta `/api/admin/teams`; el recuadro y su JS en `ADMIN_HTML`; la etiqueta de auditoría `TEAMS_PRUEBA`.
+- Probado: la demo igual, las 11 pruebas y `teamstest.mjs` nueva (sin secreto no hace nada, direcciones ajenas rechazadas, un mensaje por acción, tipos que van y que no, formato de tarjeta, prueba desde Administración y permisos, costo de 2 consultas, si Teams falla la acción igual se hace).
+- Respaldo: Worker anterior (29e) en `99_Archivo_viejo/worker_antes_parche30/`, ramas `respaldo-antes-parche-30` y `version-parche-30-avisos-teams`.
 
 **Asistente: ajustes después de probar todas las preguntas (13/11, parche 29e; sin SQL, publicado el 13/11)**
 
@@ -588,6 +602,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 | `10_avisos_push_d1.txt` | Tabla `suscripciones_push` para los avisos push (ya corrido el 12/11) |
 | `11_asistente_d1.txt` | Tabla `asistente_uso` para los límites del asistente de IA (parche 28; ya corrido el 13/11) |
 | `12_contexto_externo_d1.txt` | Tablas `contexto_externo` y `eventos_comerciales` (parche 29; ya corrido el 13/11) |
+| `novedades_avisos_teams.md` | Avisos en Teams: cómo crear el flujo de Workflows en el canal, cargar el secreto y probarlo; problemas comunes |
 | `novedades_asistente_ia.md` | Asistente de IA: cómo activarlo en Cloudflare, qué responde a cada perfil, límites y problemas comunes |
 | `novedades_avisos_push_y_app.md` | Avisos push, app instalable y logo nuevo: guía por dispositivo, problemas comunes, diagnóstico y cómo funciona |
 | `09_modelo_v2_d1.txt` | Etapa 2 del modelo nuevo (ya corrido el 11/11): índice del perfil, borra las vistas y las tablas sin uso, y vacía alertas y métricas (la demo arranca sin datos recibidos). Se corre antes de publicar el Worker. Reemplaza a `carga_baseline_demo_consola.txt` |
@@ -643,7 +658,8 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Código en Git: GitHub privado `Zettita/Monitoreo` (12/11).
 - [ ] Ambientes QA y producción, copias de seguridad.
 - [x] Avisos push con Helios cerrado e instalar como app (12/11, parche 26; publicado).
-- [ ] Avisos por Teams con webhook (etapa 5). Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
+- [x] Avisos en un canal general de Teams (13/11, parche 30). Más adelante: un canal por equipo o mensajes directos (app en Azure + Graph).
+- [ ] Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
 - [x] Perfiles: Gerente de lectura con Panorama, Analista deriva y avisa pre-alertas, Soporte solo con sus tickets, Administrador orientado a la configuración (11/11).
 - [x] Criticidad por servicio, objetivo de disponibilidad y umbrales configurables por cliente (11/11).
 - [ ] Definir advertencia vs. alerta (por ejemplo, `MEDIA` y `BAJA` = advertencia).

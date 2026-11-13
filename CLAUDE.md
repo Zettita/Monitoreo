@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch29.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch30.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -53,6 +53,8 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch29.py          contexto externo del asistente: contexto_server.js (herramienta contexto_externo: calendario, proveedores,
                         noticias; eventos comerciales en Administración > Umbrales) y enlaces en el panel del asistente
     contexto_d1.sql     tablas contexto_externo y eventos_comerciales (02_Base_de_datos_D1/12_contexto_externo_d1.txt)
+    patch30.py          avisos en un canal de Teams: teams_server.js (tarjeta adaptable a un flujo de Workflows; secreto
+                        TEAMS_WEBHOOK) y recuadro "Avisos en Teams" con aviso de prueba en Administración > Equipos
     generar_clave_push.mjs  genera la clave VAPID (secreto VAPID_JWK del Worker; no se guarda en el proyecto)
     reglas_pers.js      SQL de reglas personalizadas
     *.html              páginas (admin, mis_alertas, seguimiento, campanita, login, tema)
@@ -88,11 +90,11 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest teamstest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch30.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch31.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -133,6 +135,15 @@ Para un cambio nuevo: crear `patch30.py` con una función `aplicar(s)` (como los
 - **29e (13/11, publicado el 13/11; sin SQL):** ajustes después de probar todas las preguntas sugeridas con los 4 perfiles y el modelo real. Cada pregunta sugerida lleva una **guía de respuesta** (`guia` en `ASIST_SUGERENCIAS`) y el servidor arma los datos en frases: `alertas_abiertas` trae `cuantas` (sin asignar / asignadas sin tomar / en curso / demoradas; antes decía "sin asignar" de una asignada), todas las alertas traen `lleva_en_este_estado` y `demorada` (15 min / 30 min / 2 h, como Seguimiento), `estado_clientes` trae frases, clientes nuevos y `resto` contado (no lista los que están bien), `ajustes_sugeridos` explica que 100 % es la banda del modelo y la fila general ya no parece "el cliente general". Soporte recibe el botón "Tomar" armado por el servidor (`proponer`). Reglas de voseo y sin títulos `###` (el servidor los pasa a negrita). Contexto externo: títulos en español armados en el servidor (`ctxTituloEs`, el original queda en `titulo`), en Helios solo Workers en ejecución, D1 y Workers AI (`CTX_NO_HELIOS` saca Event Subscriptions, Builds, Logs, etc.), proveedores con nombres cortos, **Qué vigilar armado en el servidor** y **calendario con la fecha real** cuando está el reloj de la demo (`CONTEXTO_CALENDARIO=demo` vuelve al reloj de la demo). Respaldo en `99_Archivo_viejo/worker_antes_parche29e/`, ramas `respaldo-antes-parche-29e` y `version-parche-29e-ajustes-pruebas-reales`.
 - **29c (13/11, publicado):** segunda prueba real: el modelo copió "Helios (solo si hay algo)" como título, se colaron Twilio Costa Rica y Colombia (el componente decía "Latin America") y las noticias dieron "no respondió a tiempo". Ahora gana el país del título; las noticias salen de **Google Noticias** (RSS de Argentina en español, sin clave; `CONTEXTO_NOTICIAS_CONSULTA`) con GDELT de respaldo; si una fuente falló, se reintenta a los 10 minutos (no a la hora); y `como_usarlo` pide títulos exactos (**Helios** solo si hay algo, **Calendario**, **Proveedores**, **Noticias**, **Qué vigilar**). Respaldo en `99_Archivo_viejo/worker_antes_parche29c/`, ramas `respaldo-antes-parche-29c` y `version-parche-29c-noticias-y-filtro`.
 - Aplicado en Cloudflare el 13/11 (script 12 y Worker, que incluye 28b–28d). **Pendiente:** preguntar "¿Hay algo de afuera que pueda afectar hoy o mañana?" con cada perfil. Respaldo en `99_Archivo_viejo/worker_antes_parche29/`, ramas `respaldo-antes-parche-29` y `version-parche-29-contexto-externo`.
+
+## Avisos en Teams (13/11, patch30) — para publicar (sin SQL)
+- Un canal general de Teams (para la demo): los avisos de grave sin asignar, asignada, pre-alerta avisada, devuelta y resuelta llegan como tarjeta (comentarios y "tomar" no). **Un mensaje por acción**, no uno por persona (agrupa por tipo + alerta; hasta 6 hechos por mensaje).
+- Se conecta con un flujo de **Workflows** de Teams ("Publicar en un canal cuando se recibe una solicitud de webhook"; los Incoming Webhook de Office 365 dejaron de andar en mayo de 2026). Su dirección va en el secreto **`TEAMS_WEBHOOK`** del Worker. Sin el secreto no hace nada ni consulta la base. Solo acepta direcciones de Microsoft (`logic.azure.com`, `powerplatform.com`, `powerautomate.com`, `azure-apim.net`).
+- Mismo punto de enganche que el push: wrapper de `fetch` (POST) y `scheduled`; 2 consultas más por POST y 1 pedido externo solo si hubo avisos; si Teams falla, la acción igual se hace.
+- Administración > Equipos: recuadro "Avisos en Teams" con estado y "Mandar aviso de prueba" (`GET /api/admin/teams`, `POST /api/admin/teams/probar`, permiso `admin_equipos`, auditoría `TEAMS_PRUEBA`).
+- Guía: `05_Documentacion/novedades_avisos_teams.md`. Prueba: `pruebas/teamstest.mjs`. `servidor_local.mjs` lee `TEAMS_WEBHOOK` del entorno.
+- Respaldo en `99_Archivo_viejo/worker_antes_parche30/`, ramas `respaldo-antes-parche-30` y `version-parche-30-avisos-teams`.
+- Más adelante: un canal por equipo (columna en `equipos`) o mensajes directos (app en Azure + Microsoft Graph).
 
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
 Tipo de impacto (degradación / parcial / caída), servicios de acceso y correlación, coeficientes, segmentos, registro de incidentes y problemas con causa, SLAs por prioridad con escalamiento, SLO y ventanas de mantenimiento. **Nada implementado.** Falta que Hugo mande: lista de servicios con los de acceso marcados, ejemplo de coeficientes reales, cómo distingue degradación / parcial / caída, SLAs y escalamiento por prioridad, lista de causas, la foto del incidente de login y el documento que prometió. Detalle en la sección 18 de `contexto_helios_para_ia.md`. Si alguien pide implementar algo de esto, primero preguntar si ya llegaron esas definiciones.
