@@ -6,4 +6,4 @@ Para volver atrás en Cloudflare: Workers › `worker-alertas-cron` › Edit cod
 No hace falta deshacer nada en D1: la tabla `asistente_uso` (script 11) puede quedar, este Worker no la usa.
 Otra opción: en el panel del Worker, Deployments, volver a la versión anterior.
 
-En Git, todo el proyecto como estaba antes del parche 28 queda en la etiqueta `antes-parche-28`.
+En Git, todo el proyecto como estaba antes del parche 28 queda en la rama `respaldo-antes-parche-28` (commit `c77c542`).
