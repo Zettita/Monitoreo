@@ -169,6 +169,14 @@ ok('el sistema le explica al modelo qué tiene cada herramienta y que no se nieg
 pedidos.length=0; guion=[()=>texto('ok')];
 r=await call(ck.gero,'POST','/api/asistente',{pregunta:'¿Quién tiene las alertas y cómo está la carga de los equipos?'});
 ok('gerente: las palabras de la pregunta no le suman datos fuera de su perfil', !r.j.herramientas.includes('carga_equipos') && !/carga_equipos|alertas_abiertas/.test(pedidos[0].p.messages.at(-1).content.split('Datos de Helios')[1]||''), r.j.herramientas);
+// Caso real (13/11): "Resumen del turno" salió con <resumen_turno> y el id interno de la alerta
+guion=[()=>texto('<resumen_turno>\n- **Alertas abiertas:** 1 problema.\n- **ID:** a364956e3e8f895406812102cfad988d\n- **Problema:** Suben los rechazos en CLI_004 (a364956e3e8f895406812102cfad988d)\n</resumen_turno>')];
+r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'resumen_turno'});
+ok('sin etiquetas ni id interno en la respuesta', !/<\/?resumen|[0-9a-f]{32}|\*\*ID/.test(r.j.respuesta) && /Suben los rechazos en CLI_004/.test(r.j.respuesta), r.j.respuesta);
+// Caso real (13/11): preguntó si Maradona sigue vivo y respondió. Las instrucciones lo limitan a Helios
+pedidos.length=0; guion=[()=>texto('Solo puedo ayudarte con la operación y las alertas de Helios.')];
+r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿Maradona sigue vivo?'});
+ok('las instrucciones limitan el tema a Helios y prohíben responder de memoria', /Solo hablás de Helios/.test(pedidos[0].p.messages[0].content) && /Nunca respondas de memoria/.test(pedidos[0].p.messages[0].content));
 for (const [u,h] of [['ana','alertas_abiertas'],['gero','estado_clientes'],['ADMIN','estado_clientes']]) {
   pedidos.length=0; guion=[()=>texto('ok')];
   r=await call(ck[u],'POST','/api/asistente',{pregunta:'hola'});
