@@ -470,6 +470,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Recuadro "Urgente" del tablero con el estado real (14/11, parche 32; sin SQL, falta publicar)**
+
+- Arriba del tablero, el problema más urgente decía "Sin asignar" si nadie había tomado la alerta, aunque estuviera asignada (por ejemplo, a soporte1). Ahora muestra lo mismo que la lista: "En curso: X", "Asignada a X (equipo Y), sin tomar", "Asignada al equipo Y, sin tomar", "Devuelta al analista" o "Sin asignar".
+
 **Tono profesional y Umbrales explicado (14/11, parche 31; sin SQL, publicado el 14/11 junto con el 30)**
 
 - La app ya no nombra a la persona con "vos" ni "tuyo": "Resuelta por Sol Porte" (antes "La resolvió vos"), "En curso: Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en las listas, "alertas asignadas" en el menú, sin "Hola, Sol.". Las indicaciones siguen en rioplatense ("Elegí", "Tocá"). Mensajes del servidor: "asignada a tu usuario" en vez de "asignada a vos". **Regla para lo que venga:** no usar "vos"/"tuyo" para referirse a quien usa la app.
