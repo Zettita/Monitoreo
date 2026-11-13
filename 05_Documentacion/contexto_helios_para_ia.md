@@ -1,6 +1,6 @@
 # Helios: contexto del sistema para asistentes de IA
 
-> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **13 de noviembre de 2026** (el asistente de IA, parche 28, ya está publicado en Cloudflare; su contexto externo, parche 29, está hecho y probado y falta aplicarlo), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
+> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **13 de noviembre de 2026** (el asistente de IA, parche 28, ya está publicado en Cloudflare; y su contexto externo, parche 29, también), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
 
 ---
 
@@ -66,11 +66,11 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
-- **Contexto externo del asistente (13/11, parche 29): falta aplicar.** Correr `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (tablas `contexto_externo` y `eventos_comerciales`, quedan 24 tablas) y publicar el Worker. Incluye las correcciones 28b a 28d.
-- **Corrección del asistente (13/11, parches 28b a 28d): falta publicar el Worker** (sin SQL). Arregla respuestas que mostraban `<tools>…</tools>`, negativas falsas ("no tengo acceso"), respuestas fuera de tema y etiquetas o ids internos en el texto.
+- **Contexto externo del asistente (13/11, parche 29): aplicado.** Se corrió `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (tablas `contexto_externo` y `eventos_comerciales`, 24 tablas, 2 eventos cargados) y se publicó el Worker, que incluye las correcciones 28b a 28d. Falta probar las respuestas con las fuentes reales.
+- **Corrección del asistente (13/11, parches 28b a 28d): publicada** junto con el parche 29. Arregla respuestas que mostraban `<tools>…</tools>`, negativas falsas ("no tengo acceso"), respuestas fuera de tema y etiquetas o ids internos en el texto.
 - **Asistente de IA (13/11, parche 28): aplicado.** Se corrió `02_Base_de_datos_D1/11_asistente_d1.txt` (tabla `asistente_uso`, quedan 22 tablas); en el Worker, Settings → Bindings → Add binding → **Workers AI**, nombre de variable `AI`, y se publicó `01_Worker/worker_alertas_cron.js`. El panel abre bien como Administrador; falta probar las respuestas con cada perfil. Sin el enlace, el resto funciona igual y el panel del asistente avisa que falta configurarlo. Guía: `novedades_asistente_ia.md`.
 - **Cómo verificar la base desde la consola de D1** (una línea, solo lee): `SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type = 'view') AS vistas, (SELECT COUNT(*) FROM sqlite_master WHERE name = 'ix_perfil_comportamiento_franja') AS indice_perfil, (SELECT COUNT(*) FROM feriados) AS feriados, (SELECT ahora FROM alerta_parametros WHERE id = 1) AS reloj;` → 0, 1, 23 o más, y el reloj de la demo.
-- **Código fuente:** repositorio privado en GitHub `Zettita/Monitoreo` (rama `main`, desde el 12/11), compartido con Ale; cada cambio probado se sube ahí junto con este archivo actualizado, dejando siempre respaldo de la versión anterior (copia en `99_Archivo_viejo/` y rama `respaldo-antes-parche-NN`) y de la nueva (rama `version-parche-NN-<tema>`). El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 28) y se prueba con la demo de 19 escenas y 10 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
+- **Código fuente:** repositorio privado en GitHub `Zettita/Monitoreo` (rama `main`, desde el 12/11), compartido con Ale; cada cambio probado se sube ahí junto con este archivo actualizado, dejando siempre respaldo de la versión anterior (copia en `99_Archivo_viejo/` y rama `respaldo-antes-parche-NN`) y de la nueva (rama `version-parche-NN-<tema>`). El Worker se genera en `07_Codigo_fuente/worker` con `build.py` (Worker original + `demo_server.js` + parches 9 a 29) y se prueba con la demo de 19 escenas y 10 pruebas por módulo; `servidor_local.mjs` lo corre en la PC (Node 22.5+ con `node:sqlite`) sin Cloudflare.
 
 ---
 
@@ -458,7 +458,7 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Contexto externo del asistente (13/11, parche 29; falta aplicar en Cloudflare)**
+**Contexto externo del asistente (13/11, parche 29; publicado en Cloudflare)**
 
 - Se le puede preguntar al asistente "¿hay algo de afuera que pueda afectar hoy o mañana?" (también es pregunta sugerida en los 4 perfiles). Responde con una herramienta nueva, `contexto_externo`, y cruza lo de afuera con las alertas y los servicios del cliente:
   1. **Calendario** (de la base, gratis): feriados, fines de semana largos, el primer día hábil después, 1.º a 4.º día hábil del mes (cobro de sueldos), aguinaldo y eventos comerciales.
@@ -556,7 +556,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 | `worker_alertas_cron.js` | Worker de alertas completo (páginas, API, proceso, demo). Es el que se publica |
 | `10_avisos_push_d1.txt` | Tabla `suscripciones_push` para los avisos push (ya corrido el 12/11) |
 | `11_asistente_d1.txt` | Tabla `asistente_uso` para los límites del asistente de IA (parche 28; ya corrido el 13/11) |
-| `12_contexto_externo_d1.txt` | Tablas `contexto_externo` y `eventos_comerciales` (parche 29; falta correrlo) |
+| `12_contexto_externo_d1.txt` | Tablas `contexto_externo` y `eventos_comerciales` (parche 29; ya corrido el 13/11) |
 | `novedades_asistente_ia.md` | Asistente de IA: cómo activarlo en Cloudflare, qué responde a cada perfil, límites y problemas comunes |
 | `novedades_avisos_push_y_app.md` | Avisos push, app instalable y logo nuevo: guía por dispositivo, problemas comunes, diagnóstico y cómo funciona |
 | `09_modelo_v2_d1.txt` | Etapa 2 del modelo nuevo (ya corrido el 11/11): índice del perfil, borra las vistas y las tablas sin uso, y vacía alertas y métricas (la demo arranca sin datos recibidos). Se corre antes de publicar el Worker. Reemplaza a `carga_baseline_demo_consola.txt` |
@@ -602,7 +602,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - [x] Prioridad P1–P4 en "Mis alertas" y en Seguimiento.
 - [ ] Validar que los equipos tengan solo gente de Soporte (hoy se puede sumar un analista, que no va a poder tomar lo que se derive al equipo).
 - [x] Asistente de IA con Workers AI, por perfil, que propone y no ejecuta (13/11, parche 28). Publicado el 13/11. Falta: probar la calidad de las respuestas con el modelo real; armar un set de 20 o 30 preguntas de prueba.
-- [ ] Contexto externo del asistente (parche 29): aplicar en Cloudflare y probar con las fuentes reales. Más adelante: que los eventos comerciales también ajusten lo esperado (hoy solo los usa el asistente).
+- [ ] Contexto externo del asistente (parche 29, publicado el 13/11): probar con las fuentes reales. Más adelante: que los eventos comerciales también ajusten lo esperado (hoy solo los usa el asistente).
 - [ ] Ideas de IA ya ofrecidas: resumen del incidente en lenguaje natural, índice de riesgo por cliente y, más adelante, un modelo de machine learning para comparar contra la línea base.
 - [ ] Simulación en vivo para la demo: botones que provoquen una caída, suban los rechazos o corten el envío, con ventanas de 1 minuto.
 - [ ] Actualizar la presentación de venta y el guion a los clientes `CLI_00x`.
