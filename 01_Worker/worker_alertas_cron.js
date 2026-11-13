@@ -3194,14 +3194,14 @@ const CTX_ES = /\b(de|del|en|los|las|para|por|con|demoras?|caída|fallas?|errore
 function ctxTituloEs(t, tipo) {
   t = String(t || '');
   if (CTX_ES.test(t) && !/\b(the|with|for|and|of|on|to|in)\b/i.test(t)) return t;
-  const qué = /maintenance/i.test(t) || tipo === 'Mantenimiento programado' ? 'Mantenimiento programado' : /outage|\bdown\b|unavailable|not (working|available)/i.test(t) ? 'Caída' : /error|fail/i.test(t) ? 'Más errores' :
+  const queTipo = /maintenance/i.test(t) || tipo === 'Mantenimiento programado' ? 'Mantenimiento programado' : /outage|\bdown\b|unavailable|not (working|available)/i.test(t) ? 'Caída' : /error|fail/i.test(t) ? 'Más errores' :
     /latenc|slow|delay/i.test(t) ? 'Demoras' : /degrad/i.test(t) ? 'Funcionamiento degradado' : /not producing|missing|not (being )?(sent|delivered)/i.test(t) ? 'Falla' : 'Problemas';
-  const dónde = /workers ai/i.test(t) ? 'en Workers AI (el asistente de Helios)' : /\bD1\b/.test(t) ? 'en D1 (la base de Helios)' :
+  const dondeTxt = /workers ai/i.test(t) ? 'en Workers AI (el asistente de Helios)' : /\bD1\b/.test(t) ? 'en D1 (la base de Helios)' :
     /workers?\b[\s\S]*startup|startup[\s\S]*workers?\b/i.test(t) ? 'al iniciar Workers (donde corre Helios)' : /\bworkers?\b/i.test(t) ? 'en Workers (donde corre Helios)' :
     /\bdns\b/i.test(t) ? 'en el DNS' : /verif|otp|2fa|lookup/i.test(t) ? 'en los códigos de verificación' : /\bsms\b/i.test(t) ? 'en el envío de SMS' :
     /voice|call/i.test(t) ? 'en las llamadas' : /e-?mail/i.test(t) ? 'en el envío de correos' : /dashboard/i.test(t) ? 'en el panel' : /\bapi\b/i.test(t) ? 'en la API' : '';
   const lugar = /argentin|buenos aires|\bEZE\b/i.test(t) ? ' en Argentina' : /latin ?america|south america|\blatam\b/i.test(t) ? ' en Latinoamérica' : '';
-  return (qué + (dónde ? ' ' + dónde : '') + lugar).trim();
+  return (queTipo + (dondeTxt ? ' ' + dondeTxt : '') + lugar).trim();
 }
 const ctxEntidades = (t) => String(t || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 function ctxProveedores(env) {
