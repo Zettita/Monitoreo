@@ -3107,7 +3107,9 @@ const CONTEXTO_PROVEEDORES_FABRICA = [
   { nombre: 'Cloudflare', base: 'https://www.cloudflarestatus.com' },
   { nombre: 'Twilio (SMS y códigos de verificación)', base: 'https://status.twilio.com' },
 ];
-const CONTEXTO_NOTICIAS_FABRICA = '("paro bancario" OR "caída del sistema" OR "home banking" OR "billeteras virtuales" OR "Mercado Pago" OR "BCRA" OR "corte de luz" OR "apagón" OR "ciberataque" OR "transferencias inmediatas") sourcecountry:AR sourcelang:spanish';
+// Noticias: primero Google Noticias (Argentina, en español; responde rápido), y si falla, GDELT (más lento)
+const CONTEXTO_NOTICIAS_FABRICA = '"paro bancario" OR "home banking" OR "billeteras virtuales" OR "Mercado Pago" OR "BCRA" OR "transferencias" OR "corte de luz" OR "apagón" OR "ciberataque" OR "caída del sistema"';
+const CONTEXTO_NOTICIAS_GDELT = '("paro bancario" OR "caída del sistema" OR "home banking" OR "billeteras virtuales" OR "Mercado Pago" OR "BCRA" OR "corte de luz" OR "apagón" OR "ciberataque" OR "transferencias inmediatas") sourcecountry:AR sourcelang:spanish';
 const CTX_IMPACTO = { none: 'sin impacto', minor: 'menor', major: 'importante', critical: 'grave', maintenance: 'mantenimiento' };
 const CTX_ESTADO = { investigating: 'investigando', identified: 'causa identificada', monitoring: 'en observación', scheduled: 'programado', in_progress: 'en curso', verifying: 'verificando' };
 const CTX_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -3120,12 +3122,14 @@ function ctxHoraArg(iso) {
   const d = new Date(t - 3 * 3600000).toISOString();
   return ctxDia(d.slice(0, 10)) + ' ' + d.slice(11, 16);
 }
-async function ctxTraer(url) {
-  const r = await fetch(url, { headers: { accept: 'application/json', 'user-agent': 'Helios-Monitoreo/1.0' }, signal: AbortSignal.timeout(CONTEXTO_TOPE_MS) });
+async function ctxTraer(url, texto, tope) {
+  const r = await fetch(url, { headers: { accept: texto ? 'application/rss+xml, text/xml' : 'application/json', 'user-agent': 'Helios-Monitoreo/1.0' }, signal: AbortSignal.timeout(tope || CONTEXTO_TOPE_MS) });
   if (!r.ok) throw new Error('respondió ' + r.status);
   const t = await r.text();
+  if (texto) return t;
   try { return JSON.parse(t); } catch (e) { throw new Error('no devolvió datos válidos'); }
 }
+const ctxEntidades = (t) => String(t || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 function ctxProveedores(env) {
   try {
     const l = env.CONTEXTO_PROVEEDORES ? JSON.parse(env.CONTEXTO_PROVEEDORES) : CONTEXTO_PROVEEDORES_FABRICA;
@@ -3149,25 +3153,40 @@ async function ctxBajarProveedores(env, ahoraMs) {
   }));
   return { consultados: ctxProveedores(env).map((p) => p.nombre), novedades: out, errores };
 }
-async function ctxBajarNoticias(env) {
-  const q = env.CONTEXTO_NOTICIAS_CONSULTA || CONTEXTO_NOTICIAS_FABRICA;
-  const j = await ctxTraer('https://api.gdeltproject.org/api/v2/doc/doc?query=' + encodeURIComponent(q) + '&mode=ArtList&format=json&timespan=2d&sort=DateDesc&maxrecords=20');
+async function ctxBajarNoticias(env, ahoraMs) {
   const vistos = new Set(), out = [];
-  for (const a of j.articles || []) {
-    const t = String(a.title || '').replace(/\s+/g, ' ').trim();
-    const k = t.toLowerCase().slice(0, 60);
-    if (!t || vistos.has(k) || !/^https:\/\//.test(a.url || '')) continue;
-    vistos.add(k);
-    const s = String(a.seendate || '');   // 20261113T120000Z
-    out.push({ titulo: t.slice(0, 160), medio: a.domain, fecha: s.length >= 13 ? ctxHoraArg(s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8) + 'T' + s.slice(9, 11) + ':' + s.slice(11, 13) + ':00Z') : null, link: a.url });
-    if (out.length >= 8) break;
+  const sumar = (titulo, medio, fechaIso, link) => {
+    const t = String(titulo || '').replace(/\s+/g, ' ').trim(), k = t.toLowerCase().slice(0, 60);
+    if (!t || vistos.has(k) || !/^https:\/\//.test(link || '') || out.length >= 8) return;
+    if (fechaIso && ahoraMs - Date.parse(fechaIso) > 48 * 3600000) return;
+    vistos.add(k); out.push({ titulo: t.slice(0, 160), medio, fecha: fechaIso ? ctxHoraArg(fechaIso) : null, link });
+  };
+  try {
+    const q = (env.CONTEXTO_NOTICIAS_CONSULTA || CONTEXTO_NOTICIAS_FABRICA) + ' when:2d';
+    const xml = await ctxTraer('https://news.google.com/rss/search?q=' + encodeURIComponent(q) + '&hl=es-419&gl=AR&ceid=AR:es-419', true);
+    for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+      const it = m[1], g = (re) => { const x = it.match(re); return x ? ctxEntidades(x[1]) : ''; };
+      const medio = g(/<source[^>]*>([\s\S]*?)<\/source>/), fecha = Date.parse(g(/<pubDate>([\s\S]*?)<\/pubDate>/));
+      let titulo = g(/<title>([\s\S]*?)<\/title>/);
+      if (medio && titulo.endsWith(' - ' + medio)) titulo = titulo.slice(0, -(medio.length + 3));
+      sumar(titulo, medio || 'Google Noticias', isNaN(fecha) ? null : new Date(fecha).toISOString(), g(/<link>([\s\S]*?)<\/link>/));
+    }
+    return { noticias: out, fuente: 'Google Noticias (Argentina)' };
+  } catch (e) {
+    const j = await ctxTraer('https://api.gdeltproject.org/api/v2/doc/doc?query=' + encodeURIComponent(CONTEXTO_NOTICIAS_GDELT) + '&mode=ArtList&format=json&timespan=2d&sort=DateDesc&maxrecords=20', false, 8000);
+    for (const a of j.articles || []) {
+      const s = String(a.seendate || '');   // 20261113T120000Z
+      sumar(a.title, a.domain, s.length >= 13 ? s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8) + 'T' + s.slice(9, 11) + ':' + s.slice(11, 13) + ':00Z' : null, a.url);
+    }
+    return { noticias: out, fuente: 'GDELT (Google Noticias no respondió)' };
   }
-  return { noticias: out };
 }
 async function ctxFuente(env, filas, fuente, bajar) {
   const ahoraMs = Date.now();
   const f = filas.find((x) => x.fuente === fuente);
-  if (f && ahoraMs - Date.parse(f.actualizado) < CONTEXTO_MINUTOS * 60000) return { ...JSON.parse(f.contenido), actualizado: ctxHoraArg(f.actualizado), error: f.error || undefined };
+  // Si la última vez falló, se vuelve a probar a los 10 minutos (no a la hora)
+  const fallo = f && (f.error || /"errores":\["/.test(f.contenido));   // también si algún proveedor no respondió
+  if (f && ahoraMs - Date.parse(f.actualizado) < (fallo ? 10 : CONTEXTO_MINUTOS) * 60000) return { ...JSON.parse(f.contenido), actualizado: ctxHoraArg(f.actualizado), error: f.error || undefined };
   if (String(env.CONTEXTO_EXTERNO || '').toLowerCase() === 'apagado') return { apagado: true };
   let contenido, error = null;
   try { contenido = await bajar(env, ahoraMs); }
@@ -3184,6 +3203,7 @@ async function ctxFuente(env, filas, fuente, bajar) {
 
 // ---------- Qué novedades de proveedores importan (se filtra al leer, así también vale para lo ya guardado) ----------
 // Helios corre en Cloudflare Workers y D1: un incidente ahí afecta a la plataforma misma. Lo de otros países no importa.
+const CTX_AR_TITULO = /argentin|buenos aires|\bEZE\b/i;
 const CTX_ARGENTINA = /argentin|buenos aires|\bEZE\b|latin ?america|\blatam\b|south america|sudam[eé]rica|am[eé]rica latina/i;
 const CTX_HELIOS = /\bworkers?\b|\bD1\b|workers ai|\bKV\b|durable objects/i;
 const CTX_OTRO_PAIS = /\b(UK|U\.K\.|United Kingdom|England|Ireland|Philippines|Costa Rica|India|Russia|Italy|Singapore|Japan|China|Korea|Taiwan|Hong Kong|Germany|France|Spain|Portugal|Netherlands|Belgium|Switzerland|Austria|Poland|Czech|Romania|Hungary|Greece|Ukraine|Turkey|Sweden|Norway|Denmark|Finland|Mexico|Colombia|Peru|Chile|Brazil|Uruguay|Paraguay|Bolivia|Ecuador|Venezuela|Guatemala|Panama|Dominican|Puerto Rico|Canada|United States|USA|US|Australia|New Zealand|Indonesia|Vietnam|Thailand|Malaysia|Pakistan|Bangladesh|Saudi|UAE|Emirates|Israel|Egypt|Nigeria|Kenya|South Africa|Europe|Asia|APAC|EMEA|North America)\b|^[A-Z]{3} \(/;
@@ -3191,6 +3211,8 @@ function ctxRelevantes(prov) {
   const out = { afectan_a_helios: [], argentina_o_region: [], globales_importantes: [], otros_paises_descartados: 0, menores_sin_lugar_descartados: 0 };
   for (const n of prov.novedades || []) {
     const t = n.titulo + ' ' + (n.afecta || '');
+    // Si el título nombra otro país (aunque el componente diga "Latin America"), no es de Argentina
+    if (CTX_OTRO_PAIS.test(n.titulo) && !CTX_AR_TITULO.test(n.titulo)) { out.otros_paises_descartados++; continue; }
     if (/^Cloudflare/.test(n.proveedor) && CTX_HELIOS.test(t) && !(CTX_OTRO_PAIS.test(t) && !CTX_ARGENTINA.test(t))) out.afectan_a_helios.push(n);
     else if (CTX_ARGENTINA.test(t)) out.argentina_o_region.push(n);
     else if (CTX_OTRO_PAIS.test(t)) out.otros_paises_descartados++;
@@ -3263,14 +3285,14 @@ async function contextoExterno(env, yo, a) {
       (desc ? ' (' + desc + ' novedades de otros países o menores sin relación: no las menciones).' : '') + (proveedores.errores && proveedores.errores.length ? ' No respondieron: ' + proveedores.errores.join('; ') + '.' : ''));
   }
   const nots = (noticias.noticias || []).slice(0, 5);
-  puntos.push('NOTICIAS (últimas 48 h, no verificadas por Helios): ' + (noticias.apagado ? 'no se consultan.' : nots.length ? nots.map((n) => n.titulo + ' (' + n.medio + (n.fecha ? ', ' + n.fecha : '') + ') ' + n.link).join(' | ') + ' — mencioná solo las que puedan afectar pagos, transferencias, recargas o el acceso; si ninguna, decí que no hay noticias relevantes.' : noticias.error ? 'no se pudieron consultar (' + noticias.error + ').' : 'no hay noticias relevantes.'));
+  puntos.push('NOTICIAS (últimas 48 h' + (noticias.fuente ? ', ' + noticias.fuente : '') + ', no verificadas por Helios): ' + (noticias.apagado ? 'no se consultan.' : nots.length ? nots.map((n) => n.titulo + ' (' + n.medio + (n.fecha ? ', ' + n.fecha : '') + ') ' + n.link).join(' | ') + ' — mencioná solo las que puedan afectar pagos, transferencias, recargas o el acceso; si ninguna, decí que no hay noticias relevantes.' : noticias.error ? 'no se pudieron consultar (' + noticias.error + ').' : 'no hay noticias relevantes.'));
   const out = {
     puntos_clave: puntos,
     reloj_helios: asistFecha(ah.ahora) + (ah.simulado ? ' (reloj de la demo: el calendario es de esa fecha; proveedores y noticias son de hoy real)' : ''),
     calendario,
     proveedores: rel ? { ...rel, errores: proveedores.errores, actualizado: proveedores.actualizado, error: proveedores.error } : proveedores,
-    noticias: { noticias: nots, actualizado: noticias.actualizado, error: noticias.error, apagado: noticias.apagado },
-    como_usarlo: 'Respondé con puntos_clave, en este orden y en bloques cortos con título en negrita: Helios (solo si hay algo), Calendario (siempre, aunque sea un día común), Proveedores y Noticias. Traducí al español los títulos en inglés. No agregues incidentes de otros países. Poné el enlace de cada incidente o noticia. Si podés, cruzalo con las alertas o servicios del cliente (por ejemplo, SMS de Twilio = códigos de verificación al entrar a la app). Cerrá con una línea: qué conviene vigilar.',
+    noticias: { noticias: nots, fuente: noticias.fuente, actualizado: noticias.actualizado, error: noticias.error, apagado: noticias.apagado },
+    como_usarlo: 'Respondé solo con puntos_clave, en bloques cortos con estos títulos exactos en negrita: **Helios** (este bloque va únicamente si puntos_clave trae HELIOS MISMO; si no, no lo pongas), **Calendario**, **Proveedores**, **Noticias** y **Qué vigilar** (una o dos líneas). Debajo de cada título, una lista con "- ". Traducí al español los títulos en inglés. No agregues nada que no esté en puntos_clave ni incidentes de otros países. Poné el enlace de cada incidente o noticia como [más info](enlace). Si podés, cruzalo con las alertas o servicios del cliente (por ejemplo, SMS de Twilio = códigos de verificación al entrar a la app).',
   };
   if (r[3]) {
     const fmt = (x) => x.cliente_id === '*' ? 'todos los clientes' : x.cliente_id + (x.servicio_id && x.servicio_id !== '*' ? ' / ' + x.servicio_id : '');

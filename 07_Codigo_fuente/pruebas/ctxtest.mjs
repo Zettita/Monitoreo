@@ -9,7 +9,7 @@ db.exec('PRAGMA foreign_keys = ON');
 const DB={prepare:mk,async batch(s){db.exec('BEGIN');try{const r=s.map(x=>x._exec());db.exec('COMMIT');return r}catch(e){db.exec('ROLLBACK');throw e}}};
 
 // Internet simulado
-const pedidosWeb = []; let webCaida = false;
+const pedidosWeb = []; let webCaida = false, googleCaido = false;
 globalThis.fetch = async (url, op) => {
   url = String(url); pedidosWeb.push(url);
   if (webCaida) throw Object.assign(new Error('timeout'), { name: 'TimeoutError' });
@@ -26,9 +26,20 @@ globalThis.fetch = async (url, op) => {
       { name: 'Increased failures in SNA and Lookup API in the United Kingdom', status: 'investigating', impact: 'minor', created_at: '2026-11-13T14:47:00Z' },
       { name: 'Delays in email delivery to Microsoft inboxes', status: 'identified', impact: 'minor', created_at: '2026-11-12T19:42:00Z' },
       { name: 'SMS delivery failures to Claro Costa Rica', status: 'investigating', impact: 'minor', created_at: '2026-11-12T22:31:00Z' },
-      { name: 'Voice calls failing from Twilio numbers in Philippines', status: 'identified', impact: 'minor', created_at: '2026-11-02T05:41:00Z' } ] });
+      { name: 'Voice calls failing from Twilio numbers in Philippines', status: 'identified', impact: 'minor', created_at: '2026-11-02T05:41:00Z' },
+      { name: 'SMS Delivery Receipt failures to Claro Costa Rica', status: 'investigating', impact: 'minor', created_at: '2026-11-12T22:31:00Z', components: [{ name: 'Latin America' }] },
+      { name: 'Silent or one-way audio on calls from Colombia to some Twilio numbers', status: 'identified', impact: 'minor', created_at: '2026-11-12T16:53:00Z', components: [{ name: 'South America' }] } ] });
   if (url.startsWith('https://status.twilio.com/api/v2/scheduled-maintenances/upcoming.json'))
     return j({ scheduled_maintenances: [{ name: 'Mantenimiento de SMS en Argentina', scheduled_for: new Date(Date.now() + 20 * 3600000).toISOString(), scheduled_until: new Date(Date.now() + 22 * 3600000).toISOString(), shortlink: 'https://stspg.io/xyz' }] });
+  if (url.startsWith('https://news.google.com/rss/search')) {
+    if (googleCaido) return new Response('no', { status: 503 });
+    const f = (h) => new Date(Date.now() - h * 3600000).toUTCString();
+    return new Response('<?xml version="1.0"?><rss><channel><title>Google</title>' +
+      '<item><title>La Bancaria anunció un paro para el lunes - Ámbito</title><link>https://news.google.com/rss/articles/abc</link><pubDate>' + f(2) + '</pubDate><source url="https://www.ambito.com">Ámbito</source></item>' +
+      '<item><title><![CDATA[Mercado Pago &amp; billeteras: cambios en transferencias - Clarín]]></title><link>https://news.google.com/rss/articles/def</link><pubDate>' + f(5) + '</pubDate><source url="https://www.clarin.com">Clarín</source></item>' +
+      '<item><title>Nota vieja - La Nación</title><link>https://news.google.com/rss/articles/old</link><pubDate>' + f(80) + '</pubDate><source url="https://www.lanacion.com.ar">La Nación</source></item>' +
+      '</channel></rss>', { status: 200, headers: { 'content-type': 'application/rss+xml' } });
+  }
   if (url.startsWith('https://api.gdeltproject.org/'))
     return j({ articles: [
       { url: 'https://www.ambito.com/paro-bancario', title: 'La Bancaria anunció un paro para el lunes', seendate: '20261113T140000Z', domain: 'ambito.com' },
@@ -69,11 +80,11 @@ ok('consulta 2 proveedores (incidentes y mantenimientos) y noticias: 5 pedidos a
 ok('calendario: fin de semana largo del 21 al 23 y feriado del lunes', JSON.stringify(d.calendario).includes('Fin de semana largo (3 días, del 21/11 al 23/11)') , d.calendario.map(x=>x.fecha+': '+x.notas.join(' | ')));
 ok('proveedores: lo de Argentina (DNS en EZE, mantenimiento de SMS) queda, con impacto y lugar', d.proveedores.argentina_o_region.some(x=>/DNS/.test(x.titulo)&&x.impacto==='importante'&&/EZE/.test(x.afecta)) && d.proveedores.argentina_o_region.some(x=>x.tipo==='Mantenimiento programado'), d.proveedores);
 // Caso real (13/11): la respuesta listó incidentes de Reino Unido, Filipinas, Costa Rica, India y un mantenimiento en Singapur
-ok('caso real: lo de otros países se descarta (Reino Unido, Costa Rica, Filipinas, Singapur) y lo menor sin lugar también', d.proveedores.otros_paises_descartados===4 && d.proveedores.menores_sin_lugar_descartados===1 && !JSON.stringify(d.proveedores.argentina_o_region).match(/Kingdom|Costa Rica|Philippines|Singapore|Microsoft/), d.proveedores);
+ok('caso real: lo de otros países se descarta, también Costa Rica y Colombia aunque digan "Latin America", y lo menor sin lugar', d.proveedores.otros_paises_descartados===6 && d.proveedores.menores_sin_lugar_descartados===1 && !JSON.stringify(d.proveedores.argentina_o_region).match(/Kingdom|Costa Rica|Philippines|Singapore|Microsoft/), d.proveedores);
 ok('caso real: los errores de Cloudflare Workers van aparte y primero, como algo que afecta a Helios mismo', d.proveedores.afectan_a_helios.length===2 && /^HELIOS MISMO/.test(d.puntos_clave[0]) && /Workers startup/.test(d.puntos_clave[0]), d.puntos_clave[0]);
-ok('caso real: los puntos clave siempre traen calendario, proveedores y noticias', /^CALENDARIO: hoy \(viernes 20\/11\)/.test(d.puntos_clave[1]) && /^PROVEEDORES/.test(d.puntos_clave[2]) && /no las menciones/.test(d.puntos_clave[2]) && /^NOTICIAS/.test(d.puntos_clave[3]) && /ambito\.com/.test(d.puntos_clave[3]), d.puntos_clave);
-ok('las instrucciones piden bloques en orden, traducir, enlaces y no sumar otros países', /en este orden/.test(d.como_usarlo) && /Traducí/.test(d.como_usarlo) && /otros países/.test(d.como_usarlo));
-ok('noticias: sin repetidas y solo enlaces https', d.noticias.noticias.length===1 && d.noticias.noticias[0].medio==='ambito.com', d.noticias);
+ok('caso real: los puntos clave siempre traen calendario, proveedores y noticias', /^CALENDARIO: hoy \(viernes 20\/11\)/.test(d.puntos_clave[1]) && /^PROVEEDORES/.test(d.puntos_clave[2]) && /no las menciones/.test(d.puntos_clave[2]) && /^NOTICIAS/.test(d.puntos_clave[3]) && /Ámbito/.test(d.puntos_clave[3]), d.puntos_clave);
+ok('las instrucciones piden títulos exactos (Helios solo si hay algo, sin copiar la aclaración), traducir, enlaces y no sumar otros países', /títulos exactos/.test(d.como_usarlo) && /únicamente si puntos_clave trae HELIOS MISMO/.test(d.como_usarlo) && /Traducí/.test(d.como_usarlo) && /otros países/.test(d.como_usarlo));
+ok('noticias de Google Noticias: título sin el medio, medio aparte, entidades resueltas y sin las de más de 48 h', d.noticias.noticias.length===2 && d.noticias.noticias[0].titulo==='La Bancaria anunció un paro para el lunes' && d.noticias.noticias[0].medio==='Ámbito' && d.noticias.noticias[1].titulo==='Mercado Pago & billeteras: cambios en transferencias' && /Google Noticias/.test(d.noticias.fuente), d.noticias);
 ok('soporte no recibe la lista de servicios críticos de los clientes', d.servicios_criticos===undefined);
 const sis=pedidos[0].p.messages[0].content;
 ok('instrucciones: lo de afuera solo con contexto_externo, citando la fuente', /solo con los datos de la herramienta contexto_externo/.test(sis) && /citá de dónde sale/.test(sis) && /Solo puedo ayudarte/.test(sis));
@@ -92,11 +103,20 @@ webCaida=true; pedidosWeb.length=0; guion=[()=>texto('ok')];
 r=await call(ck.gero,'POST','/api/asistente',{sugerencia:'contexto'});
 d=datos(pedidos.length-1).contexto_externo;
 ok('si los proveedores no responden, avisa cuál y no se cae', r.s===200 && d.proveedores.errores.length===2 && /no respondió a tiempo/.test(d.proveedores.errores[0]), d.proveedores.errores);
-ok('si las noticias fallan, quedan las últimas guardadas con el aviso', d.noticias.noticias.length===1 && /no respondió a tiempo/.test(d.noticias.error), d.noticias);
+ok('si las noticias fallan, quedan las últimas guardadas con el aviso', d.noticias.noticias.length===2 && /no respondió a tiempo/.test(d.noticias.error), d.noticias);
 pedidosWeb.length=0; guion=[()=>texto('ok')];
 await call(ck.gero,'POST','/api/asistente',{sugerencia:'contexto'});
-ok('después de una falla no reintenta en cada pregunta (espera la hora)', pedidosWeb.length===0, pedidosWeb.length);
+ok('después de una falla no reintenta en cada pregunta', pedidosWeb.length===0, pedidosWeb.length);
 webCaida=false;
+db.prepare("UPDATE contexto_externo SET actualizado = ?1").run(new Date(Date.now() - 11*60000).toISOString());
+pedidosWeb.length=0; guion=[()=>texto('ok')];
+await call(ck.gero,'POST','/api/asistente',{sugerencia:'contexto'});
+ok('si la última vez falló, a los 10 minutos vuelve a probar (no espera la hora)', pedidosWeb.length===5 && !datos(pedidos.length-1).contexto_externo.noticias.error, pedidosWeb.length);
+googleCaido=true; db.prepare("UPDATE contexto_externo SET actualizado = '2026-01-01T00:00:00Z'").run(); pedidosWeb.length=0; guion=[()=>texto('ok')];
+await call(ck.gero,'POST','/api/asistente',{sugerencia:'contexto'});
+d=datos(pedidos.length-1).contexto_externo;
+ok('si Google Noticias no responde, usa GDELT de respaldo', pedidosWeb.some(u=>u.includes('gdeltproject')) && d.noticias.noticias[0].medio==='ambito.com' && /GDELT/.test(d.noticias.fuente), d.noticias);
+googleCaido=false;
 
 // ---------- Apagado: no sale a internet ----------
 db.prepare("DELETE FROM contexto_externo").run();

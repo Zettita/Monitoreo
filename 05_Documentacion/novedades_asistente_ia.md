@@ -73,11 +73,11 @@ En modo simulado, el asistente no razona: muestra qué datos recibió. Sirve par
 |---|---|---|
 | Calendario de Helios (tabla `feriados` y `eventos_comerciales`) | Feriados, fines de semana largos, primer día hábil después, cobro de sueldos (1.º a 4.º día hábil), aguinaldo, eventos comerciales | 1 consulta a la base |
 | Páginas de estado de proveedores (Cloudflare y Twilio; se cambian con la variable `CONTEXTO_PROVEEDORES`) | Incidentes abiertos y mantenimientos de las próximas 48 h | Una vez por hora como mucho |
-| Noticias (GDELT, buscador abierto y gratuito) | Titulares de Argentina de las últimas 48 h sobre paros bancarios, caídas, cortes de luz, BCRA, billeteras | Una vez por hora como mucho |
+| Noticias (Google Noticias Argentina; si no responde, GDELT) | Titulares de Argentina de las últimas 48 h sobre paros bancarios, caídas, cortes de luz, BCRA, billeteras | Una vez por hora como mucho |
 
 **Cómo activarlo:** correr `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (5 bloques, uno por vez) y publicar el Worker. No hace falta ninguna clave.
 
-**Variables opcionales del Worker** (Settings → Variables): `CONTEXTO_EXTERNO = apagado` (solo calendario, sin salir a internet); `CONTEXTO_PROVEEDORES = [{"nombre":"Mi proveedor","base":"https://status.miproveedor.com"}]` (páginas de estado tipo Statuspage, hasta 6); `CONTEXTO_NOTICIAS_CONSULTA` (la búsqueda de noticias, en formato GDELT).
+**Variables opcionales del Worker** (Settings → Variables): `CONTEXTO_EXTERNO = apagado` (solo calendario, sin salir a internet); `CONTEXTO_PROVEEDORES = [{"nombre":"Mi proveedor","base":"https://status.miproveedor.com"}]` (páginas de estado tipo Statuspage, hasta 6); `CONTEXTO_NOTICIAS_CONSULTA` (la búsqueda de noticias, como en Google Noticias).
 
 **Eventos comerciales:** Administración → Umbrales → "Eventos comerciales" → "Agregar evento". Nombre, desde, hasta, cliente y servicio (opcionales) y si se espera más o menos tráfico.
 
