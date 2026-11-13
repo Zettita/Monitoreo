@@ -89,6 +89,13 @@ ok('soporte no recibe la lista de servicios críticos de los clientes', d.servic
 const sis=pedidos[0].p.messages[0].content;
 ok('instrucciones: lo de afuera solo con contexto_externo, citando la fuente', /solo con los datos de la herramienta contexto_externo/.test(sis) && /citá de dónde sale/.test(sis) && /Solo puedo ayudarte/.test(sis));
 
+// Caso real (13/11): los enlaces de Google Noticias son larguísimos; el modelo los copiaba mal y la respuesta se cortaba
+const alModelo=pedidos[0].p.messages.at(-1).content;
+ok('al modelo no le llega ninguna dirección web: solo códigos cortos ([E1], [N1])', !/https?:\/\//.test(alModelo) && /\[E1\]/.test(alModelo) && /\[N1\]/.test(alModelo), alModelo.slice(0,200));
+pedidos.length=0; guion=[()=>texto('**Noticias**\n- Paro bancario el lunes [N1]\n- Mercado Pago [más info](N2)\n- Prioridad (P1) sin cambios, DNS [E1] y uno inventado [N9]')];
+r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿Hay algo de afuera que pueda afectar hoy o mañana?'});
+ok('el servidor cambia los códigos por los enlaces reales, deja la prioridad (P1) y borra códigos inventados', r.j.respuesta.includes('[más info](https://news.google.com/rss/articles/abc)') && r.j.respuesta.includes('[más info](https://news.google.com/rss/articles/def)') && r.j.respuesta.includes('(P1)') && r.j.respuesta.includes('[más info](https://stspg.io/wrk)') && !/N9/.test(r.j.respuesta), r.j.respuesta);
+
 // ---------- Caché de una hora: la segunda pregunta no sale a internet ni escribe ----------
 pedidosWeb.length=0; escrituras=0; consultas=0; guion=[()=>texto('ok')];
 r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'contexto'});

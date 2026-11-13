@@ -66,7 +66,8 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
-- **Noticias y filtro por país (13/11, parche 29c): falta publicar el Worker** (sin SQL).
+- **Enlaces cortos (13/11, parche 29d): falta publicar el Worker** (sin SQL).
+- **Noticias y filtro por país (13/11, parche 29c): publicado.**
 - **Contexto externo filtrado (13/11, parche 29b): publicado.**
 - **Contexto externo del asistente (13/11, parche 29): aplicado.** Se corrió `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (tablas `contexto_externo` y `eventos_comerciales`, 24 tablas, 2 eventos cargados) y se publicó el Worker, que incluye las correcciones 28b a 28d. Falta probar las respuestas con las fuentes reales.
 - **Corrección del asistente (13/11, parches 28b a 28d): publicada** junto con el parche 29. Arregla respuestas que mostraban `<tools>…</tools>`, negativas falsas ("no tengo acceso"), respuestas fuera de tema y etiquetas o ids internos en el texto.
@@ -460,7 +461,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Contexto externo: noticias que responden y filtro por país (13/11, parche 29c; falta publicar el Worker, sin SQL)**
+**Contexto externo: enlaces cortos (13/11, parche 29d; falta publicar el Worker, sin SQL)**
+
+- En la tercera prueba real la respuesta salió con la estructura correcta y filtrada, pero los enlaces de Google Noticias (unos 400 caracteres) salían rotos y la respuesta se cortaba antes de "Qué vigilar".
+- Ahora al modelo no le llega ninguna dirección web: cada novedad lleva un código corto ([E1] para proveedores, [N1] para noticias) y el servidor lo cambia por el enlace real antes de mostrar la respuesta; si el modelo inventa un código, se borra. Las prioridades (P1 a P4) no se tocan. La respuesta puede ser un poco más larga (900 tokens).
+- Respaldo: Worker anterior (29c) en `99_Archivo_viejo/worker_antes_parche29d/`, ramas `respaldo-antes-parche-29d` y `version-parche-29d-enlaces-cortos`.
+
+**Contexto externo: noticias que responden y filtro por país (13/11, parche 29c; publicado)**
 
 - En la segunda prueba real el modelo puso "Helios (solo si hay algo)" como título (copió la instrucción), se colaron incidentes de Twilio en Costa Rica y Colombia (su componente decía "Latin America") y las noticias dieron "no respondió a tiempo" (GDELT es lento).
 - Ahora: si el título nombra otro país, se descarta aunque el componente diga "Latin America"; las noticias salen de **Google Noticias** (Argentina, en español, sin clave) y GDELT queda de respaldo; si una fuente falla, se vuelve a probar a los 10 minutos; y las instrucciones piden títulos exactos (**Helios** solo si hay algo, **Calendario**, **Proveedores**, **Noticias**, **Qué vigilar**) con enlaces "[más info]".

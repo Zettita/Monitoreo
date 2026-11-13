@@ -189,7 +189,12 @@ async function contextoExterno(env, yo, a) {
     ctxFuente(env, r[2].results, 'noticias', ctxBajarNoticias),
   ]);
   const rel = proveedores.apagado ? null : ctxRelevantes(proveedores);
-  const nov = (n) => n.proveedor + ': ' + n.titulo + (n.impacto ? ' (impacto ' + n.impacto + (n.estado ? ', ' + n.estado : '') + ')' : '') + (n.desde ? ', desde ' + n.desde : '') + (n.hasta ? ' hasta ' + n.hasta : '') + (n.link ? ' ' + n.link : '');
+  // Los enlaces no van al modelo (los de Google Noticias tienen ~400 caracteres y los copiaba mal o cortaba la respuesta):
+  // cada novedad lleva un código corto ([E1], [N1]) y el servidor lo cambia por el enlace real antes de mostrar la respuesta.
+  const enlaces = {}, cuenta = { E: 0, N: 0 };
+  const conRef = (n, pre) => { if (!n.link) return n; const k = pre + (++cuenta[pre]); enlaces[k] = n.link; const c = { ...n, ref: '[' + k + ']' }; delete c.link; return c; };
+  if (rel) for (const g of ['afectan_a_helios', 'argentina_o_region', 'globales_importantes']) rel[g] = rel[g].map((n) => conRef(n, 'E'));
+  const nov = (n) => n.proveedor + ': ' + n.titulo + (n.impacto ? ' (impacto ' + n.impacto + (n.estado ? ', ' + n.estado : '') + ')' : '') + (n.desde ? ', desde ' + n.desde : '') + (n.hasta ? ' hasta ' + n.hasta : '') + (n.ref ? ' ' + n.ref : '');
   const calendario = ctxCalendario(hoy, dias, r[0].results, r[1].results);
   const puntos = [];
   if (rel && rel.afectan_a_helios.length) puntos.push('HELIOS MISMO (corre en Cloudflare Workers y D1, puede fallar la plataforma): ' + rel.afectan_a_helios.map(nov).join(' | '));
@@ -201,21 +206,22 @@ async function contextoExterno(env, yo, a) {
     puntos.push('PROVEEDORES (' + (proveedores.consultados || []).join(', ') + '): ' + (reg.length ? reg.map(nov).join(' | ') : 'sin incidentes ni mantenimientos que afecten a Argentina.') +
       (desc ? ' (' + desc + ' novedades de otros países o menores sin relación: no las menciones).' : '') + (proveedores.errores && proveedores.errores.length ? ' No respondieron: ' + proveedores.errores.join('; ') + '.' : ''));
   }
-  const nots = (noticias.noticias || []).slice(0, 5);
-  puntos.push('NOTICIAS (últimas 48 h' + (noticias.fuente ? ', ' + noticias.fuente : '') + ', no verificadas por Helios): ' + (noticias.apagado ? 'no se consultan.' : nots.length ? nots.map((n) => n.titulo + ' (' + n.medio + (n.fecha ? ', ' + n.fecha : '') + ') ' + n.link).join(' | ') + ' — mencioná solo las que puedan afectar pagos, transferencias, recargas o el acceso; si ninguna, decí que no hay noticias relevantes.' : noticias.error ? 'no se pudieron consultar (' + noticias.error + ').' : 'no hay noticias relevantes.'));
+  const nots = (noticias.noticias || []).slice(0, 5).map((n) => conRef(n, 'N'));
+  puntos.push('NOTICIAS (últimas 48 h' + (noticias.fuente ? ', ' + noticias.fuente : '') + ', no verificadas por Helios): ' + (noticias.apagado ? 'no se consultan.' : nots.length ? nots.map((n) => n.titulo + ' (' + n.medio + (n.fecha ? ', ' + n.fecha : '') + ')' + (n.ref ? ' ' + n.ref : '')).join(' | ') + ' — mencioná solo las que puedan afectar pagos, transferencias, recargas o el acceso; si ninguna, decí que no hay noticias relevantes.' : noticias.error ? 'no se pudieron consultar (' + noticias.error + ').' : 'no hay noticias relevantes.'));
   const out = {
     puntos_clave: puntos,
     reloj_helios: asistFecha(ah.ahora) + (ah.simulado ? ' (reloj de la demo: el calendario es de esa fecha; proveedores y noticias son de hoy real)' : ''),
     calendario,
     proveedores: rel ? { ...rel, errores: proveedores.errores, actualizado: proveedores.actualizado, error: proveedores.error } : proveedores,
     noticias: { noticias: nots, fuente: noticias.fuente, actualizado: noticias.actualizado, error: noticias.error, apagado: noticias.apagado },
-    como_usarlo: 'Respondé solo con puntos_clave, en bloques cortos con estos títulos exactos en negrita: **Helios** (este bloque va únicamente si puntos_clave trae HELIOS MISMO; si no, no lo pongas), **Calendario**, **Proveedores**, **Noticias** y **Qué vigilar** (una o dos líneas). Debajo de cada título, una lista con "- ". Traducí al español los títulos en inglés. No agregues nada que no esté en puntos_clave ni incidentes de otros países. Poné el enlace de cada incidente o noticia como [más info](enlace). Si podés, cruzalo con las alertas o servicios del cliente (por ejemplo, SMS de Twilio = códigos de verificación al entrar a la app).',
+    como_usarlo: 'Respondé solo con puntos_clave, en bloques cortos con estos títulos exactos en negrita: **Helios** (este bloque va únicamente si puntos_clave trae HELIOS MISMO; si no, no lo pongas), **Calendario**, **Proveedores**, **Noticias** y **Qué vigilar** (una o dos líneas). Debajo de cada título, una lista con "- ". Traducí al español los títulos en inglés. No agregues nada que no esté en puntos_clave ni incidentes de otros países. Para el enlace de cada incidente o noticia escribí solo su código entre corchetes, tal cual, por ejemplo [E1] o [N2]: Helios lo convierte en el enlace. Nunca escribas direcciones web. Si podés, cruzalo con las alertas o servicios del cliente (por ejemplo, SMS de Twilio = códigos de verificación al entrar a la app).',
   };
   if (r[3]) {
     const fmt = (x) => x.cliente_id === '*' ? 'todos los clientes' : x.cliente_id + (x.servicio_id && x.servicio_id !== '*' ? ' / ' + x.servicio_id : '');
     out.servicios_criticos = r[3].results.filter((x) => x.criticidad === 'ALTA').map(fmt);
     out.silencian_feriados = r[3].results.filter((x) => Number(x.silenciar_feriados) === 1).map(fmt);
   }
+  out._enlaces = enlaces;   // el asistente los saca antes de mandarle los datos al modelo
   return out;
 }
 

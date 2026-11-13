@@ -24,7 +24,7 @@ const ASIST_MAX_HISTORIA = 6;           // mensajes anteriores que se mandan al 
 const ASIST_MAX_VUELTAS = 3;            // llamadas al modelo por pregunta
 const ASIST_MAX_HERRAMIENTAS = 5;       // herramientas de datos por pregunta
 const ASIST_MAX_ACCIONES = 3;
-const ASIST_TOKENS_RESPUESTA = 700;
+const ASIST_TOKENS_RESPUESTA = 900;
 
 const ASIST_FRASE = {
   VOLUMEN_BAJO: 'Entra menos tráfico de lo normal', VOLUMEN_ALTO: 'Entra mucho más tráfico de lo normal', APROBACION_BAJA: 'Se aprueban menos operaciones',
@@ -480,6 +480,13 @@ function asistNormalizar(r) {
   texto = String(texto || '').replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^[\s\S]*<\/think>/, '').trim();
   return { texto, llamadas };
 }
+// Cambia los códigos [N1] / [E2] que escribe el modelo por enlaces reales (solo los que mandó el servidor)
+function asistEnlaces(t, enl) {
+  return t
+    .replace(/\[([^\[\]]{1,40})\]\(\s*\[?([EN]\d{1,2})\]?\s*\)/g, (m, l, k) => enl[k] ? '[' + l + '](' + enl[k] + ')' : l)
+    .replace(/[\[(]([EN]\d{1,2})[\])]/g, (m, k) => enl[k] ? '[más info](' + enl[k] + ')' : '')
+    .replace(/\[más info\]\(\s*\)/g, '');
+}
 // Lo que nunca se le muestra a la persona: definiciones o llamadas de herramientas escritas como texto
 const asistEsEco = (t) => /<\/?tools>|<tool_call>|<tool_response>|"type"\s*:\s*"function"/.test(t || '');
 function asistLimpiarTexto(t) {
@@ -546,7 +553,7 @@ async function asistResponder(env, yo, entrada) {
   const ahora = await asistAhora(env);
   const disponibles = asistDisponibles(yo);
   const schemas = asistSchemas(disponibles, yo);
-  const acciones = [], usadas = [];
+  const acciones = [], usadas = [], enlaces = {};
   let consultas = 0;
   const correrHerramienta = async (nombre, args) => {
     if (nombre === 'sugerir_accion') {
@@ -559,7 +566,12 @@ async function asistResponder(env, yo, entrada) {
     if (!disponibles.includes(nombre)) return { error: 'La herramienta ' + nombre + ' no está disponible para el perfil ' + ASIST_PERFIL_TXT[yo.perfil] + '.' };
     if (consultas >= ASIST_MAX_HERRAMIENTAS) return { error: 'Límite de consultas por pregunta alcanzado: respondé con lo que ya tenés.' };
     consultas++; usadas.push(nombre);
-    try { return await ASIST_HERRAMIENTAS[nombre].ejecutar(env, yo, args || {}); }
+    try {
+      const res = await ASIST_HERRAMIENTAS[nombre].ejecutar(env, yo, args || {});
+      // Enlaces largos: el modelo solo ve un código ([N1]) y acá se guarda el enlace real para ponerlo al final
+      if (res && res._enlaces) { Object.assign(enlaces, res._enlaces); delete res._enlaces; }
+      return res;
+    }
     catch (e) { console.error('Asistente, ' + nombre + ': ' + e.message); return { error: 'No se pudo leer ese dato.' }; }
   };
 
@@ -600,6 +612,7 @@ async function asistResponder(env, yo, entrada) {
     if (soloAcciones && r.texto) { texto = r.texto; break; }
   }
   texto = asistLimpiarTexto(texto);
+  if (Object.keys(enlaces).length) texto = asistEnlaces(texto, enlaces);
   if (asistEsEco(texto)) texto = '';
   if (!texto) texto = acciones.length ? 'Te dejo una propuesta para que la revises.' : 'No pude armar una respuesta. Probá preguntarlo de otra forma.';
   return { respuesta: texto.slice(0, 4000), acciones, herramientas: usadas };
