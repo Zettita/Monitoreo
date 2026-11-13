@@ -66,7 +66,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
-- **Ajustes después de las pruebas reales (13/11, parche 29e): listo para publicar** (sin SQL): respuestas más cortas y en frases, sin asignar bien separado de asignada sin tomar, botón Tomar para Soporte, umbrales explicados, contexto externo en español, con fecha real y Qué vigilar concreto.
+- **Ajustes después de las pruebas reales (13/11, parche 29e): publicado el 13/11** (sin SQL): respuestas más cortas y en frases, sin asignar bien separado de asignada sin tomar, botón Tomar para Soporte, umbrales explicados, contexto externo en español, con fecha real y Qué vigilar concreto.
 - **Enlaces cortos (13/11, parche 29d): publicado y probado** con Workers AI: respuesta completa, enlaces que funcionan y filtrada a Argentina.
 - **Noticias y filtro por país (13/11, parche 29c): publicado.**
 - **Contexto externo filtrado (13/11, parche 29b): publicado.**
@@ -462,7 +462,7 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Asistente: ajustes después de probar todas las preguntas (13/11, parche 29e; sin SQL, falta publicar)**
+**Asistente: ajustes después de probar todas las preguntas (13/11, parche 29e; sin SQL, publicado el 13/11)**
 
 - Se probaron las preguntas sugeridas de los 4 perfiles con Workers AI. Problemas encontrados: el Analista recibió "hay una alerta sin asignar" de una alerta asignada a Soporte; "Resumen del turno" recomendaba derivar lo ya asignado; "¿Cómo está la operación?" listaba todos los clientes sin problemas y copiaba nombres de campos ("Peor gravedad", "Cantidad"); salían títulos `###` sin formato; el Administrador leyó la banda al 100 % como "muy amplia" y habló del "cliente general"; Soporte terminaba con "¿Querés que te ayude a tomarla?" sin botón y sin voseo; el Gerente no veía que un cliente con menos incidentes tenía graves. En el contexto externo: títulos de Cloudflare en inglés, "Event Subscription" de Workers puesto como si afectara a Helios, el calendario con la fecha de la demo (26/10) mezclado con proveedores de hoy y un "Qué vigilar" genérico.
 - Ahora cada pregunta sugerida lleva una guía de cómo responder y los datos llegan ya en frases: conteos separados (sin asignar, asignadas sin tomar, en curso, demoradas), cuánto lleva cada alerta en su estado (demorada: más de 15 min sin asignar, 30 sin tomar o 2 h en curso, como en Seguimiento), el estado por cliente con frases, clientes nuevos y "los otros N clientes están bien", y los umbrales explicados (100 % = la banda del modelo, valores de fábrica). A Soporte el servidor le deja el botón "Tomar" de la primera para tomar (propuesta: igual hay que tocar "Hacerlo"). El asistente trata de vos y no usa títulos `###` (si los usa, se muestran en negrita).
@@ -613,6 +613,23 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 ---
 
 ## 18. Pendientes y próximos pasos
+
+### Mejoras pedidas por Hugo (ITIL / ITSM / SRE) — **pendiente: no empezar hasta tener sus definiciones**
+
+Salieron de las reuniones con Hugo (13/11). No hay nada implementado. Antes de tocar código hay que validar con él:
+
+| Mejora | Qué falta que defina Hugo |
+|---|---|
+| Tipo de impacto: degradación, caída parcial y caída total (además de la severidad) | Cómo distingue él degradación, parcial y caída (criterios o ejemplos) |
+| Servicios de acceso (login, códigos por SMS) y correlación: si falla el acceso, agrupar lo que cae detrás | La lista de servicios de cada cliente, marcando cuáles son de acceso; la foto del incidente de login que mencionó |
+| Coeficientes o pesos por servicio o cliente | Un ejemplo con coeficientes reales |
+| Segmentos de clientes | Qué segmentos usa y para qué |
+| Registro tipo ITIL: incidentes y problemas, con causa | La lista de causas para elegir al resolver |
+| SLAs por prioridad (P1 a P4) con escalamiento | Tiempos de respuesta y de resolución por prioridad, y a quién se escala |
+| SLO por cliente y ventanas de mantenimiento (que no alerten) | Confirmar si los quiere y con qué criterio |
+
+Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ahí se implementa (empezando por el tipo de impacto).
+
 
 - [x] Optimizar el motor (filtro por fecha con índice, mismo resultado) y sacar las vistas (11/11).
 - [ ] Etapa 3: revisión incremental, `tablero_cache` como columna de `alerta_parametros` y `reglas_alerta` (sistema + personalizadas juntas).
