@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch32.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch33.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,8 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch33.py          "Ver detalle" en las resueltas (Seguimiento y Histórico del tablero) para Analista y Soporte;
+                        Q_INCIDENTES_30D suma alerta_id (cachetest lo verifica y compara el resto igual que antes)
     patch32.py          tablero: el recuadro "Urgente" muestra el estado real (en curso / asignada sin tomar / devuelta / sin asignar)
     patch31.py          tono profesional (sin "vos"/"tuyo" para nombrar a la persona: nombre o "(sesión actual)") y Umbrales
                         explicado: "Cómo decide Helios" en 4 pasos, grupos numerados, "↑ Si lo subís / ↓ Si lo bajás" por campo
@@ -99,7 +101,7 @@ for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest push
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch33.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch34.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -150,6 +152,9 @@ Para un cambio nuevo: crear `patch33.py` con una función `aplicar(s)` (como los
 ## Textos y Umbrales (14/11, patch31) — publicado el 14/11 junto con el parche 30
 - Tono: la app no nombra a la persona con "vos" ni "tuyo" ("Resuelta por Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en listas); las indicaciones siguen en rioplatense ("Elegí", "Tocá"). También los mensajes de error del servidor.
 - Umbrales: recuadro "Cómo decide Helios" (1 lo normal y su margen → 2 ¿hay alerta? → 3 ¿qué tan grave? → 4 ¿qué se atiende primero?) en la pestaña y en el diálogo; grupos del diálogo en ese orden; cada campo con "↑ Si lo subís / ↓ Si lo bajás"; tarjetas en frases simples. Sin SQL.
+
+## "Ver detalle" en las resueltas (14/11, patch33) — hecho; falta publicar (junto con el 32)
+- El Analista no tenía forma de ver cómo se resolvió una alerta. Ahora: Seguimiento > Resueltas (24 h) y Tablero > Histórico tienen "Ver detalle" (conversación, evidencia, causa y qué se hizo). Solo para quien tiene `detalle_alerta`. Sin SQL.
 
 ## Recuadro "Urgente" del tablero (14/11, patch32) — hecho; falta publicar
 - Decía "Sin asignar" cuando la alerta estaba asignada pero nadie la había tomado (solo miraba si estaba tomada). Ahora: "En curso: X", "Asignada a X (equipo Y), sin tomar", "Asignada al equipo Y, sin tomar", "Devuelta al analista" o "Sin asignar". Solo la página del tablero; sin SQL.

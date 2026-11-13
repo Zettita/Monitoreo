@@ -470,6 +470,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**"Ver detalle" en las alertas resueltas (14/11, parche 33; sin SQL, falta publicar junto con el 32)**
+
+- El Analista puede ver cómo se resolvió una alerta (conversación, evidencia, causa y qué se hizo): botón "Ver detalle" en Seguimiento > "Resueltas en las últimas 24 horas" y en Tablero > "Histórico de Alertas". Solo aparece para quien tiene el detalle (Analista y Soporte). `Q_INCIDENTES_30D` trae además `alerta_id` (una ventana del problema) para armar el enlace.
+
 **Recuadro "Urgente" del tablero con el estado real (14/11, parche 32; sin SQL, falta publicar)**
 
 - Arriba del tablero, el problema más urgente decía "Sin asignar" si nadie había tomado la alerta, aunque estuviera asignada (por ejemplo, a soporte1). Ahora muestra lo mismo que la lista: "En curso: X", "Asignada a X (equipo Y), sin tomar", "Asignada al equipo Y, sin tomar", "Devuelta al analista" o "Sin asignar".
