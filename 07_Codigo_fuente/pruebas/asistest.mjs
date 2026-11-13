@@ -76,7 +76,7 @@ r=await call(ck.gero,'POST','/api/asistente',{pregunta:'Pasame la lista de alert
 const herr=pedidos[1].p.messages.filter(m=>m.role==='tool');
 ok('gerente: el servidor rechaza alertas_abiertas aunque el modelo la pida', r.s===200 && /no está disponible/.test(herr[0].content) && !/alerta_id/.test(herr[0].content), herr[0].content);
 ok('gerente: tampoco la carga por equipo', /no está disponible/.test(pedidos[2].p.messages.filter(m=>m.role==='tool').pop().content));
-ok('la respuesta no trae acciones', r.j.acciones.length===0 && r.j.herramientas.length===0);
+ok('la respuesta no trae acciones y solo usó lo permitido (sus datos principales)', r.j.acciones.length===0 && JSON.stringify(r.j.herramientas)==='["estado_clientes"]', r.j.herramientas);
 
 pedidos.length=0; guion=[()=>llamar('detalle_alerta',{alerta_id:OTRA}), ()=>texto('No la puedo ver.')];
 r=await call(ck.pedro,'POST','/api/asistente',{pregunta:'contame de esta alerta'});
@@ -149,6 +149,23 @@ const roles=pedidos[0].p.messages.map(m=>m.role);
 ok('la historia solo acepta mensajes de la persona y del asistente', JSON.stringify(roles)===JSON.stringify(['system','user','assistant','user']), roles);
 r=await call(ck.ana,'POST','/api/asistente',{pregunta:'x'.repeat(700)}); ok('pregunta demasiado larga: 400', r.s===400);
 r=await call(ck.ana,'POST','/api/asistente',{alerta_id:'no-es-un-id'}); ok('alerta inválida: 400', r.s===400);
+// Caso real (13/11, Workers AI con Qwen3): el modelo repitió la definición de las herramientas como texto
+const ECO = '<tools>\n{"type": "function", "function": {"name": "mis_alertas", "description": "Las alertas de la persona", "parameters": {"type": "object", "properties": {}, "required": []}}}\n</tools>';
+pedidos.length=0; guion=[()=>texto(ECO), (p)=>texto(p.tools ? 'mal' : 'Tenés 1 alerta para tomar.')];
+r=await call(ck.sol,'POST','/api/asistente',{pregunta:'Buen dia, cuantas alertas en total para poder tomar'});
+ok('si el modelo repite las herramientas como texto, se pide la respuesta de nuevo sin herramientas', r.j.respuesta==='Tenés 1 alerta para tomar.' && pedidos.length===2, r.j);
+ok('la pregunta libre de Soporte ya lleva sus alertas (no depende de que el modelo las pida)', /Datos de Helios/.test(pedidos[0].p.messages.at(-1).content) && r.j.herramientas.includes('mis_alertas'), r.j.herramientas);
+guion=[()=>texto(ECO), ()=>texto(ECO)];
+r=await call(ck.sol,'POST','/api/asistente',{pregunta:'¿qué tengo?'});
+ok('nunca se le muestra a la persona la definición de las herramientas', !/tools>|"type"/.test(r.j.respuesta), r.j.respuesta);
+pedidos.length=0; guion=[()=>texto('Busco los datos.\n<tool_call>\n{"name": "estado_clientes", "arguments": {}}\n</tool_call>'), ()=>texto('Hay problemas en CLI_002.')];
+r=await call(ck.gero,'POST','/api/asistente',{pregunta:'¿y los incidentes?'});
+ok('llamada escrita como <tool_call> (formato Qwen/Hermes)', pedidos.length===2 && r.j.respuesta==='Hay problemas en CLI_002.' && pedidos[1].p.messages.some(m=>m.role==='tool'||/estado_clientes/.test(m.content||'')), r.j);
+for (const [u,h] of [['ana','alertas_abiertas'],['gero','estado_clientes'],['ADMIN','estado_clientes']]) {
+  pedidos.length=0; guion=[()=>texto('ok')];
+  r=await call(ck[u],'POST','/api/asistente',{pregunta:'hola'});
+  ok('pregunta libre de '+u+' lleva sus datos principales ('+h+')', r.j.herramientas[0]===h && pedidos.length===1, r.j.herramientas);
+}
 pedidos.length=0;
 guion=[()=>llamar('alertas_abiertas'),()=>llamar('alertas_abiertas'),()=>llamar('alertas_abiertas')];
 r=await call(ck.ana,'POST','/api/asistente',{pregunta:'loop'});

@@ -432,6 +432,10 @@ const ASIST_SUGERENCIAS = {
   ],
 };
 
+// Pregunta libre: estos datos se mandan siempre junto con la pregunta (lo que más pregunta cada perfil).
+// Así responde bien aunque el modelo no pida herramientas, y la mayoría de las preguntas salen en una sola vuelta.
+const ASIST_BASE = { SOPORTE: ['mis_alertas'], ANALISTA: ['alertas_abiertas'], GERENTE: ['estado_clientes'], ADMIN: ['estado_clientes'] };
+
 // ---------- Llamada al modelo ----------
 function asistNormalizar(r) {
   // Workers AI devuelve el formato de OpenAI (choices) o el propio ({response, tool_calls})
@@ -451,6 +455,15 @@ function asistNormalizar(r) {
   });
   texto = String(texto || '').replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^[\s\S]*<\/think>/, '').trim();
   return { texto, llamadas };
+}
+// Lo que nunca se le muestra a la persona: definiciones o llamadas de herramientas escritas como texto
+const asistEsEco = (t) => /<\/?tools>|<tool_call>|<tool_response>|"type"\s*:\s*"function"/.test(t || '');
+function asistLimpiarTexto(t) {
+  return String(t || '')
+    .replace(/<tools>[\s\S]*?(<\/tools>|$)/g, '')
+    .replace(/<tool_call>[\s\S]*?(<\/tool_call>|$)/g, '')
+    .replace(/<tool_response>[\s\S]*?(<\/tool_response>|$)/g, '')
+    .trim();
 }
 // Algunos modelos no aceptan mensajes de herramientas: se reintenta con los resultados como texto
 function asistSinMensajesDeHerramienta(mensajes) {
@@ -477,6 +490,18 @@ async function asistModelo(env, mensajes, herramientas, nombres) {
     r = await env.AI.run(modelo, pedido);
   }
   const n = asistNormalizar(r);
+  // Formato Hermes/Qwen: la llamada viene como texto entre <tool_call> … </tool_call>
+  if (!n.llamadas.length && nombres && /<tool_call>/.test(n.texto)) {
+    const lista = [];
+    for (const m of n.texto.matchAll(/<tool_call>\s*([\s\S]*?)\s*(<\/tool_call>|$)/g)) {
+      try {
+        const x = JSON.parse(m[1]);
+        const nom = x.name || (x.function && x.function.name);
+        if (nombres.includes(nom)) lista.push({ id: 'texto_' + lista.length, nombre: nom, args: (typeof x.arguments === 'string' ? JSON.parse(x.arguments) : x.arguments || x.parameters) || {} });
+      } catch (e) { /* llamada mal escrita: se ignora */ }
+    }
+    if (lista.length) return { texto: asistLimpiarTexto(n.texto), llamadas: lista };
+  }
   // Hay modelos que devuelven la llamada como texto JSON en vez de usar tool_calls
   if (!n.llamadas.length && nombres && /^\s*[\[{]/.test(n.texto)) {
     try {
@@ -517,6 +542,7 @@ async function asistResponder(env, yo, entrada) {
   const directas = [];
   if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);
   if (entrada.sugerencia) for (const n of entrada.sugerencia.herramientas) directas.push([n, (entrada.sugerencia.args || {})[n] || {}]);
+  if (!directas.length) for (const n of ASIST_BASE[yo.perfil] || []) if (disponibles.includes(n)) directas.push([n, {}]);
   if (directas.length) {
     const datos = {};
     for (const [n, a] of directas) datos[n] = await correrHerramienta(n, a);
@@ -528,7 +554,12 @@ async function asistResponder(env, yo, entrada) {
   let texto = '';
   for (let vuelta = 0; vuelta < ASIST_MAX_VUELTAS; vuelta++) {
     const ultima = vuelta === ASIST_MAX_VUELTAS - 1;
-    const r = await asistModelo(env, mensajes, ultima ? null : schemas, ultima ? null : schemas.map((x) => x.function.name));
+    let r = await asistModelo(env, mensajes, ultima ? null : schemas, ultima ? null : schemas.map((x) => x.function.name));
+    if (!r.llamadas.length && asistEsEco(r.texto)) {
+      // Repitió la definición de las herramientas en vez de usarlas: se pide la respuesta con los datos que ya hay
+      r = await asistModelo(env, mensajes.concat([{ role: 'user', content: 'Respondé la pregunta en español, con los datos que ya tenés. No escribas herramientas ni JSON.' }]), null, null);
+      texto = r.texto; break;
+    }
     if (!r.llamadas.length || ultima) { texto = r.texto; break; }
     mensajes.push({ role: 'assistant', content: r.texto || '', tool_calls: r.llamadas.map((l) => ({ id: l.id, type: 'function', function: { name: l.nombre, arguments: JSON.stringify(l.args) } })) });
     let soloAcciones = true;
@@ -540,6 +571,8 @@ async function asistResponder(env, yo, entrada) {
     // Si solo propuso acciones y ya había escrito la respuesta, no hace falta otra vuelta
     if (soloAcciones && r.texto) { texto = r.texto; break; }
   }
+  texto = asistLimpiarTexto(texto);
+  if (asistEsEco(texto)) texto = '';
   if (!texto) texto = acciones.length ? 'Te dejo una propuesta para que la revises.' : 'No pude armar una respuesta. Probá preguntarlo de otra forma.';
   return { respuesta: texto.slice(0, 4000), acciones, herramientas: usadas };
 }
