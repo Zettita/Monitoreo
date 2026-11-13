@@ -66,6 +66,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
+- **Contexto externo filtrado (13/11, parche 29b): falta publicar el Worker** (sin SQL).
 - **Contexto externo del asistente (13/11, parche 29): aplicado.** Se corrió `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (tablas `contexto_externo` y `eventos_comerciales`, 24 tablas, 2 eventos cargados) y se publicó el Worker, que incluye las correcciones 28b a 28d. Falta probar las respuestas con las fuentes reales.
 - **Corrección del asistente (13/11, parches 28b a 28d): publicada** junto con el parche 29. Arregla respuestas que mostraban `<tools>…</tools>`, negativas falsas ("no tengo acceso"), respuestas fuera de tema y etiquetas o ids internos en el texto.
 - **Asistente de IA (13/11, parche 28): aplicado.** Se corrió `02_Base_de_datos_D1/11_asistente_d1.txt` (tabla `asistente_uso`, quedan 22 tablas); en el Worker, Settings → Bindings → Add binding → **Workers AI**, nombre de variable `AI`, y se publicó `01_Worker/worker_alertas_cron.js`. El panel abre bien como Administrador; falta probar las respuestas con cada perfil. Sin el enlace, el resto funciona igual y el panel del asistente avisa que falta configurarlo. Guía: `novedades_asistente_ia.md`.
@@ -457,6 +458,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Contexto externo: solo lo que importa (13/11, parche 29b; falta publicar el Worker, sin SQL)**
+
+- En la primera prueba real, "¿Hay algo de afuera que pueda afectar hoy o mañana?" listó incidentes de Twilio y Cloudflare en Reino Unido, Filipinas, Costa Rica, India, Rusia, Italia y Singapur, y no mencionó el calendario ni las noticias. El incidente de Cloudflare sobre errores al iniciar Workers (que afecta a Helios mismo) quedó perdido en la lista.
+- Ahora el servidor filtra antes de pasarle los datos al modelo: primero, aparte, lo de Cloudflare Workers / D1 ("Helios mismo"); después lo de Argentina o la región; lo global solo si es de impacto importante o grave. Lo de otros países y lo menor sin lugar se descarta (solo se cuenta). Le arma `puntos_clave` en orden: Helios, calendario (siempre), proveedores y noticias (solo las que afectan pagos o el acceso), con enlaces; los títulos en inglés se traducen.
+- El panel del asistente muestra las sublistas con sangría.
+- Respaldo: Worker anterior (29) en `99_Archivo_viejo/worker_antes_parche29b/`, ramas `respaldo-antes-parche-29b` y `version-parche-29b-contexto-relevante`.
 
 **Contexto externo del asistente (13/11, parche 29; publicado en Cloudflare)**
 

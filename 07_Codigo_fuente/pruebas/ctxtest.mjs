@@ -15,9 +15,18 @@ globalThis.fetch = async (url, op) => {
   if (webCaida) throw Object.assign(new Error('timeout'), { name: 'TimeoutError' });
   const j = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
   if (url.startsWith('https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json'))
-    return j({ incidents: [{ name: 'Demoras en el DNS de Sudamérica', status: 'identified', impact: 'major', created_at: '2026-11-13T12:10:00Z', shortlink: 'https://stspg.io/abc', components: [{ name: 'Buenos Aires, Argentina - (EZE)' }] }] });
-  if (url.startsWith('https://www.cloudflarestatus.com/api/v2/scheduled-maintenances/upcoming.json')) return j({ scheduled_maintenances: [] });
-  if (url.startsWith('https://status.twilio.com/api/v2/incidents/unresolved.json')) return j({ incidents: [] });
+    return j({ incidents: [
+      { name: 'Demoras en el DNS de Sudamérica', status: 'identified', impact: 'major', created_at: '2026-11-13T12:10:00Z', shortlink: 'https://stspg.io/abc', components: [{ name: 'Buenos Aires, Argentina - (EZE)' }] },
+      { name: 'Elevated errors on Workers startup', status: 'identified', impact: 'minor', created_at: '2026-11-13T13:54:00Z', shortlink: 'https://stspg.io/wrk', components: [{ name: 'Workers' }] },
+      { name: 'Workers changes not producing subscription events', status: 'identified', impact: 'minor', created_at: '2026-11-10T01:53:00Z', components: [] } ] });
+  if (url.startsWith('https://www.cloudflarestatus.com/api/v2/scheduled-maintenances/upcoming.json'))
+    return j({ scheduled_maintenances: [{ name: 'SIN (Singapore) on 2026-11-13', scheduled_for: new Date(Date.now() + 3600000).toISOString(), scheduled_until: new Date(Date.now() + 5 * 3600000).toISOString() }] });
+  if (url.startsWith('https://status.twilio.com/api/v2/incidents/unresolved.json'))
+    return j({ incidents: [
+      { name: 'Increased failures in SNA and Lookup API in the United Kingdom', status: 'investigating', impact: 'minor', created_at: '2026-11-13T14:47:00Z' },
+      { name: 'Delays in email delivery to Microsoft inboxes', status: 'identified', impact: 'minor', created_at: '2026-11-12T19:42:00Z' },
+      { name: 'SMS delivery failures to Claro Costa Rica', status: 'investigating', impact: 'minor', created_at: '2026-11-12T22:31:00Z' },
+      { name: 'Voice calls failing from Twilio numbers in Philippines', status: 'identified', impact: 'minor', created_at: '2026-11-02T05:41:00Z' } ] });
   if (url.startsWith('https://status.twilio.com/api/v2/scheduled-maintenances/upcoming.json'))
     return j({ scheduled_maintenances: [{ name: 'Mantenimiento de SMS en Argentina', scheduled_for: new Date(Date.now() + 20 * 3600000).toISOString(), scheduled_until: new Date(Date.now() + 22 * 3600000).toISOString(), shortlink: 'https://stspg.io/xyz' }] });
   if (url.startsWith('https://api.gdeltproject.org/'))
@@ -58,7 +67,12 @@ ok('soporte: la pregunta trae el contexto externo junto con sus alertas, en una 
 let d=datos(0).contexto_externo;
 ok('consulta 2 proveedores (incidentes y mantenimientos) y noticias: 5 pedidos a internet', pedidosWeb.length===5, pedidosWeb);
 ok('calendario: fin de semana largo del 21 al 23 y feriado del lunes', JSON.stringify(d.calendario).includes('Fin de semana largo (3 días, del 21/11 al 23/11)') , d.calendario.map(x=>x.fecha+': '+x.notas.join(' | ')));
-ok('proveedores: incidente de Cloudflare con impacto y lugar, mantenimiento de Twilio dentro de 48 h', d.proveedores.novedades.some(x=>/DNS/.test(x.titulo)&&x.impacto==='importante'&&/EZE/.test(x.afecta)) && d.proveedores.novedades.some(x=>x.tipo==='Mantenimiento programado'), d.proveedores);
+ok('proveedores: lo de Argentina (DNS en EZE, mantenimiento de SMS) queda, con impacto y lugar', d.proveedores.argentina_o_region.some(x=>/DNS/.test(x.titulo)&&x.impacto==='importante'&&/EZE/.test(x.afecta)) && d.proveedores.argentina_o_region.some(x=>x.tipo==='Mantenimiento programado'), d.proveedores);
+// Caso real (13/11): la respuesta listó incidentes de Reino Unido, Filipinas, Costa Rica, India y un mantenimiento en Singapur
+ok('caso real: lo de otros países se descarta (Reino Unido, Costa Rica, Filipinas, Singapur) y lo menor sin lugar también', d.proveedores.otros_paises_descartados===4 && d.proveedores.menores_sin_lugar_descartados===1 && !JSON.stringify(d.proveedores.argentina_o_region).match(/Kingdom|Costa Rica|Philippines|Singapore|Microsoft/), d.proveedores);
+ok('caso real: los errores de Cloudflare Workers van aparte y primero, como algo que afecta a Helios mismo', d.proveedores.afectan_a_helios.length===2 && /^HELIOS MISMO/.test(d.puntos_clave[0]) && /Workers startup/.test(d.puntos_clave[0]), d.puntos_clave[0]);
+ok('caso real: los puntos clave siempre traen calendario, proveedores y noticias', /^CALENDARIO: hoy \(viernes 20\/11\)/.test(d.puntos_clave[1]) && /^PROVEEDORES/.test(d.puntos_clave[2]) && /no las menciones/.test(d.puntos_clave[2]) && /^NOTICIAS/.test(d.puntos_clave[3]) && /ambito\.com/.test(d.puntos_clave[3]), d.puntos_clave);
+ok('las instrucciones piden bloques en orden, traducir, enlaces y no sumar otros países', /en este orden/.test(d.como_usarlo) && /Traducí/.test(d.como_usarlo) && /otros países/.test(d.como_usarlo));
 ok('noticias: sin repetidas y solo enlaces https', d.noticias.noticias.length===1 && d.noticias.noticias[0].medio==='ambito.com', d.noticias);
 ok('soporte no recibe la lista de servicios críticos de los clientes', d.servicios_criticos===undefined);
 const sis=pedidos[0].p.messages[0].content;
@@ -134,6 +148,8 @@ const i=adm.indexOf('function formato(t)'), f=adm.slice(i, adm.indexOf('\n  func
 const escA=(v)=>String(v==null?'':v).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const formato=new Function('escA', f+'\nreturn formato;')(escA);
 const h=formato('Según [Ámbito](https://www.ambito.com/paro?x=1&y=2), hay paro. Ver https://stspg.io/abc. <img src=x onerror=alert(1)> javascript:alert(1)');
+const h2=formato('**Proveedores**\n- Twilio:\n  - SMS en Argentina\n- Cloudflare');
+ok('panel: las sublistas se ven con sangría', /<li>Twilio:<\/li><li class="sub">SMS en Argentina<\/li><li>Cloudflare<\/li>/.test(h2), h2);
 ok('panel: los enlaces https se pueden tocar y el resto sigue escapado', h.includes('<a href="https://www.ambito.com/paro?x=1&amp;y=2" target="_blank" rel="noopener noreferrer">Ámbito</a>') && h.includes('>stspg.io</a>.') && !h.includes('<img') && !/href="javascript/.test(h), h);
 
 console.log(fallas ? 'FALLAS: '+fallas : 'TODO OK');

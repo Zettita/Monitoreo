@@ -18,6 +18,7 @@
 .asis-m.a { align-self: flex-start; background: var(--track); border-bottom-left-radius: 4px; }
 .asis-m.a p { margin: 0 0 6px; } .asis-m.a p:last-child { margin: 0; }
 .asis-m.a ul { margin: 4px 0 6px; padding-left: 18px; }
+.asis-m.a li.sub { margin-left: 16px; list-style: circle; }
 .asis-m.error { background: var(--critica-bg); color: var(--critica-txt, var(--critica)); }
 .asis-m.pensando { color: var(--ink-3); font-style: italic; }
 .asis-sug { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -71,8 +72,8 @@
     var lineas = escA(t).split('\n'), html = '', lista = false;
     lineas.forEach(function (l) {
       l = l.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-      var m = l.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
-      if (m) { if (!lista) { html += '<ul>'; lista = true; } html += '<li>' + m[1] + '</li>'; return; }
+      var m = l.match(/^(\s*)(?:[-*•]|\d+[.)])\s+(.*)$/);
+      if (m) { if (!lista) { html += '<ul>'; lista = true; } html += '<li' + (m[1].length >= 2 ? ' class="sub"' : '') + '>' + m[2] + '</li>'; return; }
       if (lista) { html += '</ul>'; lista = false; }
       if (l.trim()) html += '<p>' + l + '</p>';
     });

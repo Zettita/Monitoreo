@@ -85,3 +85,5 @@ En modo simulado, el asistente no razona: muestra qué datos recibió. Sirve par
 - *"Cloudflare: no respondió a tiempo"*: la página de estado tardó más de 5 segundos. Se usa lo último guardado y se vuelve a probar en una hora.
 - *Las noticias no tienen que ver*: son titulares automáticos; el asistente solo debería mencionar los que afectan pagos o transferencias. Se puede afinar la búsqueda con `CONTEXTO_NOTICIAS_CONSULTA`.
 - *En la demo el calendario dice otra fecha*: el calendario usa el reloj de Helios (en la demo, el 26/10); proveedores y noticias son siempre de hoy.
+
+**Qué muestra de los proveedores (desde el parche 29b):** primero, aparte, lo de Cloudflare Workers o D1, porque Helios corre ahí y puede afectar a la plataforma misma. Después, lo que menciona Argentina o la región. Lo global, solo si es de impacto importante o grave. Lo de otros países y lo menor sin lugar no se muestra.
