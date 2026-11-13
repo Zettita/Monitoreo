@@ -1,0 +1,28 @@
+TICKETERA: DETALLE DE ALERTA, EVIDENCIA Y RESOLUCIÓN CON CAUSA (para la Console de D1: helios-monitoring-dev) — parche 30
+
+Qué hace: NO crea tablas. Agrega 3 columnas a tablas que ya existen:
+- alertas_historico.causa_resolucion y acciones_resolucion: lo que se elige al resolver ("¿Qué lo causó?" y
+  "¿Qué se hizo?"), igual que resuelta_por y comentario. Sirve para contar después por qué pasan los problemas.
+- alerta_parametros.opciones_resolucion: las opciones para elegir, en JSON. Quedan cargadas las de Ale; el
+  Administrador las edita en Administración > Reglas de alerta.
+La evidencia (capturas, logs, PDF) va en la tabla del script 14 (o a R2, si algún día se activa).
+
+Orden:
+  1) Correr estos 4 bloques, uno por vez (una sentencia por línea, sin comentarios).
+  2) Correr 14_evidencia_d1.txt (tabla para la evidencia).
+  3) Publicar 01_Worker/worker_alertas_cron.js.
+Sin el paso 2, todo funciona salvo adjuntar archivos (el botón avisa qué falta).
+Ojo: los bloques 1 a 3 (ALTER TABLE) se corren UNA sola vez; si se repiten dan "duplicate column name" y no pasa nada.
+El bloque 4 se puede repetir: no pisa las opciones ya editadas.
+
+--- 1. Columna causa_resolucion en alertas_historico (qué lo causó, al resolver a mano) ---
+ALTER TABLE alertas_historico ADD COLUMN causa_resolucion TEXT;
+
+--- 2. Columna acciones_resolucion en alertas_historico (qué se hizo; si son varias, separadas por " · ") ---
+ALTER TABLE alertas_historico ADD COLUMN acciones_resolucion TEXT;
+
+--- 3. Columna opciones_resolucion en alerta_parametros (las opciones para elegir al resolver, en JSON) ---
+ALTER TABLE alerta_parametros ADD COLUMN opciones_resolucion TEXT;
+
+--- 4. Opciones iniciales: la lista de Ale (5 causas y 4 acciones). Solo se carga si la columna está vacía ---
+UPDATE alerta_parametros SET opciones_resolucion = '{"causas":[{"id":1,"nombre":"Falla del cliente","activo":1},{"id":2,"nombre":"Falla nuestra","activo":1},{"id":3,"nombre":"Proveedor o gateway","activo":1},{"id":4,"nombre":"Comportamiento esperado (promo, feriado, campaña)","activo":1},{"id":5,"nombre":"Falsa alarma","activo":1}],"acciones":[{"id":6,"nombre":"Se contactó al cliente","activo":1},{"id":7,"nombre":"Se corrigió","activo":1},{"id":8,"nombre":"Se escaló","activo":1},{"id":9,"nombre":"No requirió acción","activo":1}]}' WHERE id = 1 AND opciones_resolucion IS NULL;

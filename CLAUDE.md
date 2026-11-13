@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch29.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch30.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,10 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch30.py          ticketera: página /alerta/<id> (alerta.html, armada desde Mis alertas ya terminada), ticketera_server.js
+                        (detalle, evidencia en D1 —evidencia_d1.sql, tabla evidencia_archivos, base64 en pedazos— o en R2 si hay binding
+                        EVIDENCIA; resolución con causa; opciones editables), ticketera_d1.sql (scripts 13 y 14 de 02_Base_de_datos_D1).
+                        servidor_local guarda la evidencia en la base; con CON_R2=1 simula R2 en worker/evidencia_local/
     patch29.py          contexto externo del asistente: contexto_server.js (herramienta contexto_externo: calendario, proveedores,
                         noticias; eventos comerciales en Administración > Umbrales) y enlaces en el panel del asistente
     contexto_d1.sql     tablas contexto_externo y eventos_comerciales (02_Base_de_datos_D1/12_contexto_externo_d1.txt)
@@ -88,11 +92,11 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch30.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch31.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -133,6 +137,12 @@ Para un cambio nuevo: crear `patch30.py` con una función `aplicar(s)` (como los
 - **29e (13/11, publicado el 13/11; sin SQL):** ajustes después de probar todas las preguntas sugeridas con los 4 perfiles y el modelo real. Cada pregunta sugerida lleva una **guía de respuesta** (`guia` en `ASIST_SUGERENCIAS`) y el servidor arma los datos en frases: `alertas_abiertas` trae `cuantas` (sin asignar / asignadas sin tomar / en curso / demoradas; antes decía "sin asignar" de una asignada), todas las alertas traen `lleva_en_este_estado` y `demorada` (15 min / 30 min / 2 h, como Seguimiento), `estado_clientes` trae frases, clientes nuevos y `resto` contado (no lista los que están bien), `ajustes_sugeridos` explica que 100 % es la banda del modelo y la fila general ya no parece "el cliente general". Soporte recibe el botón "Tomar" armado por el servidor (`proponer`). Reglas de voseo y sin títulos `###` (el servidor los pasa a negrita). Contexto externo: títulos en español armados en el servidor (`ctxTituloEs`, el original queda en `titulo`), en Helios solo Workers en ejecución, D1 y Workers AI (`CTX_NO_HELIOS` saca Event Subscriptions, Builds, Logs, etc.), proveedores con nombres cortos, **Qué vigilar armado en el servidor** y **calendario con la fecha real** cuando está el reloj de la demo (`CONTEXTO_CALENDARIO=demo` vuelve al reloj de la demo). Respaldo en `99_Archivo_viejo/worker_antes_parche29e/`, ramas `respaldo-antes-parche-29e` y `version-parche-29e-ajustes-pruebas-reales`.
 - **29c (13/11, publicado):** segunda prueba real: el modelo copió "Helios (solo si hay algo)" como título, se colaron Twilio Costa Rica y Colombia (el componente decía "Latin America") y las noticias dieron "no respondió a tiempo". Ahora gana el país del título; las noticias salen de **Google Noticias** (RSS de Argentina en español, sin clave; `CONTEXTO_NOTICIAS_CONSULTA`) con GDELT de respaldo; si una fuente falló, se reintenta a los 10 minutos (no a la hora); y `como_usarlo` pide títulos exactos (**Helios** solo si hay algo, **Calendario**, **Proveedores**, **Noticias**, **Qué vigilar**). Respaldo en `99_Archivo_viejo/worker_antes_parche29c/`, ramas `respaldo-antes-parche-29c` y `version-parche-29c-noticias-y-filtro`.
 - Aplicado en Cloudflare el 13/11 (script 12 y Worker, que incluye 28b–28d). **Pendiente:** preguntar "¿Hay algo de afuera que pueda afectar hoy o mañana?" con cada perfil. Respaldo en `99_Archivo_viejo/worker_antes_parche29/`, ramas `respaldo-antes-parche-29` y `version-parche-29-contexto-externo`.
+
+## Ticketera (14/11, patch30) — hecho y probado en la PC; falta aplicarlo en Cloudflare
+- Detalle de cada alerta en `/alerta/<id>` (Soporte y Analista; permiso `detalle_alerta`): conversación con la evidencia intercalada, datos, ventanas, acciones. Lo elegido al resolver en `alertas_historico.causa_resolucion` / `acciones_resolucion`; las opciones en `alerta_parametros.opciones_resolucion` (JSON, editable en Administración > Reglas de alerta). **Evidencia en D1** (tabla `evidencia_archivos`, base64 en filas de 90.000 caracteres; 1 MB por archivo, 200 MB en total; las capturas se achican en el navegador) porque R2 pide tarjeta; si se conecta R2 (binding `EVIDENCIA`) el mismo código lo usa.
+- **Pendiente, en este orden:** ~~(1) correr `13_ticketera_d1.txt`~~ (hecho el 14/11); (2) correr `14_evidencia_d1.txt`; (3) publicar el Worker; (4) probar con Soporte y Analista. Guía: `05_Documentacion/novedades_ticketera.md`.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche30/`, ramas `respaldo-antes-parche-30` y `version-parche-30-ticketera`.
+- Conocido y anterior a este cambio: en el celular, la barra de Seguimiento no entra y "Helios" se pisa con "Actualizar".
 
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
 Tipo de impacto (degradación / parcial / caída), servicios de acceso y correlación, coeficientes, segmentos, registro de incidentes y problemas con causa, SLAs por prioridad con escalamiento, SLO y ventanas de mantenimiento. **Nada implementado.** Falta que Hugo mande: lista de servicios con los de acceso marcados, ejemplo de coeficientes reales, cómo distingue degradación / parcial / caída, SLAs y escalamiento por prioridad, lista de causas, la foto del incidente de login y el documento que prometió. Detalle en la sección 18 de `contexto_helios_para_ia.md`. Si alguien pide implementar algo de esto, primero preguntar si ya llegaron esas definiciones.

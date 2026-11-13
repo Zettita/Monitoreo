@@ -12,6 +12,8 @@ if (!sinUmbrales) arch.push('push_d1.sql');
 // Asistente de IA (parche 28)
 if (!sinUmbrales) arch.push('asistente_d1.sql');
 if (!sinUmbrales) arch.push('contexto_d1.sql');
+if (!sinUmbrales) arch.push('ticketera_d1.sql');
+if (!sinUmbrales) arch.push('evidencia_d1.sql');
 for (const f of arch)
   for (const l of fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8').split('\n')) if (l.trim()) db.exec(l);
 console.log('db lista', dst, sinUmbrales ? '(sin umbrales)' : '');

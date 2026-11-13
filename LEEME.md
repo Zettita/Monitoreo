@@ -17,6 +17,8 @@ Del 1 al 12 ya están aplicados: sirven para reconstruir la base desde cero o co
 10. `10_avisos_push_d1.txt` — **ya corrido (12/11).** Tabla `suscripciones_push` para los avisos push (el secreto `VAPID_JWK` ya está cargado en el Worker).
 11. `11_asistente_d1.txt` — **ya corrido (13/11).** Tabla `asistente_uso` para los límites del asistente de IA (Workers AI ya está conectado al Worker con el enlace `AI`).
 12. `12_contexto_externo_d1.txt` — **ya corrido (13/11).** Tablas `contexto_externo` (proveedores y noticias guardados una hora) y `eventos_comerciales` (con CyberMonday y Black Friday 2026 ya cargados). El Worker que las usa ya está publicado.
+13. `13_ticketera_d1.txt` — **ya corrido (14/11).** 3 columnas para la ticketera (`causa_resolucion` y `acciones_resolucion` en `alertas_historico`, `opciones_resolucion` en `alerta_parametros`).
+14. `14_evidencia_d1.txt` — **falta correrlo (parche 30).** Tabla `evidencia_archivos`: la evidencia adjunta a las alertas (capturas, logs, PDF), en D1 porque R2 pide tarjeta.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
@@ -34,6 +36,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 ## 05_Documentacion
 - `Helios_inventario_de_tablas.docx` — inventario y detalle de todas las tablas (estilo de los documentos del equipo).
 - `contexto_helios_para_ia.md` — contexto completo del proyecto para pasarle a otra IA.
+- `novedades_ticketera.md` — ticketera (14/11): detalle de cada alerta, evidencia adjunta y resolución con causa; cómo activarlo.
 - `novedades_avisos_push_y_app.md` — avisos push, app instalable y logo nuevo (12/11): guía por dispositivo y problemas comunes.
 - `novedades_asistente_ia.md` — asistente de IA (13/11): cómo activarlo, qué responde a cada perfil, límites y problemas comunes.
 - `demo_alertas.pptx`, `demo_alertas_paso_a_paso.pptx` — presentaciones de la demo.
@@ -42,7 +45,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 29 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 30 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
 - `word/` — helper para armar los Word con el estilo de la compañera.

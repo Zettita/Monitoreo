@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS evidencia_archivos ( clave TEXT NOT NULL, parte INTEGER NOT NULL, datos TEXT NOT NULL, tipo_contenido TEXT, metadatos TEXT, tamano_bytes INTEGER, subido INTEGER, PRIMARY KEY (clave, parte) ) WITHOUT ROWID;

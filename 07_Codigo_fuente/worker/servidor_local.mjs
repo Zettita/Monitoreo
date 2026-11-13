@@ -17,7 +17,7 @@ db.exec('PRAGMA foreign_keys = ON');
 const preparar = (sql) => {
   let args = [];
   const st = {
-    bind(...a) { args = a.map((x) => (x === undefined ? null : x)); return st; },
+    bind(...a) { args = a.map((x) => (x === undefined ? null : x instanceof ArrayBuffer ? Buffer.from(x) : x)); return st; },   // ArrayBuffer = BLOB, como en D1
     async all() { return { results: db.prepare(sql).all(...args), meta: {} }; },
     async first() { return db.prepare(sql).get(...args) ?? null; },
     async run() { const r = db.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; },
@@ -56,7 +56,35 @@ const AI_SIMULADO = {
     return { choices: [{ message: { content: '(Modo simulado) Hola.' } }] };
   },
 };
+// Evidencia (parche 30): por defecto va a la base (tabla evidencia_archivos), como en Cloudflare sin R2.
+// Con CON_R2=1 se simula R2 con la carpeta evidencia_local/ (no va al repositorio).
+const carpetaEvidencia = new URL('./evidencia_local/', import.meta.url);
+const rutaEvidencia = (k) => new URL(k.replace(/[^A-Za-z0-9._-]/g, '_'), carpetaEvidencia);
+// Cada archivo va con un .meta al lado (clave, tipo y customMetadata), como los guarda R2.
+const metaDe = (k) => (fs.existsSync(rutaEvidencia(k + '.meta')) ? JSON.parse(fs.readFileSync(rutaEvidencia(k + '.meta'), 'utf8')) : null);
+const objetoDe = (m, conCuerpo) => {
+  const b = fs.readFileSync(rutaEvidencia(m.key));
+  return Object.assign({ key: m.key, size: b.length, uploaded: new Date(m.subido), httpMetadata: { contentType: m.tipo }, customMetadata: m.custom }, conCuerpo ? { body: b } : {});
+};
+const R2_LOCAL = {
+  async put(k, v, o) {
+    fs.mkdirSync(carpetaEvidencia, { recursive: true });
+    fs.writeFileSync(rutaEvidencia(k), Buffer.from(v));
+    fs.writeFileSync(rutaEvidencia(k + '.meta'), JSON.stringify({ key: k, subido: Date.now(), tipo: (o && o.httpMetadata && o.httpMetadata.contentType) || '', custom: (o && o.customMetadata) || {} }));
+  },
+  async get(k) { const m = metaDe(k); return m ? objetoDe(m, true) : null; },
+  async head(k) { const m = metaDe(k); return m ? objetoDe(m, false) : null; },
+  async delete(k) { fs.rmSync(rutaEvidencia(k), { force: true }); fs.rmSync(rutaEvidencia(k + '.meta'), { force: true }); },
+  async list(o) {
+    if (!fs.existsSync(carpetaEvidencia)) return { objects: [], truncated: false };
+    const objetos = fs.readdirSync(carpetaEvidencia).filter((n) => n.endsWith('.meta'))
+      .map((n) => JSON.parse(fs.readFileSync(new URL(n, carpetaEvidencia), 'utf8')))
+      .filter((m) => m.key.startsWith((o && o.prefix) || '')).map((m) => objetoDe(m, false));
+    return { objects: objetos, truncated: false };
+  },
+};
 const env = {
+  EVIDENCIA: process.env.CON_R2 ? R2_LOCAL : undefined,
   AI: process.env.ASISTENTE_LOCAL === 'simulado' ? AI_SIMULADO : undefined,
   VAPID_JWK: process.env.VAPID_JWK || fs.readFileSync(archivoClave, 'utf8').trim(),
   DB: {

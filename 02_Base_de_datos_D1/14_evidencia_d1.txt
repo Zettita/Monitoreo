@@ -1,0 +1,13 @@
+EVIDENCIA EN D1, SIN R2 (para la Console de D1: helios-monitoring-dev) — parche 30
+
+Qué hace: crea la tabla evidencia_archivos, donde Helios guarda la evidencia adjunta a las alertas (capturas, logs,
+PDF) mientras no se use R2. Cada archivo se guarda en texto base64 partido en pedazos de 90.000 caracteres
+(una fila por pedazo; la fila 0 lleva también el tipo, el tamaño y quién lo subió).
+Topes: 1 MB por archivo (las capturas grandes se achican solas en el navegador), 15 por alerta y 200 MB en total.
+Si algún día se conecta R2 al Worker (binding EVIDENCIA), los archivos nuevos van a R2 y esta tabla deja de usarse.
+
+Orden: 1) correr este bloque (después del 13); 2) publicar 01_Worker/worker_alertas_cron.js.
+Se puede repetir sin problema. Quedan 25 tablas.
+
+--- 1. Tabla evidencia_archivos ---
+CREATE TABLE IF NOT EXISTS evidencia_archivos ( clave TEXT NOT NULL, parte INTEGER NOT NULL, datos TEXT NOT NULL, tipo_contenido TEXT, metadatos TEXT, tamano_bytes INTEGER, subido INTEGER, PRIMARY KEY (clave, parte) ) WITHOUT ROWID;
