@@ -470,6 +470,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Leyenda de colores en la conversación del detalle (14/11, parche 35; sin SQL, falta publicar junto con el 32 al 34)**
+
+- Al lado del título "Conversación" se explica qué significa cada punto: gris = movimiento (derivar, tomar, devolver, reasignar, borrar un archivo), verde azulado = comentario, azul = archivo, verde = resolución. El color depende del tipo de movimiento, no de quién lo hizo.
+
 **Sin botón "Revisar alertas ahora" (14/11, parche 34; sin SQL, falta publicar junto con el 32 y el 33)**
 
 - Se sacó el botón de la barra del tablero (Administrador y Analista). Cada revisión recorre hoy las últimas 24 h (~6.500 filas): el botón multiplicaba lecturas sin hacer falta, porque cada escena de la demo ya revisa sola y en producción revisará el cron o la llegada de datos. La ruta `POST /api/procesar` solo existe con `PERMITIR_REVISION_MANUAL = '1'` (pruebas de la PC); `GET /procesar` ya no existe. Un cambio de umbrales o reglas se aplica en la próxima revisión (escena o cron). **Pendiente (etapa 3):** revisión incremental, que mire solo la ventana nueva.
