@@ -17,6 +17,7 @@ Mapa de carpetas y para qué sirve cada archivo: @LEEME.md
 - GitHub privado `Zettita/Monitoreo` (rama `main`), compartido con Ale Maggiolo (`alejandramaggiolo`) para que su IA y la nuestra trabajen sobre lo mismo.
 - **Después de cada cambio probado** (build + pruebas en verde, Worker copiado a `01_Worker/`, documentación actualizada): `git add -A`, commit en español que diga qué cambió y por qué, y `git push`. Uriel ya lo autorizó: no hace falta preguntar para este repositorio. Antes de empezar a trabajar: `git pull`.
 - Cada cambio actualiza en el mismo commit `05_Documentacion/contexto_helios_para_ia.md` (sección 16 y lo que corresponda) y este archivo.
+- **Siempre con respaldo (pedido de Ale, 13/11):** cada vez que se publica una versión nueva del Worker, se deja (1) la copia del Worker anterior en `99_Archivo_viejo/worker_antes_parcheNN/` con un `LEEME.md` para volver atrás, (2) una rama `respaldo-antes-parche-NN` con el proyecto como estaba antes y (3) una rama `version-parche-NN-<tema>` con la versión nueva. Las ramas no se borran ni se pisan. Si una etiqueta no sube (el proxy corta), usar ramas.
 - Nunca subir claves ni tokens (el `.gitignore` deja afuera `clave_push_*.txt`, `*.sqlite` salvo `pruebas/base.sqlite`, y `w.mjs`). Revisar `git status` antes de cada commit.
 
 ## Entorno real
@@ -106,12 +107,12 @@ Para un cambio nuevo: crear `patch29.py` con una función `aplicar(s)` (como los
 - Probado: entrega real en PC con Chrome; cifrado (se descifra como el navegador), firma VAPID, service worker simulado y regresión completa.
 - Aplicado en Cloudflare el 12/11 (script 10, secreto, Worker) y probado en PC con Chrome. En PC, Chrome tiene que quedar corriendo en segundo plano. La última versión ("Revisando…" en la campanita) puede faltar publicar.
 
-## Asistente de IA (13/11, patch28) — hecho y probado; falta aplicarlo en Cloudflare
+## Asistente de IA (13/11, patch28) — publicado
 - Botón "Asistente" en todas las páginas y "¿Qué está pasando?" junto a las acciones de cada alerta. Workers AI (enlace `AI`; modelo en `ASISTENTE_MODELO`, por defecto `@cf/qwen/qwen3-30b-a3b-fp8`).
 - Responde solo con lo que el perfil puede ver: herramientas de solo lectura en el servidor, cada una con el permiso de la pantalla equivalente (el modelo no ve las que no corresponden y, si las pide, el servidor las rechaza).
 - **Nunca ejecuta nada:** propone acciones (`sugerir_accion`, validadas en el servidor) y la página muestra "Hacerlo", que llama a las rutas de siempre. Gerente y Administrador no reciben propuestas.
 - Cuidado de D1: caché e índices, ~15-20 consultas y 2 escrituras por pregunta (`asistente_uso` + auditoría `ASISTENTE`). Límites: 20 por persona por hora (`ASISTENTE_POR_HORA`) y 150 por día en total (`ASISTENTE_POR_DIA`), para el cupo gratuito de 10.000 neuronas.
-- **Pendiente, en este orden:** (1) correr `11_asistente_d1.txt`; (2) Settings → Bindings → Add binding → Workers AI, variable `AI`; (3) publicar el Worker; (4) probar las preguntas sugeridas de cada perfil y ajustar el prompt o el modelo si hace falta.
+- Aplicado en Cloudflare el 13/11 (script 11, enlace `AI` de Workers AI, Worker publicado); el panel abre bien como Administrador. **Pendiente:** probar las preguntas sugeridas de cada perfil con el modelo real y ajustar el prompt o el modelo si hace falta.
 - Si se agrega una herramienta: que exija un permiso de `PERMISOS`, lea poco (caché o índice, con LIMIT) y devuelva datos ya resumidos (horas en Argentina, valores formateados) para gastar pocas neuronas.
 
 ## Dónde estamos (modelo nuevo, 3 etapas)

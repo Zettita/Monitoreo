@@ -4,7 +4,7 @@
 - `worker_alertas_cron.js` — Worker principal (`worker-alertas-cron`): tablero, Mis alertas, Seguimiento, Administración, login, cron que evalúa alertas y trae feriados. **Es siempre la última versión**; se publica con "Edit code".
 
 ## 02_Base_de_datos_D1 — scripts para la Console de D1 (en el orden en que se corren)
-Del 1 al 10 ya están aplicados (el 11 todavía no): sirven para reconstruir la base desde cero o como referencia.
+Del 1 al 11 ya están aplicados: sirven para reconstruir la base desde cero o como referencia.
 1. `01_acceso_d1_tablas.txt` — usuarios, perfiles y sesiones (login).
 2. `02_admin_d1_tablas.txt` — reglas personalizadas y auditoría (pantalla de Administración).
 3. `03_asignacion_d1_tablas.txt` — tomar / derivar / resolver alertas y equipos.
@@ -15,7 +15,7 @@ Del 1 al 10 ya están aplicados (el 11 todavía no): sirven para reconstruir la 
 8. `08_feriados_d1_tablas.txt` — tabla de feriados y opción "silenciar en feriados". **Desde el modelo v2 solo valen los bloques 1 a 26 y 35** (del 27 al 34 recrean vistas viejas: no correrlos).
 9. `09_modelo_v2_d1.txt` — **ya corrido (11/11, 21 bloques).** Índice del perfil, borra las 7 vistas y las tablas sin uso (`core_metricas_esperadas`, `historico_metricas`, `calendario`, `raw_metricas_recibidas`, `demo_escenarios`) y vacía alertas y métricas: la demo arranca sin datos recibidos (el perfil ya está entrenado hasta el arranque).
 10. `10_avisos_push_d1.txt` — **ya corrido (12/11).** Tabla `suscripciones_push` para los avisos push (el secreto `VAPID_JWK` ya está cargado en el Worker).
-11. `11_asistente_d1.txt` — **falta correrlo (parche 28).** Tabla `asistente_uso` para los límites del asistente de IA. Después: conectar Workers AI al Worker (enlace `AI`) y publicar.
+11. `11_asistente_d1.txt` — **ya corrido (13/11).** Tabla `asistente_uso` para los límites del asistente de IA (Workers AI ya está conectado al Worker con el enlace `AI`).
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
