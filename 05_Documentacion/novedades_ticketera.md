@@ -21,10 +21,10 @@
 
 Lo que se elige al resolver queda también como texto en la resolución ("Causa: Proveedor o gateway. Se hizo: se contactó al cliente, se escaló."), así las otras pantallas y el asistente lo muestran sin cambios. El asistente puede seguir resolviendo solo con texto.
 
-## 2. Cómo activarlo en Cloudflare (sin R2)
+## 2. Cómo activarlo en Cloudflare (sin R2) — hecho el 14/11
 
 1. **Script 13** (ya corrido el 14/11). Console de D1 de `helios-monitoring-dev`: los 4 bloques de `02_Base_de_datos_D1/13_ticketera_d1.txt`. Agrega 3 columnas (los 3 primeros bloques se corren una sola vez).
-2. **Script 14.** El bloque de `02_Base_de_datos_D1/14_evidencia_d1.txt`: crea la tabla `evidencia_archivos`, donde se guarda la evidencia. Quedan 25 tablas.
+2. **Script 14** (ya corrido el 14/11). El bloque de `02_Base_de_datos_D1/14_evidencia_d1.txt`: crea la tabla `evidencia_archivos`, donde se guarda la evidencia. Quedan 25 tablas.
 3. **Publicar** `01_Worker/worker_alertas_cron.js` (Edit code › pegar todo › Deploy).
 4. **Probar:** entrar como Soporte, abrir una alerta asignada con **Ver detalle**, adjuntar una captura, comentar y resolver eligiendo causa y acción.
 

@@ -140,13 +140,13 @@ Para un cambio nuevo: crear `patch32.py` con una función `aplicar(s)` (como los
 - **29c (13/11, publicado):** segunda prueba real: el modelo copió "Helios (solo si hay algo)" como título, se colaron Twilio Costa Rica y Colombia (el componente decía "Latin America") y las noticias dieron "no respondió a tiempo". Ahora gana el país del título; las noticias salen de **Google Noticias** (RSS de Argentina en español, sin clave; `CONTEXTO_NOTICIAS_CONSULTA`) con GDELT de respaldo; si una fuente falló, se reintenta a los 10 minutos (no a la hora); y `como_usarlo` pide títulos exactos (**Helios** solo si hay algo, **Calendario**, **Proveedores**, **Noticias**, **Qué vigilar**). Respaldo en `99_Archivo_viejo/worker_antes_parche29c/`, ramas `respaldo-antes-parche-29c` y `version-parche-29c-noticias-y-filtro`.
 - Aplicado en Cloudflare el 13/11 (script 12 y Worker, que incluye 28b–28d). **Pendiente:** preguntar "¿Hay algo de afuera que pueda afectar hoy o mañana?" con cada perfil. Respaldo en `99_Archivo_viejo/worker_antes_parche29/`, ramas `respaldo-antes-parche-29` y `version-parche-29-contexto-externo`.
 
-## Ticketera (14/11, patch30) — hecho y probado en la PC; falta aplicarlo en Cloudflare
+## Ticketera (14/11, patch30) — publicado el 14/11
 - Detalle de cada alerta en `/alerta/<id>` (Soporte y Analista; permiso `detalle_alerta`): conversación con la evidencia intercalada, datos, ventanas, acciones. Lo elegido al resolver en `alertas_historico.causa_resolucion` / `acciones_resolucion`; las opciones en `alerta_parametros.opciones_resolucion` (JSON, editable en Administración > Reglas de alerta). **Evidencia en D1** (tabla `evidencia_archivos`, base64 en filas de 90.000 caracteres; 1 MB por archivo, 200 MB en total; las capturas se achican en el navegador) porque R2 pide tarjeta; si se conecta R2 (binding `EVIDENCIA`) el mismo código lo usa.
-- **Pendiente, en este orden:** ~~(1) correr `13_ticketera_d1.txt`~~ (hecho el 14/11); (2) correr `14_evidencia_d1.txt`; (3) publicar el Worker; (4) probar con Soporte y Analista. Guía: `05_Documentacion/novedades_ticketera.md`.
+- Aplicado en Cloudflare el 14/11: scripts 13 y 14 corridos y Worker publicado (con el parche 31). **Pendiente:** probar con Soporte y Analista. Guía: `05_Documentacion/novedades_ticketera.md`.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche30/`, ramas `respaldo-antes-parche-30` y `version-parche-30-ticketera`.
 - Conocido y anterior a este cambio: en el celular, la barra de Seguimiento no entra y "Helios" se pisa con "Actualizar".
 
-## Textos y Umbrales (14/11, patch31) — hecho; se publica junto con el parche 30
+## Textos y Umbrales (14/11, patch31) — publicado el 14/11 junto con el parche 30
 - Tono: la app no nombra a la persona con "vos" ni "tuyo" ("Resuelta por Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en listas); las indicaciones siguen en rioplatense ("Elegí", "Tocá"). También los mensajes de error del servidor.
 - Umbrales: recuadro "Cómo decide Helios" (1 lo normal y su margen → 2 ¿hay alerta? → 3 ¿qué tan grave? → 4 ¿qué se atiende primero?) en la pestaña y en el diálogo; grupos del diálogo en ese orden; cada campo con "↑ Si lo subís / ↓ Si lo bajás"; tarjetas en frases simples. Sin SQL.
 

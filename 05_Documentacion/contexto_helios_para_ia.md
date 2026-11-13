@@ -71,7 +71,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Noticias y filtro por país (13/11, parche 29c): publicado.**
 - **Contexto externo filtrado (13/11, parche 29b): publicado.**
 - **Contexto externo del asistente (13/11, parche 29): aplicado.** Se corrió `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (tablas `contexto_externo` y `eventos_comerciales`, 24 tablas, 2 eventos cargados) y se publicó el Worker, que incluye las correcciones 28b a 28d. Falta probar las respuestas con las fuentes reales.
-- **Ticketera (14/11, parche 30): hecho y probado en la PC; a medio aplicar en Cloudflare.** Ya corrido el script `13_ticketera_d1.txt` (columnas `causa_resolucion` y `acciones_resolucion` en `alertas_historico` y `opciones_resolucion` en `alerta_parametros`). Falta: (1) correr `14_evidencia_d1.txt` (tabla `evidencia_archivos`: la evidencia va a D1 porque R2 pide tarjeta; quedan 25 tablas); (2) publicar el Worker. Guía: `novedades_ticketera.md`.
+- **Ticketera y textos (14/11, parches 30 y 31): publicado el 14/11.** Corridos `13_ticketera_d1.txt` (columnas `causa_resolucion` y `acciones_resolucion` en `alertas_historico`, `opciones_resolucion` en `alerta_parametros`) y `14_evidencia_d1.txt` (tabla `evidencia_archivos`: la evidencia va a D1 porque R2 pide tarjeta; quedan 25 tablas), y publicado el Worker. Falta probarlo con Soporte y Analista. Guía: `novedades_ticketera.md`.
 - **Corrección del asistente (13/11, parches 28b a 28d): publicada** junto con el parche 29. Arregla respuestas que mostraban `<tools>…</tools>`, negativas falsas ("no tengo acceso"), respuestas fuera de tema y etiquetas o ids internos en el texto.
 - **Asistente de IA (13/11, parche 28): aplicado.** Se corrió `02_Base_de_datos_D1/11_asistente_d1.txt` (tabla `asistente_uso`, quedan 22 tablas); en el Worker, Settings → Bindings → Add binding → **Workers AI**, nombre de variable `AI`, y se publicó `01_Worker/worker_alertas_cron.js`. El panel abre bien como Administrador; falta probar las respuestas con cada perfil. Sin el enlace, el resto funciona igual y el panel del asistente avisa que falta configurarlo. Guía: `novedades_asistente_ia.md`.
 - **Cómo verificar la base desde la consola de D1** (una línea, solo lee): `SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type = 'view') AS vistas, (SELECT COUNT(*) FROM sqlite_master WHERE name = 'ix_perfil_comportamiento_franja') AS indice_perfil, (SELECT COUNT(*) FROM feriados) AS feriados, (SELECT ahora FROM alerta_parametros WHERE id = 1) AS reloj;` → 0, 1, 23 o más, y el reloj de la demo.
@@ -470,12 +470,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Tono profesional y Umbrales explicado (14/11, parche 31; se publica junto con el 30, sin SQL)**
+**Tono profesional y Umbrales explicado (14/11, parche 31; sin SQL, publicado el 14/11 junto con el 30)**
 
 - La app ya no nombra a la persona con "vos" ni "tuyo": "Resuelta por Sol Porte" (antes "La resolvió vos"), "En curso: Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en las listas, "alertas asignadas" en el menú, sin "Hola, Sol.". Las indicaciones siguen en rioplatense ("Elegí", "Tocá"). Mensajes del servidor: "asignada a tu usuario" en vez de "asignada a vos". **Regla para lo que venga:** no usar "vos"/"tuyo" para referirse a quien usa la app.
 - Umbrales: recuadro "Cómo decide Helios" en 4 pasos en la pestaña y en el diálogo; grupos del diálogo numerados en ese orden (1 Sensibilidad, 2 Llegada de datos y feriados, 3 Gravedad, 4 Importancia); cada campo con "↑ Si lo subís: … ↓ Si lo bajás: …"; tarjetas de la pestaña en frases simples y numeradas.
 
-**Ticketera: detalle de cada alerta, evidencia y resolución con causa (14/11, parche 30; falta aplicarlo en Cloudflare)**
+**Ticketera: detalle de cada alerta, evidencia y resolución con causa (14/11, parche 30; publicado el 14/11)**
 
 - Página nueva **`/alerta/<id>`** (Soporte y Analista; permiso `detalle_alerta`): conversación completa con la evidencia intercalada, datos, ventanas con problema y las acciones de siempre. Se llega desde Mis alertas ("Ver detalle" y el título), Seguimiento ("Ver detalle"), el tablero ("Detalle") y los avisos (campanita y push llevan directo a la alerta). Resolver, en esas tres pantallas, abre el detalle con el diálogo nuevo.
 - **Evidencia** en la tabla nueva `evidencia_archivos` de D1 (script `14_evidencia_d1.txt`), porque R2 pide tarjeta: cada archivo en texto base64 partido en filas de 90.000 caracteres (base64 y no BLOB porque D1 devuelve los BLOB como lista de números y leerlos se pasa de los 10 ms de CPU). Hasta 1 MB por archivo (las capturas se achican solas en el navegador), 15 por alerta y 200 MB en total; lista cerrada de tipos (sin HTML ni SVG), siempre privados. El mismo código usa R2 si algún día se conecta el binding `EVIDENCIA` (hasta 10 MB). En el historial queda el comentario "Adjuntó el archivo «…»".
@@ -613,7 +613,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 | `novedades_avisos_push_y_app.md` | Avisos push, app instalable y logo nuevo: guía por dispositivo, problemas comunes, diagnóstico y cómo funciona |
 | `novedades_ticketera.md` | Ticketera (parche 30): detalle de alerta, evidencia (en D1, o en R2 si se activa), resolución con causa; cómo activarlo y problemas comunes |
 | `13_ticketera_d1.txt` | Columnas `causa_resolucion` y `acciones_resolucion` en `alertas_historico` y `opciones_resolucion` en `alerta_parametros` (parche 30; corrido el 14/11) |
-| `14_evidencia_d1.txt` | Tabla `evidencia_archivos`: la evidencia adjunta, en D1 mientras no haya R2 (parche 30; **falta correrlo**) |
+| `14_evidencia_d1.txt` | Tabla `evidencia_archivos`: la evidencia adjunta, en D1 mientras no haya R2 (parche 30; corrido el 14/11) |
 | `09_modelo_v2_d1.txt` | Etapa 2 del modelo nuevo (ya corrido el 11/11): índice del perfil, borra las vistas y las tablas sin uso, y vacía alertas y métricas (la demo arranca sin datos recibidos). Se corre antes de publicar el Worker. Reemplaza a `carga_baseline_demo_consola.txt` |
 | `acceso_d1_tablas.txt` · `admin_d1_tablas.txt` · `asignacion_d1_tablas.txt` · `avisos_d1_tablas.txt` | Tablas de login, administración, asignación y avisos (ya aplicadas) |
 | `feriados_d1_tablas.txt` | Tabla `feriados` (fines de 2025 y 2026 precargados), columna `silenciar_feriados` y vistas que la respetan (ya aplicado el 11/11). **Desde el modelo v2 solo valen los bloques 1 a 26 y 35**: los 27 a 34 recrean vistas viejas y no se deben correr |
@@ -656,7 +656,7 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 
 
 - [x] Optimizar el motor (filtro por fecha con índice, mismo resultado) y sacar las vistas (11/11).
-- [ ] Ticketera (parche 30): correr el script 14, publicar el Worker y probar con Soporte y Analista (el 13 ya está).
+- [ ] Ticketera (parches 30 y 31, publicados el 14/11): probar con Soporte y Analista en Cloudflare.
 - [ ] Tablero de causas a partir de `alertas_historico.causa_resolucion` y `acciones_resolucion` (por cliente, servicio y mes) y retención de la evidencia vieja en R2.
 - [ ] Etapa 3: revisión incremental, `tablero_cache` como columna de `alerta_parametros` y `reglas_alerta` (sistema + personalizadas juntas).
 - [ ] Quitar el modo demo y poner el reloj real (`ahora` = NULL).
