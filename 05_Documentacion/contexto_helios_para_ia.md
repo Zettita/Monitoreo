@@ -66,7 +66,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 - **Datos:** `perfil_comportamiento` cargado (26.208 filas). Alertas, eventos, avisos, cache y métricas observadas vacíos; reloj de la demo en el lunes 26/10/2026 10:00 ARG (`ahora = '2026-10-26T13:00:00Z'`). La demo arranca con "Preparar demo" y las 19 escenas.
 - **Cron Trigger:** apagado. **`worker-api-bi`:** todavía existe en el panel; hay que borrarlo.
 - **Avisos push (12/11, parche 26): aplicado.** Tabla `suscripciones_push` creada (script 10, 21 tablas), secreto `VAPID_JWK` cargado y Worker publicado; probado en una PC con Chrome. El secreto se genera con `07_Codigo_fuente/worker/generar_clave_push.mjs` y no se guarda en el proyecto. Detalle y guía por dispositivo: `novedades_avisos_push_y_app.md`.
-- **Enlaces cortos (13/11, parche 29d): falta publicar el Worker** (sin SQL).
+- **Enlaces cortos (13/11, parche 29d): publicado y probado** con Workers AI: respuesta completa, enlaces que funcionan y filtrada a Argentina.
 - **Noticias y filtro por país (13/11, parche 29c): publicado.**
 - **Contexto externo filtrado (13/11, parche 29b): publicado.**
 - **Contexto externo del asistente (13/11, parche 29): aplicado.** Se corrió `02_Base_de_datos_D1/12_contexto_externo_d1.txt` (tablas `contexto_externo` y `eventos_comerciales`, 24 tablas, 2 eventos cargados) y se publicó el Worker, que incluye las correcciones 28b a 28d. Falta probar las respuestas con las fuentes reales.
@@ -461,7 +461,7 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Contexto externo: enlaces cortos (13/11, parche 29d; falta publicar el Worker, sin SQL)**
+**Contexto externo: enlaces cortos (13/11, parche 29d; publicado y probado con el modelo real, sin SQL)**
 
 - En la tercera prueba real la respuesta salió con la estructura correcta y filtrada, pero los enlaces de Google Noticias (unos 400 caracteres) salían rotos y la respuesta se cortaba antes de "Qué vigilar".
 - Ahora al modelo no le llega ninguna dirección web: cada novedad lleva un código corto ([E1] para proveedores, [N1] para noticias) y el servidor lo cambia por el enlace real antes de mostrar la respuesta; si el modelo inventa un código, se borra. Las prioridades (P1 a P4) no se tocan. La respuesta puede ser un poco más larga (900 tokens).
