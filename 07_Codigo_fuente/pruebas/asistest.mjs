@@ -161,6 +161,14 @@ ok('nunca se le muestra a la persona la definición de las herramientas', !/tool
 pedidos.length=0; guion=[()=>texto('Busco los datos.\n<tool_call>\n{"name": "estado_clientes", "arguments": {}}\n</tool_call>'), ()=>texto('Hay problemas en CLI_002.')];
 r=await call(ck.gero,'POST','/api/asistente',{pregunta:'¿y los incidentes?'});
 ok('llamada escrita como <tool_call> (formato Qwen/Hermes)', pedidos.length===2 && r.j.respuesta==='Hay problemas en CLI_002.' && pedidos[1].p.messages.some(m=>m.role==='tool'||/estado_clientes/.test(m.content||'')), r.j);
+// Caso real (13/11): el analista preguntó por horarios y clientes y el modelo dijo que no tenía acceso
+pedidos.length=0; guion=[(p)=>texto(/por_horario/.test(p.messages.at(-1).content) && /por_cliente/.test(p.messages.at(-1).content) ? 'Más alertas entre las 11 y las 12; CLI_004 es el que más tuvo.' : 'No tengo acceso')];
+r=await call(ck.ana,'POST','/api/asistente',{pregunta:'Che en que horario surgieron mas alertas y cliente con mas problemas?'});
+ok('analista: horarios y clientes van con la pregunta (incidentes por horario y por cliente), una sola llamada', r.j.herramientas.includes('incidentes') && pedidos.length===1 && /11 y las 12/.test(r.j.respuesta), r.j);
+ok('el sistema le explica al modelo qué tiene cada herramienta y que no se niegue sin pedirla', /incidentes \(Resumen de incidentes/.test(pedidos[0].p.messages[0].content) && /solo si ninguna/.test(pedidos[0].p.messages[0].content));
+pedidos.length=0; guion=[()=>texto('ok')];
+r=await call(ck.gero,'POST','/api/asistente',{pregunta:'¿Quién tiene las alertas y cómo está la carga de los equipos?'});
+ok('gerente: las palabras de la pregunta no le suman datos fuera de su perfil', !r.j.herramientas.includes('carga_equipos') && !/carga_equipos|alertas_abiertas/.test(pedidos[0].p.messages.at(-1).content.split('Datos de Helios')[1]||''), r.j.herramientas);
 for (const [u,h] of [['ana','alertas_abiertas'],['gero','estado_clientes'],['ADMIN','estado_clientes']]) {
   pedidos.length=0; guion=[()=>texto('ok')];
   r=await call(ck[u],'POST','/api/asistente',{pregunta:'hola'});

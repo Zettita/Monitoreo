@@ -10,4 +10,4 @@ en la que el modelo mostraba la definición de las herramientas (`<tools> … </
 
 ## En Git
 - Proyecto como estaba antes: rama `respaldo-antes-parche-28b`.
-- Versión nueva (con la corrección): rama `version-parche-28b-asistente-respuestas`.
+- Versión nueva: rama `version-parche-28c-asistente-datos-por-pregunta` (incluye la 28b, `version-parche-28b-asistente-respuestas`, que quedó intermedia y no se publicó).
