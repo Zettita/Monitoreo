@@ -18,7 +18,7 @@ if (!sinUmbrales) arch.push('revision_d1.sql');
 // Etapa 3b (parche 38): script 16 (reglas_alerta + columnas del caché) y script 17 (borra las tablas viejas).
 // SIN_ETAPA_3B=1 arma la base como estaba antes (para probar la migración).
 if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('reglas_cache_d1.sql', 'limpieza_d1.sql');
-if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('plantillas_d1.sql');   // parche 40: plantillas de correo (script 18)
+if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('plantillas_d1.sql', 'tickets_d1.sql');   // parches 40 y 41: plantillas de correo (script 18) y tickets (script 19)
 for (const f of arch)
   for (const l of fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8').split('\n')) if (l.trim()) db.exec(l);
 console.log('db lista', dst, sinUmbrales ? '(sin umbrales)' : '');

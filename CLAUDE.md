@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch40.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch41.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,11 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch41.py          tickets a demanda en InvGate o Jira: "Generar ticket" en el detalle y casilla en el correo (el número va al asunto,
+                        al texto y a {ticket}); tickets_server.js (POST /api/alertas/<id>/ticket, novedadTicket) y tickets_integracion.js
+                        (PUNTO DE ENGANCHE del equipo de integración: crearTicketInvgate / crearTicketJira / rutasTicketsIntegracion);
+                        modo por herramienta TICKETS_INVGATE / TICKETS_JIRA = 'real' (si no, simulado). tickets_d1.sql = script 19
+                        (tabla tickets_alerta). Prueba: pruebas/integraciontest.mjs (con una integración de mentira). Guía: 05_Documentacion/integracion_tickets.md
     patch40.py          plantillas de correo (Administración > "Plantillas de correo", solo Administrador; plantillas_server.js,
                         alerta_parametros.plantillas_correo en JSON, plantillas_d1.sql = script 18; sin la columna usa las 6 de fábrica)
                         y ajustes al 39: botón "Template correo alerta «problema · cliente»", sin texto explicativo, selector de plantilla,
@@ -115,7 +120,7 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done
 # etapa 3b: migración a mitad de camino (esquema viejo -> scripts 16 y 17 -> Worker nuevo); necesita w_anterior.mjs
@@ -124,7 +129,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch41.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch42.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -202,6 +207,20 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 1. **Template correo alerta — hecho en código (parches 39 y 40), falta publicar.** Ver la sección siguiente.
 2. **Plantillas de correo — hecho en código (parche 40, script 18), falta publicar.**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
+
+## Integración InvGate / Jira y comunicación de incidentes (16/11) — en curso
+Flujo pedido por Ale: veo un evento → lo gestiono → mando un push "Tenemos este incidente" → cargo el mail → tildo que genere un ticket
+(a demanda, nunca solo) → el ticket se suma al mail y al push. La integración con InvGate y Jira la hace **el mismo equipo, en esta misma demo**:
+el único punto a completar es `tickets_integracion.js` (ver `05_Documentacion/integracion_tickets.md`). Decidido con Ale: la herramienta se elige en
+cada alerta; generan tickets y comunican Analista y Soporte (lo suyo o de su equipo); las audiencias del push son **listas de difusión** con un rol por
+persona (informado / técnico / líder).
+1. **Tickets a demanda — hecho en código (parche 41, script 19), falta publicar.** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
+   casilla en el correo; el número va al asunto (`[INV-1001] …`), al texto (`{ticket}` o una línea "Ticket: …"), a "Datos de la alerta" y a la conversación.
+   Simulado hasta que esté la integración (`INV-1001`, `HEL-101`, marcado "simulado"). "Preparar demo" borra los tickets de Helios.
+2. **Comunicar incidente (push a demanda) — pendiente (parche 42).** Listas de difusión en Administración; informados solo leen; técnicos dan
+   "Recibido" (ACK) y responden; líderes responden sumando información; todo vuelve a la conversación; el push lleva el ticket.
+- La War Room en Teams queda en pausa hasta terminar esto.
+- **Publicar:** scripts 18 y 19 → Worker (trae los parches 39, 40 y 41).
 
 ## Plantillas de correo y ajustes (16/11, patch40) — hecho en código, falta publicar
 - Pedido de Ale: el botón se llama **"Template correo alerta «<problema> · <cliente>»"** (también el título del diálogo); se sacó el texto explicativo.

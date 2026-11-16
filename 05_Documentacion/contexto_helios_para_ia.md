@@ -117,6 +117,7 @@ Hoy pesa unos 7 MB (13 series con historia, unos 9 días). Casi todo son métric
 | `asistente_uso` | **Asistente de IA (parche 28, script 11).** Cuántas preguntas hizo cada persona en cada hora (para los límites de uso). `WITHOUT ROWID` | PK (`hora` = `AAAA-MM-DDTHH` en UTC, `usuario_id`), `preguntas` |
 | `contexto_externo` | **Asistente, contexto externo (parche 29, script 12).** Lo último que se trajo de las páginas de estado de proveedores y de las noticias; 1 fila por fuente (`proveedores`, `noticias`), se renueva como mucho una vez por hora y solo cuando alguien pregunta. `WITHOUT ROWID` | `fuente` (PK), `actualizado` (UTC), `contenido` (JSON ya resumido), `error` (si la última consulta falló) |
 | `eventos_comerciales` | **Eventos comerciales (parche 29, script 12).** Días con tráfico distinto al habitual (Black Friday, CyberMonday, Hot Sale, promos de un cliente). Los carga el Administrador en Umbrales; hoy solo los usa el asistente | `id`, `nombre`, `fecha_desde`, `fecha_hasta` (`AAAA-MM-DD`, hasta 31 días), `cliente_id` y `servicio_id` (NULL = todos), `efecto_esperado` (`MAS_TRAFICO` / `MENOS_TRAFICO`), `nota`, `creado_por`, `creado`. Índice `ix_eventos_comerciales_fechas` |
+| `tickets_alerta` | **Tickets a demanda (parche 41, script 19).** Un ticket de InvGate o Jira generado desde una alerta (o simulado) | `id`, `alerta_id`, `sistema` (`INVGATE`/`JIRA`), `clave` (única por herramienta), `url`, `estado`, `simulado`, `resumen`, `descripcion`, `creado_por`, `creado`, `actualizado`. Índice `ix_tickets_alerta_alerta` |
 | `meta_diccionario_datos` | Diccionario de datos: `capa`, `tipo_objeto`, `objeto_nombre`, `campo_nombre`, `descripcion` | Del equipo; vacía: hay que completarla |
 
 ### Sin vistas (desde el 11/11)
@@ -470,6 +471,19 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Tickets a demanda en InvGate o Jira (16/11, parche 41; script 19, falta publicar)**
+
+- Pedido de Ale: "veo un evento, lo gestiono, mando un push, cargo el mail, **tildo que genere un ticket** (a demanda, no sale solo) y el ticket se suma al mail y al push". La integración con InvGate y Jira la arma el mismo equipo dentro de esta demo.
+- **"Generar ticket"** en el detalle de la alerta (Analista; Soporte en lo suyo o de su equipo; abierta o resuelta): se elige **InvGate o Jira** y Helios arma el resumen (`[P2 · Importante] CLI_004 · servicio: problema`) y la descripción (qué pasa, cliente, servicio, desde, gravedad, medición, estado, enlace), editables. Uno por herramienta y por problema.
+- En **"Template correo alerta"**: si la alerta tiene ticket, el número va solo al asunto (`[INV-1001] …`) y al texto (variable nueva `{ticket}` en las plantillas o, si la plantilla no la trae, una línea "Ticket: …"); y la casilla **"Generar ticket ahora en [InvGate / Jira]"** lo genera en el momento y lo suma al correo.
+- El ticket se ve en "Datos de la alerta" (con enlace si la herramienta lo devuelve, y su estado) y en la conversación ("Generó el ticket INV-1001 en InvGate"); avisa a quien tiene la alerta y a quien la derivó; auditoría `GENERAR_TICKET`.
+- **Punto de enganche para la integración:** `07_Codigo_fuente/worker/tickets_integracion.js` (`crearTicketInvgate`, `crearTicketJira`, `rutasTicketsIntegracion` para webhooks bajo `/api/integraciones/…`) y `novedadTicket(env, sistema, clave, {estado, comentario})` para los cambios de estado, que quedan en la conversación. Modo por herramienta con las variables del Worker `TICKETS_INVGATE` / `TICKETS_JIRA` = `real`; si no, **simulado** (`INV-1001`, `HEL-101`, marcado "simulado"). Guía completa: `05_Documentacion/integracion_tickets.md`.
+- Tabla nueva **`tickets_alerta`** (script `19_tickets_d1.txt`; quedan **24 tablas**): `alerta_id`, `sistema` (`INVGATE`/`JIRA`), `clave` (única por herramienta), `url`, `estado`, `simulado`, `resumen`, `descripcion`, `creado_por`, `creado`, `actualizado`. Ruta `POST /api/alertas/{id}/ticket` (body `{sistema, resumen, descripcion, prioridad}`); el detalle trae `tickets` y `tickets_sistemas`. "Preparar demo" borra los tickets de Helios. Sin el script, "Generar ticket" avisa (503) y el resto anda igual.
+- Corrige además el botón "Template correo alerta «…»" del parche 40, que en el celular se salía de la pantalla.
+- **Para publicar:** scripts 18 y 19 → Worker (trae los parches 39, 40 y 41).
+- Probado: `integraciontest.mjs` (31 controles, con una integración de mentira para el modo real y su webhook), la demo y todas las pruebas iguales; pantallas en PC y celular. Respaldo: `99_Archivo_viejo/worker_antes_parche41/`, ramas `respaldo-antes-parche-41` y `version-parche-41-tickets-invgate-jira`.
+- **Sigue (parche 42):** "Comunicar incidente" por push con listas de difusión (informados, técnicos con ACK y respuesta, líderes que suman información), con el ticket incluido.
+
 **Plantillas de correo y ajustes al correo (16/11, parche 40; script 18, falta publicar)**
 
 - **Nombre:** el botón del detalle (y el título del diálogo) ahora dice **"Template correo alerta «<problema> · <cliente>»"**; se sacó el texto explicativo del diálogo.
@@ -729,7 +743,9 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Avisos push con Helios cerrado e instalar como app (12/11, parche 26; publicado).
 - [x] Preparar correo desde la alerta y confirmar el envío (16/11, parche 39; falta publicar).
 - [x] Plantillas de correo por tipo de incidente y sector (16/11, parche 40; falta publicar con el script 18). Destinatarios por cliente: más adelante, si hace falta.
-- [ ] War Room en Teams desde una alerta (evaluar enlace directo vs. Microsoft Graph).
+- [x] Tickets a demanda en InvGate o Jira (16/11, parche 41; simulado hasta que el equipo complete `tickets_integracion.js`; falta publicar con el script 19).
+- [ ] Comunicar incidente por push con listas de difusión, ACK y respuestas (parche 42).
+- [ ] War Room en Teams desde una alerta (en pausa; evaluar enlace directo vs. Microsoft Graph).
 - [ ] Avisos por Teams con webhook (etapa 5). Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
 - [x] Perfiles: Gerente de lectura con Panorama, Analista deriva y avisa pre-alertas, Soporte solo con sus tickets, Administrador orientado a la configuración (11/11).
 - [x] Criticidad por servicio, objetivo de disponibilidad y umbrales configurables por cliente (11/11).

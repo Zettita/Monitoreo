@@ -209,5 +209,7 @@ import patch39
 s = patch39.aplicar(s)
 import patch40
 s = patch40.aplicar(s)
+import patch41
+s = patch41.aplicar(s)
 open(out, 'w', encoding='utf-8', newline='\n').write(s)   # LF, igual que el Worker publicado
 print('ok', len(s))

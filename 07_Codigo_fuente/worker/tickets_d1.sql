@@ -1,0 +1,3 @@
+CREATE TABLE IF NOT EXISTS tickets_alerta ( id INTEGER PRIMARY KEY AUTOINCREMENT, alerta_id TEXT NOT NULL, sistema TEXT NOT NULL CHECK (sistema IN ('INVGATE', 'JIRA')), clave TEXT NOT NULL, url TEXT, estado TEXT, simulado INTEGER NOT NULL DEFAULT 0 CHECK (simulado IN (0, 1)), resumen TEXT NOT NULL, descripcion TEXT, creado_por INTEGER REFERENCES usuarios (id), creado TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')), actualizado TEXT );
+CREATE INDEX IF NOT EXISTS ix_tickets_alerta_alerta ON tickets_alerta (alerta_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_tickets_alerta_clave ON tickets_alerta (sistema, clave);
