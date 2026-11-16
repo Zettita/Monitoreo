@@ -470,6 +470,14 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Correo desde la alerta (16/11, parche 39; sin SQL, falta publicar)**
+
+- En el detalle de una alerta (`/alerta/<id>`), botón **"Preparar correo"** para Analista y Soporte (Soporte solo en lo suyo o de su equipo), con la alerta abierta o resuelta. El diálogo trae el asunto y el texto ya armados con los datos de la alerta (qué pasa, cliente, servicio, desde cuándo, cuánto lleva, gravedad y prioridad, última medición contra lo esperado, estado y quién la tiene —o cómo se resolvió—, última novedad y el enlace a Helios) y lugares "[Completar: …]". Se completan Para y CC y se abre con **"Abrir en Outlook web"** (Microsoft 365, `outlook.office.com/mail/deeplink/compose`) o **"Outlook de escritorio"** (`mailto:`); también "Copiar texto". Si el texto es demasiado largo para el enlace, el correo se abre sin el texto y el texto queda copiado para pegarlo.
+- **Helios no manda correos ni se conecta a Microsoft 365** (no hace falta registrar nada en Azure). Por eso, al abrirlo queda en la conversación "preparó un correo" (asunto, destinatarios y el texto armado, desplegable) con **"Falta confirmar si se envió"** y el botón **"Confirmar envío"**: *se envió tal cual*, *se envió con cambios* (se pega el texto final, que queda guardado) o *no se envió*.
+- Rutas nuevas: `POST /api/alertas/{id}/correo` (body `{asunto, para, cc, texto}`) y `POST /api/alertas/{id}/correo/envio` (body `{evento_id, resultado: SIN_CAMBIOS | CON_CAMBIOS | NO_ENVIADO, texto?}`). Se guardan como comentarios en `alerta_eventos` (`Preparó un correo «asunto» para …`, `Envió el correo «asunto» sin cambios` / `con cambios`, `No envió el correo «asunto»`; el texto va después de una línea `---`) y en la auditoría (`PREPARAR_CORREO`, `CONFIRMAR_CORREO`). No genera avisos. Sin tablas ni columnas nuevas.
+- Próximos pasos acordados: **plantillas de correo** por tipo de incidente o sector, con destinatarios conocidos (punto 2), y evaluar la **War Room en Teams** (punto 3). Más adelante, si IT lo aprueba, Microsoft Graph para crear el borrador directamente en el buzón (con formato y adjuntos).
+- Probado: `correotest.mjs` (35 controles: permisos por perfil, direcciones mal escritas, repetidos, texto largo, confirmaciones, mismo asunto dos veces, alerta resuelta), la demo y todas las pruebas anteriores iguales; pantallas en claro, oscuro y celular. Respaldo: `99_Archivo_viejo/worker_antes_parche39/`, ramas `respaldo-antes-parche-39` y `version-parche-39-correo-desde-alerta`.
+
 **Limpieza de tablas: etapa 3b (16/11, parche 38; scripts 16 y 17 y publicar)**
 
 - **De 25 a 23 tablas, mismo comportamiento.** `alerta_reglas` + `alerta_reglas_personalizadas` pasan a `reglas_alerta` (columna `tipo` SISTEMA / PERSONALIZADA; las personalizadas conservan su id, las del sistema llevan ids negativos para que las nuevas sigan numerándose desde donde iban) y `tablero_cache` pasa a las columnas `tablero_revision` y `tablero_calculado` de `alerta_parametros`.
@@ -708,6 +716,9 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Código en Git: GitHub privado `Zettita/Monitoreo` (12/11).
 - [ ] Ambientes QA y producción, copias de seguridad.
 - [x] Avisos push con Helios cerrado e instalar como app (12/11, parche 26; publicado).
+- [x] Preparar correo desde la alerta y confirmar el envío (16/11, parche 39; falta publicar).
+- [ ] Plantillas de correo por tipo de incidente o sector, con destinatarios conocidos.
+- [ ] War Room en Teams desde una alerta (evaluar enlace directo vs. Microsoft Graph).
 - [ ] Avisos por Teams con webhook (etapa 5). Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
 - [x] Perfiles: Gerente de lectura con Panorama, Analista deriva y avisa pre-alertas, Soporte solo con sus tickets, Administrador orientado a la configuración (11/11).
 - [x] Criticidad por servicio, objetivo de disponibilidad y umbrales configurables por cliente (11/11).

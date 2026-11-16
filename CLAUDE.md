@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch38.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch39.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,10 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch39.py          correo desde la alerta: botón "Preparar correo" en el detalle (borrador con los datos de la alerta, Outlook web por
+                        enlace deeplink o de escritorio por mailto, "Copiar texto") y "Confirmar envío" en la conversación (tal cual / con
+                        cambios + texto final / no se envió). correo_server.js (POST /api/alertas/<id>/correo y /correo/envio). Sin SQL.
+                        Prueba: pruebas/correotest.mjs
     patch38.py          etapa 3b: reglas_alerta (reemplaza a alerta_reglas y alerta_reglas_personalizadas) y columnas tablero_revision /
                         tablero_calculado en alerta_parametros (reemplazan a tablero_cache); scripts 16 y 17 (reglas_cache_d1.sql, limpieza_d1.sql).
                         Prueba: pruebas/migtest.mjs (necesita pruebas/w_anterior.mjs: git show HEAD:01_Worker/worker_alertas_cron.js antes del parche)
@@ -107,16 +111,16 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done
 # etapa 3b: migración a mitad de camino (esquema viejo -> scripts 16 y 17 -> Worker nuevo); necesita w_anterior.mjs
-git show HEAD:01_Worker/worker_alertas_cron.js > w_anterior.mjs   # el Worker publicado antes de este parche
+git show bbca169~1:01_Worker/worker_alertas_cron.js > w_anterior.mjs   # el Worker de antes del parche 38 (commit anterior a bbca169)
 SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite && SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_b.sqlite && node --no-warnings migtest.mjs mig_a.sqlite mig_b.sqlite
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch39.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch40.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -191,9 +195,23 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 6. Mejoras de Hugo: esperar sus definiciones (sección siguiente).
 
 ## En curso (16/11): correo y War Room desde una alerta — de a un punto por vez
-1. **Preparar correo** desde el detalle de la alerta (Outlook / Microsoft 365) con los datos cargados; el analista revisa y completa.
+1. **Preparar correo — hecho en código (parche 39), falta publicar.** Ver la sección siguiente.
 2. **Plantillas de correo** por tipo de incidente o sector al que se escala, con destinatarios conocidos.
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
+
+## Correo desde la alerta (16/11, patch39) — hecho en código, falta publicar
+- Decidido con Ale: los dos botones (Outlook web y de escritorio), lo usan Analista y Soporte (lo suyo o de su equipo), y queda en la conversación.
+- Detalle de la alerta → **"Preparar correo"**: el diálogo trae asunto (`[P1 · Grave] CLI_006 · servicio: problema`, o `[Resuelta] …`) y texto armados
+  (qué pasa, cliente, servicio, desde cuándo con fecha completa, lleva/duró, gravedad y prioridad, última medición, estado y quién la tiene o la
+  resolución, última novedad, enlace a la alerta y "[Completar: …]"). Se completan Para y CC (validados) y se abre en **Outlook web**
+  (`outlook.office.com/mail/deeplink/compose`) o **de escritorio** (`mailto:`); si el texto no entra en el enlace, se abre sin texto y queda copiado.
+- Helios **no envía correos ni se conecta a Microsoft 365** (sin Azure ni claves). Por eso la persona confirma después: en la conversación queda
+  "preparó un correo" (asunto, destinatarios, texto armado) con **"Falta confirmar si se envió"** y el botón **"Confirmar envío"**:
+  se envió tal cual / se envió con cambios (pide el texto final) / no se envió. Punto morado en la conversación (leyenda "Correo").
+- Todo como comentarios en `alerta_eventos` (formato en `correo_server.js`) y auditoría `PREPARAR_CORREO` / `CONFIRMAR_CORREO`; sin avisos a nadie.
+  El mismo correo reabierto en 10 min no se repite. Cada confirmación se aparea con el primer correo pendiente de ese asunto. Texto hasta 6000 caracteres.
+- Vale con la alerta abierta o resuelta. **Sin SQL**, pero el Worker incluye el parche 38: antes de publicarlo hay que correr el script 16.
+- Más adelante (si IT lo aprueba): Microsoft Graph para crear el borrador directo en el buzón, con formato y adjuntos.
 
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
 Tipo de impacto (degradación / parcial / caída), servicios de acceso y correlación, coeficientes, segmentos, registro de incidentes y problemas con causa, SLAs por prioridad con escalamiento, SLO y ventanas de mantenimiento. **Nada implementado.** Falta que Hugo mande: lista de servicios con los de acceso marcados, ejemplo de coeficientes reales, cómo distingue degradación / parcial / caída, SLAs y escalamiento por prioridad, lista de causas, la foto del incidente de login y el documento que prometió. Detalle en la sección 18 de `contexto_helios_para_ia.md`. Si alguien pide implementar algo de esto, primero preguntar si ya llegaron esas definiciones.
