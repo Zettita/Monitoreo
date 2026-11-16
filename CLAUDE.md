@@ -181,6 +181,20 @@ Para un cambio nuevo: crear `patch39.py` con una función `aplicar(s)` (como los
 ## Recuadro "Urgente" del tablero (14/11, patch32) — publicado el 16/11
 - Decía "Sin asignar" cuando la alerta estaba asignada pero nadie la había tomado (solo miraba si estaba tomada). Ahora: "En curso: X", "Asignada a X (equipo Y), sin tomar", "Asignada al equipo Y, sin tomar", "Devuelta al analista" o "Sin asignar". Solo la página del tablero; sin SQL.
 
+## Pendientes en pausa (16/11) — se retoman después de Correo y War Room
+Pedido de Ale: quedan guardados en este orden, sin empezar.
+1. Aplicar la etapa 3b en Cloudflare (parche 38): script 16 → publicar Worker → comprobar → script 17.
+2. Probar en Cloudflare la ticketera con Soporte y Analista, y "¿Hay algo de afuera…?" con cada perfil.
+3. Tablero de causas (`causa_resolucion` / `acciones_resolucion` por cliente, servicio y mes).
+4. Ingesta real `POST /api/metricas` (normaliza fechas) + token para máquinas.
+5. Series del tablero sobre lo nuevo (hoy se recalculan sobre 25 h).
+6. Mejoras de Hugo: esperar sus definiciones (sección siguiente).
+
+## En curso (16/11): correo y War Room desde una alerta — de a un punto por vez
+1. **Preparar correo** desde el detalle de la alerta (Outlook / Microsoft 365) con los datos cargados; el analista revisa y completa.
+2. **Plantillas de correo** por tipo de incidente o sector al que se escala, con destinatarios conocidos.
+3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
+
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
 Tipo de impacto (degradación / parcial / caída), servicios de acceso y correlación, coeficientes, segmentos, registro de incidentes y problemas con causa, SLAs por prioridad con escalamiento, SLO y ventanas de mantenimiento. **Nada implementado.** Falta que Hugo mande: lista de servicios con los de acceso marcados, ejemplo de coeficientes reales, cómo distingue degradación / parcial / caída, SLAs y escalamiento por prioridad, lista de causas, la foto del incidente de login y el documento que prometió. Detalle en la sección 18 de `contexto_helios_para_ia.md`. Si alguien pide implementar algo de esto, primero preguntar si ya llegaron esas definiciones.
 
