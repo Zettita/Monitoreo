@@ -47,10 +47,10 @@ const esperada=(cli,srv,pg={g:1,i:0.5,l:0})=>{
 // ---- El tablero trae la disponibilidad ----
 r=await P(ck.gero,'?tipo=mes'); const mes=r.j;
 ok('el mes trae disponibilidad global y por cliente', r.s===200 && mes.disponibilidad && mes.disponibilidad.global && mes.disponibilidad.clientes.length>=6, mes.disponibilidad.clientes.length);
-ok('…con el objetivo de fábrica (99,9 %) y el mes de octubre (31 días: 44,6 minutos permitidos)', cerca(mes.disponibilidad.global.objetivo,0.999) && cerca(mes.disponibilidad.global.minutos_permitidos,44.6,0.05), [mes.disponibilidad.global.objetivo, mes.disponibilidad.global.minutos_permitidos]);
+ok('…con el objetivo de fábrica (99,9 %) y el margen sobre lo medido del período (0,1 % de los minutos medidos)', cerca(mes.disponibilidad.global.objetivo,0.999) && mes.disponibilidad.clientes.every(c=>c.servicios.every(s=>cerca(s.minutos_permitidos,Math.round(0.001*s.minutos_medidos*10)/10,0.051))), [mes.disponibilidad.global.objetivo]);
 ok('…y la configuración de pesos de fábrica', mes.config_disponibilidad.pesos_gravedad.CRITICA===1 && mes.config_disponibilidad.pesos_gravedad.ALTA===0.5 && mes.config_disponibilidad.pesos_gravedad.MEDIA===0 && mes.config_disponibilidad.pesos_criticidad.ALTA===3 && mes.disponibilidad_instalada===true);
 const c6=mes.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006');
-ok('CLI_006 (caída total, 15 minutos) todavía está dentro del margen del mes (44,6 min) y su disponibilidad medida es menor al objetivo', c6 && c6.cumple===true && c6.disponibilidad<0.999 && c6.consumo>0 && c6.consumo<1, c6 && [c6.disponibilidad,c6.consumo]);
+ok('CLI_006 (caída total, 15 minutos): su disponibilidad medida (96 %) está por debajo del objetivo (99,9 %), así que NO cumple y está en rojo', c6 && c6.cumple===false && c6.estado==='rojo' && c6.disponibilidad<0.999 && c6.consumo>1, c6 && [c6.disponibilidad,c6.consumo,c6.estado]);
 for (const s of c6.servicios) {
   const e=esperada('CLI_006',s.servicio_id);
   ok('disponibilidad de CLI_006 / '+s.servicio_id+' = la calculada a mano ('+e.m.g+' graves, '+e.m.i+' importantes, '+e.medidas+' ventanas medidas)', cerca(s.disponibilidad,e.disp), [s.disponibilidad,e.disp]);
@@ -62,7 +62,8 @@ const sinProblemas=mes.disponibilidad.clientes.filter(c=>c.servicios.every(s=>s.
 ok('los que no tuvieron problemas están al 100 % y cumplen', sinProblemas.length>=1 && sinProblemas.every(c=>c.disponibilidad===1 && c.cumple && c.consumo===0), sinProblemas.map(c=>c.cliente_id));
 ok('los clientes vienen ordenados: primero el que más margen gastó', mes.disponibilidad.clientes.every((c,i,a)=>i===0||a[i-1].consumo>=c.consumo));
 const w=(await P(ck.gero,'?tipo=semana')).j, d=(await P(ck.gero,'?tipo=dia')).j;
-ok('el día y la semana dan lo mismo que el mes (la demo empezó hoy), comparados contra el margen del mes', cerca(d.disponibilidad.global.disponibilidad,mes.disponibilidad.global.disponibilidad) && cerca(w.disponibilidad.global.disponibilidad,mes.disponibilidad.global.disponibilidad) && cerca(d.disponibilidad.global.minutos_permitidos,44.6,0.05));
+ok('el día y la semana dan lo mismo que el mes (la demo empezó hoy): misma disponibilidad y mismo semáforo', cerca(d.disponibilidad.global.disponibilidad,mes.disponibilidad.global.disponibilidad) && cerca(w.disponibilidad.global.disponibilidad,mes.disponibilidad.global.disponibilidad) && cerca(d.disponibilidad.global.consumo,mes.disponibilidad.global.consumo,1e-6) && d.disponibilidad.global.estado===mes.disponibilidad.global.estado);
+ok('cumple, semáforo y número coinciden en todos los clientes y servicios: verde si la disponibilidad llega al objetivo, y nunca verde si queda por debajo', mes.disponibilidad.clientes.every(c=>(c.cumple===(c.disponibilidad>=c.objetivo-1e-12)) && ((c.estado==='verde')===c.cumple) && c.servicios.every(s=>(s.cumple===(s.disponibilidad>=s.objetivo-1e-12)) && ((s.estado==='verde')===s.cumple))));
 r=await P(ck.gero,'?tipo=mes&fecha=2026-09-10');
 ok('un mes sin datos no inventa disponibilidad', r.s===200 && r.j.disponibilidad.global===null && r.j.disponibilidad.clientes.length===0);
 ok('el mes actual compara con septiembre (sin datos)', mes.disponibilidad_anterior.titulo==='Septiembre 2026' && mes.disponibilidad_anterior.global===null);
@@ -85,10 +86,10 @@ ok('objetivo de 99,98 % para CLI_006', r.s===200, r.j);
 r=await call(A,'POST','/api/admin/umbrales',{cliente_id:'CLI_006',objetivo_mensual:0.5}); ok('un objetivo menor a 90 % se rechaza', r.s===400, r.j.error);
 r=await call(A,'POST','/api/admin/umbrales',{cliente_id:'CLI_006',objetivo_mensual:'abc'}); ok('…y uno que no es número también', r.s===400);
 r=await P(ck.gero,'?tipo=mes'); const c6b=r.j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006'), c1b=r.j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_001');
-ok('CLI_006 usa su objetivo (99,98 % = 8,9 minutos por mes) y los demás el general', cerca(c6b.objetivo,0.9998) && cerca(c6b.minutos_permitidos,8.9,0.05) && cerca(c1b.objetivo,0.999) && c6b.servicios.every(s=>cerca(s.objetivo,0.9998)), [c6b.objetivo,c6b.minutos_permitidos,c1b.objetivo]);
+ok('CLI_006 usa su objetivo (99,98 %) y los demás el general', cerca(c6b.objetivo,0.9998) && cerca(c1b.objetivo,0.999) && c6b.servicios.every(s=>cerca(s.objetivo,0.9998)), [c6b.objetivo,c1b.objetivo]);
 ok('la disponibilidad no cambia por cambiar el objetivo', cerca(c6b.disponibilidad,c6.disponibilidad));
 const pagoB=c6b.servicios.find(s=>s.servicio_id==='PAGO_SERVICIOS');
-ok('con 99,98 % el margen es de 8,9 minutos: 15 minutos sin servicio lo superan (no cumple) y se ve cuánto', pagoB.cumple===false && pagoB.consumo>1.6 && pagoB.consumo<1.7 && c6b.cumple===true, [pagoB.consumo,c6b.consumo]);
+ok('con 99,98 % se permite 0,02 % de lo medido: 15 minutos sin servicio lo superan por mucho (no cumple, rojo) y se ve cuánto', pagoB.cumple===false && pagoB.estado==='rojo' && cerca(pagoB.consumo,(1-pagoB.disponibilidad)/0.0002,0.01) && c6b.cumple===false, [pagoB.consumo,c6b.consumo]);
 await call(A,'POST','/api/admin/umbrales',{cliente_id:'CLI_006',servicio_id:'PAGO_SERVICIOS',objetivo_mensual:0.99});
 r=await P(ck.gero,'?tipo=mes'); const c6c=r.j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006');
 ok('un servicio puede tener su propio objetivo (gana el más específico)', c6c.servicios.filter(s=>s.servicio_id==='PAGO_SERVICIOS').every(s=>cerca(s.objetivo,0.99)) && c6c.servicios.filter(s=>s.servicio_id!=='PAGO_SERVICIOS').every(s=>cerca(s.objetivo,0.9998)), c6c.servicios.map(s=>s.servicio_id+':'+s.objetivo));
@@ -127,14 +128,17 @@ const aud=db.prepare("select detalle from auditoria where accion='EDITAR_DISPONI
 ok('queda en la auditoría', aud && aud.detalle.includes('Grave 100 %'), aud && aud.detalle);
 await call(A,'POST','/api/admin/umbrales/disponibilidad',pesos(1,0.5,0,3,2,1));
 
-// ---- Semáforo (parche 48): verde = cumple, amarillo = no cumple pero está cerca, rojo = lejos ----
+// ---- Semáforo (parches 48 y 50): verde = llega al objetivo, amarillo = no llega pero está cerca, rojo = lejos ----
 const estadoPago=async(obj)=>{ await call(A,'POST','/api/admin/umbrales',{cliente_id:'CLI_006',servicio_id:'PAGO_SERVICIOS',objetivo_mensual:obj}); const x=(await P(ck.gero,'?tipo=mes')).j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006'); return {s:x.servicios.find(s=>s.servicio_id==='PAGO_SERVICIOS'), c:x}; };
-let e=await estadoPago(0.999); ok('15 min de 44,6 permitidos: verde', e.s.estado==='verde' && e.s.cumple===true, [e.s.consumo,e.s.estado]);
-e=await estadoPago(0.9997); ok('15 min de 13,4 permitidos (112 %): no cumple pero está cerca = amarillo', e.s.estado==='amarillo' && e.s.cumple===false, [e.s.consumo,e.s.estado]);
-e=await estadoPago(0.9998); ok('15 min de 8,9 permitidos (168 %): no cumple y está lejos = rojo', e.s.estado==='rojo' && e.s.cumple===false, [e.s.consumo,e.s.estado]);
+const dPago=(await estadoPago(0.999)).s.disponibilidad;                       // disponibilidad medida de CLI_006 / PAGO_SERVICIOS (no depende del objetivo)
+const objPara=(veces)=>Math.round((1-(1-dPago)/veces)*1e6)/1e6;                // objetivo con el que el tiempo sin servicio es "veces" lo que permite
+let e=await estadoPago(objPara(0.8)); ok('llega al objetivo (usa 80 % de lo permitido): verde y cumple', e.s.estado==='verde' && e.s.cumple===true && e.s.disponibilidad>=e.s.objetivo, [e.s.consumo,e.s.estado]);
+e=await estadoPago(0.999); ok('96 % de disponibilidad contra un objetivo de 99,9 %: rojo, no verde', e.s.estado==='rojo' && e.s.cumple===false, [e.s.disponibilidad,e.s.consumo,e.s.estado]);
+e=await estadoPago(objPara(1.2)); ok('tiempo sin servicio 1,2 veces lo permitido: no cumple pero está cerca = amarillo', e.s.estado==='amarillo' && e.s.cumple===false && cerca(e.s.consumo,1.2,0.01), [e.s.consumo,e.s.estado]);
+e=await estadoPago(objPara(2.5)); ok('tiempo sin servicio 2,5 veces lo permitido: no cumple y está lejos = rojo', e.s.estado==='rojo' && e.s.cumple===false && cerca(e.s.consumo,2.5,0.01), [e.s.consumo,e.s.estado]);
 r=await call(A,'POST','/api/admin/umbrales/disponibilidad',Object.assign(pesos(1,0.5,0,3,2,1),{umbral_amarillo:2}));
 ok('el límite del amarillo se puede subir (a 200 %)', r.s===200, r.j);
-e=await estadoPago(0.9998); ok('con el amarillo hasta 200 %, el 168 % pasa a amarillo', e.s.estado==='amarillo', e.s.estado);
+e=await estadoPago(objPara(1.8)); ok('con el amarillo hasta 200 %, 1,8 veces lo permitido pasa a amarillo', e.s.estado==='amarillo', e.s.estado);
 r=await P(ck.gero,'?tipo=mes'); ok('la configuración trae el límite del amarillo', r.j.config_disponibilidad.umbral_amarillo===2);
 r=await call(A,'POST','/api/admin/umbrales/disponibilidad',Object.assign(pesos(1,0.5,0,3,2,1),{umbral_amarillo:0.5})); ok('un amarillo menor al 100 % se rechaza', r.s===400, r.j.error);
 r=await call(A,'POST','/api/admin/umbrales/disponibilidad',Object.assign(pesos(1,0.5,0,3,2,1),{umbral_amarillo:11})); ok('…y uno mayor a 1.000 % también', r.s===400);
@@ -160,6 +164,12 @@ r=await P(ck.gero,'?tipo=mes');
 ok('sin la columna de pesos el tablero sigue con los de fábrica y avisa', r.s===200 && r.j.disponibilidad_instalada===false && r.j.config_disponibilidad.pesos_gravedad.ALTA===0.5 && r.j.disponibilidad.global!==null);
 r=await call(A,'GET','/api/admin/umbrales'); ok('Administración avisa que falta el script', r.s===200 && r.j.disponibilidad.instalado===false);
 r=await call(A,'POST','/api/admin/umbrales/disponibilidad',pesos(1,0.5,0,3,2,1)); ok('y no deja guardar los pesos (409 con el nombre del script)', r.s===409 && /20_disponibilidad/.test(r.j.error), r.j.error);
+
+// ---- Textos del tablero (parche 50) ----
+r=await call(ck.gero,'GET','/');
+ok('el texto largo de cómo se mide ya no está y queda la línea corta', !r.t.includes('Se mide en ventanas de 15 minutos de cada servicio') && !r.t.includes('define el Administrador') && r.t.includes('Cuenta como sin servicio: alerta Grave = '));
+ok('la barra tiene la marca de lo que permite el objetivo y el texto cuenta minutos sin servicio contra los permitidos', r.t.includes('La marca indica lo que permite el objetivo') && r.t.includes('sin servicio; el objetivo permite hasta '));
+ok('ya no habla del margen de errores del mes', !r.t.includes('margen de errores del mes') && !r.t.includes('Objetivo del mes'));
 
 console.log(fallas ? '\nHAY '+fallas+' FALLAS' : '\nTODO OK');
 process.exit(fallas?1:0);

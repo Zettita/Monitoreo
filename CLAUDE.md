@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch48.py y patch50.py → w.mjs (no hay patch49.py: el 49 es la rama de Jira de Ale)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,10 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch50.py          disponibilidad más clara: el texto largo de "cómo se mide" pasa a una línea (Grave = 100 % · Importante = 50 % · Leve = 0 %), el semáforo
+                        y la barra comparan la disponibilidad del período elegido con el objetivo (antes, el tiempo sin servicio contra el margen de todo el mes:
+                        un día con 96 % salía verde con objetivo 99,9 %) y la barra tiene una marca de lo que permite el objetivo. Sin SQL.
+                        Prueba: pruebas/disponibilidadtest.mjs
     patch48.py          ajustes del dashboard gerencial: filtro por estado en las alertas abiertas, la disponibilidad sube bajo "Estado por cliente"
                         (sin los 4 recuadros), semáforo verde / amarillo / rojo por cliente y servicio (dispoEstado; límite del amarillo
                         = umbral_amarillo en alerta_parametros.disponibilidad_config, 150 % del margen por defecto) y resumen de clientes
@@ -148,7 +152,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch49.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch51.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -223,19 +227,27 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 6. Mejoras de Hugo: esperar sus definiciones (sección siguiente).
 
 ## En curso (16/11): correo y War Room desde una alerta — de a un punto por vez
-1. **Template correo alerta — hecho en código (parches 39 y 40), falta publicar.** Ver la sección siguiente.
-2. **Plantillas de correo — hecho en código (parche 40, script 18), falta publicar.**
+1. **Template correo alerta — hecho (parches 39 y 40), Worker publicado el 16/11.** Ver la sección siguiente.
+2. **Plantillas de correo — hecho (parche 40), Worker publicado el 16/11; falta correr el script 18 (Ale).**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
 
-## Ajustes del dashboard gerencial (16/11, parche 48) — hecho en código, falta publicar
+## Disponibilidad más clara (16/11, parche 50) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel al mirar el tablero publicado: (1) sacar el texto largo de abajo de la disponibilidad y dejar algo simple ("Alerta Grave = 100 %", etc.); (2) la barra salía verde con 96 % de disponibilidad aunque el objetivo era 99,9 %.
+- **Texto:** queda una línea, `Cuenta como sin servicio: alerta Grave = 100 % · Importante = 50 % · Leve = 0 %` (con los valores configurados). Se fue lo de los datos tardíos, el margen del mes y quién define el objetivo.
+- **Causa del verde:** `consumo` y `minutos_permitidos` se medían contra el margen de **todo el mes** (43 minutos). Un día con una ventana Grave (15 minutos, 96 % del día) usaba 35 % del margen del mes y salía verde ("Cumple") aunque el número grande dijera 96 % contra 99,9 %.
+- **Ahora** (`dispoCalcular`): el margen es el del período medido: `minutos_permitidos = (1 − objetivo) × minutos medidos` y `consumo = tiempo sin servicio / permitido = (1 − disponibilidad) / (1 − objetivo)`. Verde = la disponibilidad llega al objetivo; amarillo = no llega pero `consumo` ≤ `umbral_amarillo` (1,5 por defecto: "Amarillo hasta" en Administración, ahora en % de lo que permite el objetivo); rojo = más. Para un mes completo da lo mismo que antes; para un día, una semana o un mes a medias es más exigente (con 99,9 %, cualquier ventana Grave en un día lo deja en rojo). El parámetro `minutosMes` de `dispoCalcular` ya no se usa.
+- **Barra:** llega hasta el límite del amarillo y tiene una marca en lo que permite el objetivo (verde hasta la marca, amarillo hasta el final, rojo cuando se llena). El texto dice `Estuvo X min sin servicio; el objetivo permite hasta Y min`.
+- Probado: `disponibilidadtest` (semáforo con casos a 0,8 / 1,2 / 1,8 / 2,5 veces lo permitido, "96 % contra 99,9 % = rojo", cumple y número siempre coinciden, textos nuevos), demo igual y todas las pruebas; pantallas en PC y celular.
+
+## Ajustes del dashboard gerencial (16/11, parche 48) — publicado el 16/11
 Pedido al ver el tablero (4 puntos):
 1. **Alertas abiertas:** filtro por estado (Todas / Sin asignar / Asignada sin tomar / En curso / Devuelta, con la cantidad de cada una), junto al filtro por cliente o tipo de falla.
 2. **"Disponibilidad y resumen del período" sube:** va debajo de "Estado por cliente" y arriba de "Últimas 24 horas". Se sacaron los 4 recuadros (problemas, graves, siguen abiertos, tardó en resolverse).
-3. **Semáforo** por cliente y servicio: verde = cumple (usó hasta el 100 % del margen de errores del mes), amarillo = no cumple pero está cerca (hasta el 150 % del margen), rojo = lejos. El 150 % es editable en "Cómo se mide la disponibilidad" ("Amarillo hasta"); vive en el mismo JSON de pesos, **sin script nuevo**.
+3. **Semáforo** por cliente y servicio: verde = llega al objetivo, amarillo = no llega pero está cerca (tiempo sin servicio de hasta 1,5 veces lo que permite el objetivo), rojo = lejos (así desde el parche 50; el 48 lo medía contra el margen de todo el mes). El 150 % es editable en "Cómo se mide la disponibilidad" ("Amarillo hasta"); vive en el mismo JSON de pesos, **sin script nuevo**.
 4. **Resumen de clientes en barras horizontales** (verde / amarillo / rojo, con % y cantidad): los clientes de cada grupo aparecen recién al tocar la barra.
 - Decisión mía a confirmar con Hugo: "cerca" = hasta 150 % del margen (con 99,9 % son hasta ~65 minutos sin servicio en el mes).
 
-## Dashboard gerencial (16/11, parches 42 a 45) — hecho en código, falta publicar (script 20 y Worker)
+## Dashboard gerencial (16/11, parches 42 a 45) — publicado el 16/11 (script 20 corrido y Worker)
 Pedido de Hugo (ejemplo: un dueño no podía transferir, el gerente no tenía acceso a estas vistas y tuvo que preguntarle a un analista que no estaba, así que nadie sabía si alguien ya lo trabajaba). Uriel decidió hacerlo en Helios.
 - **42 · Gerente y Administrador ven lo activo y el detalle en solo lectura.** Permisos `alertas_abiertas` (suma Gerente) y `detalle_alerta` (suma Gerente y Administrador). El servidor sigue rechazando tomar, derivar, comentar, adjuntar, resolver, devolver, correo y tickets (`rol.lectura`; `botonesDe` devuelve todo apagado); el detalle muestra "Solo lectura". El tablero se actualiza solo cada 2 minutos con la pestaña visible: consulta `GET /api/tablero/version` (1 fila) y recarga todo solo si hubo una revisión. El asistente suma la pregunta "¿Qué incidentes están activos y quién los está trabajando?" para Gerente y Administrador.
 - **43 · "Incidentes activos ahora":** barras por cliente (o por tipo de falla) divididas por gravedad, con los números en texto; tocar una barra filtra la lista de abajo. Solo página.
@@ -249,10 +261,10 @@ Flujo pedido por Ale: veo un evento → lo gestiono → mando un push "Tenemos e
 el único punto a completar es `tickets_integracion.js` (ver `05_Documentacion/integracion_tickets.md`). Decidido con Ale: la herramienta se elige en
 cada alerta; generan tickets y comunican Analista y Soporte (lo suyo o de su equipo); las audiencias del push son **listas de difusión** con un rol por
 persona (informado / técnico / líder).
-1. **Tickets a demanda — hecho en código (parche 41, script 19), falta publicar.** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
+1. **Tickets a demanda — hecho (parche 41), Worker publicado el 16/11; falta correr el script 19 (Ale).** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
    casilla en el correo; el número va al asunto (`[INV-1001] …`), al texto (`{ticket}` o una línea "Ticket: …"), a "Datos de la alerta" y a la conversación.
    Simulado hasta que esté la integración (`INV-1001`, `HEL-101`, marcado "simulado"). "Preparar demo" borra los tickets de Helios.
-2. **Comunicar incidente (push a demanda) — hecho en código (parche 46, script 21), falta publicar.** Decidido con Ale: perfil nuevo **"Solo comunicados"**
+2. **Comunicar incidente (push a demanda) — hecho (parche 46), Worker publicado el 16/11; falta correr el script 21 (Ale).** Decidido con Ale: perfil nuevo **"Solo comunicados"**
    para quien solo se tiene que enterar; listas **generales o de un cliente**, las arma el **Administrador**. "Comunicar incidente" en el detalle (Analista;
    Soporte en lo suyo): listas (primero las del cliente), mensaje armado con el ticket (o casilla para generarlo). Informados solo leen; técnicos dan
    "Recibido" (desde el aviso, sin abrir Helios) y responden; líderes responden sumando información. Respuestas y resumen ("Recibido: 2 de 3 técnicos")
@@ -261,7 +273,7 @@ persona (informado / técnico / líder).
 - La War Room en Teams queda en pausa hasta terminar esto.
 - **Publicar:** scripts 18, 19, 20 y 21 → Worker (trae los parches 39 a 47). Parche 47: sin el texto "Le llega a hasta N personas…" en el diálogo.
 
-## Plantillas de correo y ajustes (16/11, patch40) — hecho en código, falta publicar
+## Plantillas de correo y ajustes (16/11, patch40) — Worker publicado el 16/11 (falta el script 18, de Ale)
 - Pedido de Ale: el botón se llama **"Template correo alerta «<problema> · <cliente>»"** (también el título del diálogo); se sacó el texto explicativo.
 - **"Confirmar envío" pide a quién se envió** (Para obligatorio, CC opcional), precargado con lo que se escribió al armar el correo y editable: queda
   `Envió el correo «…» sin cambios para a@x (copia a b@y)`. La conversación muestra esos destinatarios reales.
@@ -275,7 +287,7 @@ persona (informado / técnico / líder).
   con las de fábrica y Administración avisa que falta para poder guardar.
 - **Publicar:** script 18 → Worker (el 38 ya está publicado: scripts 16 y 17 corridos). Incluye el parche 39.
 
-## Correo desde la alerta (16/11, patch39) — hecho en código, falta publicar (ajustado en el patch40)
+## Correo desde la alerta (16/11, patch39) — Worker publicado el 16/11 (ajustado en el patch40)
 - Decidido con Ale: los dos botones (Outlook web y de escritorio), lo usan Analista y Soporte (lo suyo o de su equipo), y queda en la conversación.
 - Detalle de la alerta → **"Preparar correo"**: el diálogo trae asunto (`[P1 · Grave] CLI_006 · servicio: problema`, o `[Resuelta] …`) y texto armados
   (qué pasa, cliente, servicio, desde cuándo con fecha completa, lleva/duró, gravedad y prioridad, última medición, estado y quién la tiene o la
