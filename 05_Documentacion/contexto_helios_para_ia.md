@@ -470,7 +470,18 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Correo desde la alerta (16/11, parche 39; sin SQL, falta publicar)**
+**Plantillas de correo y ajustes al correo (16/11, parche 40; script 18, falta publicar)**
+
+- **Nombre:** el botón del detalle (y el título del diálogo) ahora dice **"Template correo alerta «<problema> · <cliente>»"**; se sacó el texto explicativo del diálogo.
+- **Destinatarios reales:** "Confirmar envío" pide a quién se envió (Para obligatorio, CC opcional), precargado con lo que se escribió al armar el correo y editable. Queda en la conversación: `Envió el correo «asunto» sin cambios para a@x (copia a b@y)` (o `con cambios para …` con el texto final).
+- **Plantillas de correo** (Administración > "Plantillas de correo", solo Administrador; permiso `admin_plantillas`): nombre, **sector** al que se escala (Mesa de ayuda, Proveedor, Cliente, Comercial…), **tipos de alerta** (ninguno = todas), para alertas **abiertas, resueltas o las dos**, asunto y texto con variables entre llaves (`{alerta}`, `{problema}`, `{cliente}`, `{servicio}`, `{ambiente}`, `{desde}`, `{duracion}`, `{gravedad}`, `{prioridad}`, `{etiqueta}`, `{medicion}`, `{estado}`, `{responsable}`, `{equipo}`, `{ultima_novedad}`, `{resolucion}`, `{enlace}`, `{firma}`). Una línea con una variable vacía no se escribe (por ejemplo, "Cómo se resolvió" en una alerta abierta). El diálogo tiene un ejemplo en vivo con una alerta de muestra. Los **destinatarios no van en la plantilla**: los pone quien envía (decidido con Ale).
+- **6 plantillas de fábrica** (no había un modelo real): General (Interno), Aviso al cliente, Escalar a proveedor o gateway (errores, rechazos, aprobaciones, lentitud, sin aprobaciones), Caída: escalar a Mesa de ayuda (tráfico bajo, sin aprobaciones, dejaron de llegar datos), Aviso a Comercial (tráfico e importe fuera de lo normal) y Cierre del incidente (solo resueltas).
+- En el correo, el selector "Plantilla" muestra solo las que sirven para esa alerta, primero las de su tipo; cambiar de plantilla pide confirmación si ya se había editado el texto. En la conversación queda qué plantilla se usó.
+- Datos: `alerta_parametros.plantillas_correo` (JSON `{plantillas:[…]}`), **script `18_plantillas_correo_d1.txt`** (una columna; siguen 23 tablas). Sin el script se usan las de fábrica y Administración avisa que falta para poder guardar. Rutas: `GET/POST /api/admin/plantillas-correo`, `POST /api/admin/plantillas-correo/borrar`; el detalle de la alerta trae `plantillas_correo` (las activas). Auditoría `ALTA_PLANTILLA_CORREO`, `EDITAR_PLANTILLA_CORREO`, `BORRAR_PLANTILLA_CORREO`.
+- **Para publicar:** script 18 → Worker (incluye el parche 39).
+- Probado: `correotest.mjs` (57 controles), la demo y todas las pruebas iguales; pantallas en PC y celular. Respaldo: `99_Archivo_viejo/worker_antes_parche40/`, ramas `respaldo-antes-parche-40` y `version-parche-40-plantillas-correo`.
+
+**Correo desde la alerta (16/11, parche 39; sin SQL, falta publicar; ajustado en el 40)**
 
 - En el detalle de una alerta (`/alerta/<id>`), botón **"Preparar correo"** para Analista y Soporte (Soporte solo en lo suyo o de su equipo), con la alerta abierta o resuelta. El diálogo trae el asunto y el texto ya armados con los datos de la alerta (qué pasa, cliente, servicio, desde cuándo, cuánto lleva, gravedad y prioridad, última medición contra lo esperado, estado y quién la tiene —o cómo se resolvió—, última novedad y el enlace a Helios) y lugares "[Completar: …]". Se completan Para y CC y se abre con **"Abrir en Outlook web"** (Microsoft 365, `outlook.office.com/mail/deeplink/compose`) o **"Outlook de escritorio"** (`mailto:`); también "Copiar texto". Si el texto es demasiado largo para el enlace, el correo se abre sin el texto y el texto queda copiado para pegarlo.
 - **Helios no manda correos ni se conecta a Microsoft 365** (no hace falta registrar nada en Azure). Por eso, al abrirlo queda en la conversación "preparó un correo" (asunto, destinatarios y el texto armado, desplegable) con **"Falta confirmar si se envió"** y el botón **"Confirmar envío"**: *se envió tal cual*, *se envió con cambios* (se pega el texto final, que queda guardado) o *no se envió*.
@@ -717,7 +728,7 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [ ] Ambientes QA y producción, copias de seguridad.
 - [x] Avisos push con Helios cerrado e instalar como app (12/11, parche 26; publicado).
 - [x] Preparar correo desde la alerta y confirmar el envío (16/11, parche 39; falta publicar).
-- [ ] Plantillas de correo por tipo de incidente o sector, con destinatarios conocidos.
+- [x] Plantillas de correo por tipo de incidente y sector (16/11, parche 40; falta publicar con el script 18). Destinatarios por cliente: más adelante, si hace falta.
 - [ ] War Room en Teams desde una alerta (evaluar enlace directo vs. Microsoft Graph).
 - [ ] Avisos por Teams con webhook (etapa 5). Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
 - [x] Perfiles: Gerente de lectura con Panorama, Analista deriva y avisa pre-alertas, Soporte solo con sus tickets, Administrador orientado a la configuración (11/11).

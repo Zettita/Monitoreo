@@ -1,0 +1,13 @@
+PLANTILLAS DE CORREO (para la Console de D1: helios-monitoring-dev) — parche 40
+
+Qué hace: agrega la columna plantillas_correo a alerta_parametros, donde se guardan las plantillas de
+"Template correo alerta" (Administración > Plantillas de correo). No crea tablas: siguen 23.
+La columna arranca vacía: mientras esté vacía, Helios usa las 6 plantillas de fábrica. La primera vez que el Administrador
+guarde una plantilla, se guardan todas.
+
+Orden: 1) correr este bloque; 2) publicar 01_Worker/worker_alertas_cron.js (trae los parches 39 y 40).
+Sin este script el Worker funciona igual (usa las de fábrica), pero no deja crear ni cambiar plantillas.
+Se corre UNA sola vez: si se repite da "duplicate column name" y no pasa nada.
+
+--- 1. Columna de las plantillas ---
+ALTER TABLE alerta_parametros ADD COLUMN plantillas_correo TEXT;

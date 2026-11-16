@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch39.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch40.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,10 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch40.py          plantillas de correo (Administración > "Plantillas de correo", solo Administrador; plantillas_server.js,
+                        alerta_parametros.plantillas_correo en JSON, plantillas_d1.sql = script 18; sin la columna usa las 6 de fábrica)
+                        y ajustes al 39: botón "Template correo alerta «problema · cliente»", sin texto explicativo, selector de plantilla,
+                        y "Confirmar envío" pide Para/CC reales. Prueba: pruebas/correotest.mjs
     patch39.py          correo desde la alerta: botón "Preparar correo" en el detalle (borrador con los datos de la alerta, Outlook web por
                         enlace deeplink o de escritorio por mailto, "Copiar texto") y "Confirmar envío" en la conversación (tal cual / con
                         cambios + texto final / no se envió). correo_server.js (POST /api/alertas/<id>/correo y /correo/envio). Sin SQL.
@@ -120,7 +124,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch40.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch41.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -187,7 +191,7 @@ Para un cambio nuevo: crear `patch40.py` con una función `aplicar(s)` (como los
 
 ## Pendientes en pausa (16/11) — se retoman después de Correo y War Room
 Pedido de Ale: quedan guardados en este orden, sin empezar.
-1. Aplicar la etapa 3b en Cloudflare (parche 38): script 16 → publicar Worker → comprobar → script 17.
+1. ~~Aplicar la etapa 3b en Cloudflare~~ — hecho por Uriel el 16/11 (scripts 16 y 17, Worker del 38).
 2. Probar en Cloudflare la ticketera con Soporte y Analista, y "¿Hay algo de afuera…?" con cada perfil.
 3. Tablero de causas (`causa_resolucion` / `acciones_resolucion` por cliente, servicio y mes).
 4. Ingesta real `POST /api/metricas` (normaliza fechas) + token para máquinas.
@@ -195,11 +199,25 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 6. Mejoras de Hugo: esperar sus definiciones (sección siguiente).
 
 ## En curso (16/11): correo y War Room desde una alerta — de a un punto por vez
-1. **Preparar correo — hecho en código (parche 39), falta publicar.** Ver la sección siguiente.
-2. **Plantillas de correo** por tipo de incidente o sector al que se escala, con destinatarios conocidos.
+1. **Template correo alerta — hecho en código (parches 39 y 40), falta publicar.** Ver la sección siguiente.
+2. **Plantillas de correo — hecho en código (parche 40, script 18), falta publicar.**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
 
-## Correo desde la alerta (16/11, patch39) — hecho en código, falta publicar
+## Plantillas de correo y ajustes (16/11, patch40) — hecho en código, falta publicar
+- Pedido de Ale: el botón se llama **"Template correo alerta «<problema> · <cliente>»"** (también el título del diálogo); se sacó el texto explicativo.
+- **"Confirmar envío" pide a quién se envió** (Para obligatorio, CC opcional), precargado con lo que se escribió al armar el correo y editable: queda
+  `Envió el correo «…» sin cambios para a@x (copia a b@y)`. La conversación muestra esos destinatarios reales.
+- **Plantillas** (decidido con Ale: por tipo de incidente y por sector; las crea el Administrador; los destinatarios los pone quien envía; sin modelo real
+  todavía, así que hay 6 de fábrica: General, Aviso al cliente, Escalar a proveedor o gateway, Caída: escalar a Mesa de ayuda, Aviso a Comercial,
+  Cierre del incidente). Cada una: nombre, sector, tipos de alerta (ninguno = todas), para abiertas / resueltas / las dos, asunto y texto con
+  variables `{cliente}`, `{problema}`, `{desde}`, `{medicion}`, `{estado}`, `{resolucion}`, `{firma}`… (lista en `plantillas_server.js`).
+  Una línea con una variable vacía no se escribe. Ejemplo en vivo en el diálogo de Administración. Auditoría `ALTA/EDITAR/BORRAR_PLANTILLA_CORREO`.
+- En el correo, "Plantilla" muestra solo las que sirven para esa alerta (primero las de su tipo) y queda registrado qué plantilla se usó.
+- Se guardan en `alerta_parametros.plantillas_correo` (JSON): **script 18** (`18_plantillas_correo_d1.txt`, una columna). Sin el script, todo funciona
+  con las de fábrica y Administración avisa que falta para poder guardar.
+- **Publicar:** script 18 → Worker (el 38 ya está publicado: scripts 16 y 17 corridos). Incluye el parche 39.
+
+## Correo desde la alerta (16/11, patch39) — hecho en código, falta publicar (ajustado en el patch40)
 - Decidido con Ale: los dos botones (Outlook web y de escritorio), lo usan Analista y Soporte (lo suyo o de su equipo), y queda en la conversación.
 - Detalle de la alerta → **"Preparar correo"**: el diálogo trae asunto (`[P1 · Grave] CLI_006 · servicio: problema`, o `[Resuelta] …`) y texto armados
   (qué pasa, cliente, servicio, desde cuándo con fecha completa, lleva/duró, gravedad y prioridad, última medición, estado y quién la tiene o la
@@ -210,7 +228,7 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
   se envió tal cual / se envió con cambios (pide el texto final) / no se envió. Punto morado en la conversación (leyenda "Correo").
 - Todo como comentarios en `alerta_eventos` (formato en `correo_server.js`) y auditoría `PREPARAR_CORREO` / `CONFIRMAR_CORREO`; sin avisos a nadie.
   El mismo correo reabierto en 10 min no se repite. Cada confirmación se aparea con el primer correo pendiente de ese asunto. Texto hasta 6000 caracteres.
-- Vale con la alerta abierta o resuelta. **Sin SQL**, pero el Worker incluye el parche 38: antes de publicarlo hay que correr el script 16.
+- Vale con la alerta abierta o resuelta. **Sin SQL.** Se publica junto con el parche 40.
 - Más adelante (si IT lo aprueba): Microsoft Graph para crear el borrador directo en el buzón, con formato y adjuntos.
 
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
