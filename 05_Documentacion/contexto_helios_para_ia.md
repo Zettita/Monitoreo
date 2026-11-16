@@ -507,6 +507,11 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - Probado: `comunicadostest.mjs` (58 controles, incluido sin el script 21), la demo y todas las pruebas (`avtest`, `perftest` y `pushtest` actualizadas al Gerente con campanita y al push que abre el detalle); pantallas en PC y celular. Guía: `05_Documentacion/novedades_comunicados.md`. Respaldo: `99_Archivo_viejo/worker_antes_parche46/`, ramas `respaldo-antes-parche-46` y `version-parche-46-comunicar-incidente`.
 - **Para publicar:** scripts 18, 19, 20 y 21 → Worker (trae los parches 39 a 46).
 
+**Ajustes del dashboard gerencial (16/11, parche 48; sin SQL, falta publicar)**
+
+- Filtro por estado en las alertas abiertas; la disponibilidad pasa debajo de "Estado por cliente" (sin los recuadros de problemas, graves, abiertos y tiempo de resolución); semáforo verde / amarillo / rojo por cliente y servicio (verde: cumple; amarillo: no cumple pero usó hasta el 150 % del margen de errores del mes, editable en "Cómo se mide la disponibilidad"; rojo: más) y resumen de clientes en barras horizontales cuyos grupos se despliegan al tocarlos. Los estados (`estado`: `verde` / `amarillo` / `rojo`) y `config_disponibilidad.umbral_amarillo` salen de `GET /api/tablero/periodo`; `POST /api/admin/umbrales/disponibilidad` acepta `umbral_amarillo` (1 a 10, fracciones del margen; si no viene se conserva).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche48/`, ramas `respaldo-antes-parche-48` y `version-parche-48-ajustes-dashboard`.
+
 **Dashboard gerencial (16/11, parches 42 a 45; script 20, falta publicar)**
 
 - **Gerente y Administrador ven lo activo y el detalle, en solo lectura** (parche 42): la lista de alertas con su estado y quién las tiene, las pre-alertas y la página de cada alerta con la conversación y la evidencia, sin ningún botón de acción (el servidor rechaza todo lo que cambia algo). Pedido de Hugo: un dueño no podía transferir y el gerente no tenía forma de ver si alguien ya lo estaba trabajando. El tablero se actualiza solo cada 2 minutos con la pestaña visible (marcador `GET /api/tablero/version`). El asistente suma "¿Qué incidentes están activos y quién los está trabajando?".

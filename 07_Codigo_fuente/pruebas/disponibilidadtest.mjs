@@ -127,6 +127,29 @@ const aud=db.prepare("select detalle from auditoria where accion='EDITAR_DISPONI
 ok('queda en la auditoría', aud && aud.detalle.includes('Grave 100 %'), aud && aud.detalle);
 await call(A,'POST','/api/admin/umbrales/disponibilidad',pesos(1,0.5,0,3,2,1));
 
+// ---- Semáforo (parche 48): verde = cumple, amarillo = no cumple pero está cerca, rojo = lejos ----
+const estadoPago=async(obj)=>{ await call(A,'POST','/api/admin/umbrales',{cliente_id:'CLI_006',servicio_id:'PAGO_SERVICIOS',objetivo_mensual:obj}); const x=(await P(ck.gero,'?tipo=mes')).j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006'); return {s:x.servicios.find(s=>s.servicio_id==='PAGO_SERVICIOS'), c:x}; };
+let e=await estadoPago(0.999); ok('15 min de 44,6 permitidos: verde', e.s.estado==='verde' && e.s.cumple===true, [e.s.consumo,e.s.estado]);
+e=await estadoPago(0.9997); ok('15 min de 13,4 permitidos (112 %): no cumple pero está cerca = amarillo', e.s.estado==='amarillo' && e.s.cumple===false, [e.s.consumo,e.s.estado]);
+e=await estadoPago(0.9998); ok('15 min de 8,9 permitidos (168 %): no cumple y está lejos = rojo', e.s.estado==='rojo' && e.s.cumple===false, [e.s.consumo,e.s.estado]);
+r=await call(A,'POST','/api/admin/umbrales/disponibilidad',Object.assign(pesos(1,0.5,0,3,2,1),{umbral_amarillo:2}));
+ok('el límite del amarillo se puede subir (a 200 %)', r.s===200, r.j);
+e=await estadoPago(0.9998); ok('con el amarillo hasta 200 %, el 168 % pasa a amarillo', e.s.estado==='amarillo', e.s.estado);
+r=await P(ck.gero,'?tipo=mes'); ok('la configuración trae el límite del amarillo', r.j.config_disponibilidad.umbral_amarillo===2);
+r=await call(A,'POST','/api/admin/umbrales/disponibilidad',Object.assign(pesos(1,0.5,0,3,2,1),{umbral_amarillo:0.5})); ok('un amarillo menor al 100 % se rechaza', r.s===400, r.j.error);
+r=await call(A,'POST','/api/admin/umbrales/disponibilidad',Object.assign(pesos(1,0.5,0,3,2,1),{umbral_amarillo:11})); ok('…y uno mayor a 1.000 % también', r.s===400);
+r=await call(A,'POST','/api/admin/umbrales/disponibilidad',pesos(1,0.5,0,3,2,1)); ok('guardar sin el campo conserva el amarillo anterior', r.s===200 && (await P(ck.gero,'?tipo=mes')).j.config_disponibilidad.umbral_amarillo===2);
+await call(A,'POST','/api/admin/umbrales/disponibilidad',Object.assign(pesos(1,0.5,0,3,2,1),{umbral_amarillo:1.5}));
+await call(A,'POST','/api/admin/umbrales/borrar',{cliente_id:'CLI_006',servicio_id:'PAGO_SERVICIOS'});
+r=await P(ck.gero,'?tipo=mes');
+ok('todos los clientes y el global traen su estado', r.j.disponibilidad.clientes.every(c=>['verde','amarillo','rojo'].includes(c.estado) && c.servicios.every(s=>['verde','amarillo','rojo'].includes(s.estado))) && ['verde','amarillo','rojo'].includes(r.j.disponibilidad.global.estado));
+ok('estado y cumple coinciden: verde si cumple', r.j.disponibilidad.clientes.every(c=>(c.estado==='verde')===c.cumple));
+r=await call(A,'GET','/admin'); ok('Administración tiene el campo del amarillo', r.t.includes('dp-amarillo') && r.t.includes('Semáforo del tablero'));
+r=await call(ck.gero,'GET','/');
+const iPan=r.t.indexOf('id=\"bloque-panorama\"')>=0?r.t.indexOf('id=\"bloque-panorama\"'):r.t.indexOf('id="bloque-panorama"'), iDisp=r.t.indexOf('id="b-periodo"'), i24=r.t.indexOf('<h2>Últimas 24 horas</h2>');
+ok('la disponibilidad va debajo de Estado por cliente y arriba de Últimas 24 horas', iPan>0 && iDisp>iPan && i24>iDisp, [iPan,iDisp,i24]);
+ok('ya no están los recuadros del período, y sí el resumen por estado y el filtro de estado', !r.t.includes('id="per-kpis"') && r.t.includes('data-dd-grupo') && r.t.includes('data-act-estado') && r.t.includes('Asignada sin tomar'));
+
 // ---- La página del tablero ----
 r=await call(ck.gero,'GET','/');
 ok('el tablero dibuja la disponibilidad', r.s===200 && r.t.includes('function pintarDispo') && r.t.includes('pintarDispo(r);') && r.t.includes('dd-global'));

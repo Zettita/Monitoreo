@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch47.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch48.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,10 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch48.py          ajustes del dashboard gerencial: filtro por estado en las alertas abiertas, la disponibilidad sube bajo "Estado por cliente"
+                        (sin los 4 recuadros), semáforo verde / amarillo / rojo por cliente y servicio (dispoEstado; límite del amarillo
+                        = umbral_amarillo en alerta_parametros.disponibilidad_config, 150 % del margen por defecto) y resumen de clientes
+                        en barras horizontales que se abren al tocarlas. Sin SQL nuevo. Prueba: pruebas/disponibilidadtest.mjs
     patch47.py          "Comunicar incidente" sin el texto "Le llega a hasta N personas…" (pedido de Ale; solo la página de detalle)
     patch46.py          comunicar incidente por push: perfil "Solo comunicados" (usuarios.solo_comunicados = 1 con perfil 'GERENTE', leído como
                         COMUNICADOS), listas de difusión (Administración, JSON en alerta_parametros.listas_difusion; rol informado / técnico / líder),
@@ -144,7 +148,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch48.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch49.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -222,6 +226,14 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 1. **Template correo alerta — hecho en código (parches 39 y 40), falta publicar.** Ver la sección siguiente.
 2. **Plantillas de correo — hecho en código (parche 40, script 18), falta publicar.**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
+
+## Ajustes del dashboard gerencial (16/11, parche 48) — hecho en código, falta publicar
+Pedido al ver el tablero (4 puntos):
+1. **Alertas abiertas:** filtro por estado (Todas / Sin asignar / Asignada sin tomar / En curso / Devuelta, con la cantidad de cada una), junto al filtro por cliente o tipo de falla.
+2. **"Disponibilidad y resumen del período" sube:** va debajo de "Estado por cliente" y arriba de "Últimas 24 horas". Se sacaron los 4 recuadros (problemas, graves, siguen abiertos, tardó en resolverse).
+3. **Semáforo** por cliente y servicio: verde = cumple (usó hasta el 100 % del margen de errores del mes), amarillo = no cumple pero está cerca (hasta el 150 % del margen), rojo = lejos. El 150 % es editable en "Cómo se mide la disponibilidad" ("Amarillo hasta"); vive en el mismo JSON de pesos, **sin script nuevo**.
+4. **Resumen de clientes en barras horizontales** (verde / amarillo / rojo, con % y cantidad): los clientes de cada grupo aparecen recién al tocar la barra.
+- Decisión mía a confirmar con Hugo: "cerca" = hasta 150 % del margen (con 99,9 % son hasta ~65 minutos sin servicio en el mes).
 
 ## Dashboard gerencial (16/11, parches 42 a 45) — hecho en código, falta publicar (script 20 y Worker)
 Pedido de Hugo (ejemplo: un dueño no podía transferir, el gerente no tenía acceso a estas vistas y tuvo que preguntarle a un analista que no estaba, así que nadie sabía si alguien ya lo trabajaba). Uriel decidió hacerlo en Helios.
