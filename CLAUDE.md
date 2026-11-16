@@ -35,7 +35,8 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py y patch52.py → w.mjs (no hay patch49.py: el 49 es la rama de Jira de Ale)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py y patch52.py → w.mjs
+                        (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +51,10 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    (parche 53, sin patch53.py)  Jira real: crearTicketJira crea el issue en monitoreo-helios.atlassian.net, proyecto KAN (POST /rest/api/3/issue).
+                        Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
+                        (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
+                        Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
     patch52.py          la tendencia pasa a ser por ventana y acumulada del período (Día: un punto cada 15 minutos; Semana: cada hora; Mes: cada día; el paso se
                         adapta a los datos medidos), con el último punto igual al número de arriba. Reemplaza al gráfico diario de 30 días del 51, que pedía varios
                         días de datos. `dispoTendencia` y `tendencia: {inicio_utc, paso_minutos, pt}` en GET /api/tablero/periodo. Sin SQL.
@@ -284,7 +289,8 @@ cada alerta; generan tickets y comunican Analista y Soporte (lo suyo o de su equ
 persona (informado / técnico / líder).
 1. **Tickets a demanda — hecho (parche 41), Worker publicado el 16/11; falta correr el script 19 (Ale).** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
    casilla en el correo; el número va al asunto (`[INV-1001] …`), al texto (`{ticket}` o una línea "Ticket: …"), a "Datos de la alerta" y a la conversación.
-   Simulado hasta que esté la integración (`INV-1001`, `HEL-101`, marcado "simulado"). "Preparar demo" borra los tickets de Helios.
+   **Jira (parche 53)** crea el issue en el proyecto KAN cuando `TICKETS_JIRA = real` y están `JIRA_USUARIO` y `JIRA_TOKEN`. Sin eso, simulado (`HEL-101`).
+   **InvGate** sigue simulado (`INV-1001`). "Preparar demo" borra los tickets de Helios.
 2. **Comunicar incidente (push a demanda) — hecho (parche 46), Worker publicado el 16/11; falta correr el script 21 (Ale).** Decidido con Ale: perfil nuevo **"Solo comunicados"**
    para quien solo se tiene que enterar; listas **generales o de un cliente**, las arma el **Administrador**. "Comunicar incidente" en el detalle (Analista;
    Soporte en lo suyo): listas (primero las del cliente), mensaje armado con el ticket (o casilla para generarlo). Informados solo leen; técnicos dan

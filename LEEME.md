@@ -25,7 +25,7 @@ Del 1 al 17 ya están aplicados (del 18 al 21, pendientes): sirven para reconstr
 
 18. `18_plantillas_correo_d1.txt` — **falta correrlo (parche 40).** Columna `plantillas_correo` en `alerta_parametros` para las plantillas de "Template correo alerta". Sin él se usan las 6 de fábrica y no se pueden editar. Se corre antes de publicar el Worker.
 
-19. `19_tickets_d1.txt` — **falta correrlo (parche 41).** Tabla `tickets_alerta` para los tickets de InvGate y Jira que se generan desde una alerta (simulados hasta que esté la integración). Quedan 24 tablas. Se corre antes de publicar el Worker.
+19. `19_tickets_d1.txt` — **falta correrlo (parche 41).** Tabla `tickets_alerta` para los tickets de InvGate y Jira que se generan desde una alerta. Jira crea el issue en el proyecto KAN cuando `TICKETS_JIRA = real` y están los secretos (parche 53); InvGate sigue simulado. Quedan 24 tablas. Se corre antes de publicar el Worker.
 20. `20_disponibilidad_d1.txt` — **falta correrlo (parche 45, después del 18 y el 19).** Columnas `umbrales_config.objetivo_mensual` y `alerta_parametros.disponibilidad_config` y el objetivo general de disponibilidad en 99,9 %. Se corre antes de publicar el Worker: con el Worker nuevo y sin este script, guardar umbrales da error.
 
 21. `21_comunicados_d1.txt` — **falta correrlo (parche 46).** Perfil "Solo comunicados" (`usuarios.solo_comunicados`), listas de difusión (`alerta_parametros.listas_difusion`) y tablas `comunicados_incidente` y `comunicado_destinatarios` para "Comunicar incidente". Quedan 26 tablas. Se corre antes de publicar el Worker.
@@ -47,7 +47,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 - `Helios_inventario_de_tablas.docx` — inventario y detalle de todas las tablas (estilo de los documentos del equipo).
 - `contexto_helios_para_ia.md` — contexto completo del proyecto para pasarle a otra IA.
 - `novedades_comunicados.md` — comunicar incidente por push (parche 46): perfil "Solo comunicados", listas de difusión, Recibido y respuestas; cómo ponerlo en marcha y límites.
-- `integracion_tickets.md` — para el equipo de integración: qué completar en `tickets_integracion.js` (InvGate y Jira), qué recibe y devuelve cada función, cómo pasar a real y cómo probarlo.
+- `integracion_tickets.md` — Jira ya crea el issue en el proyecto KAN; InvGate sigue para completar. Qué recibe y devuelve cada función, cómo prenderlo y cómo probarlo.
 - `novedades_ticketera.md` — ticketera (14/11): detalle de cada alerta, evidencia adjunta y resolución con causa; cómo activarlo.
 - `novedades_avisos_push_y_app.md` — avisos push, app instalable y logo nuevo (12/11): guía por dispositivo y problemas comunes.
 - `novedades_asistente_ia.md` — asistente de IA (13/11): cómo activarlo, qué responde a cada perfil, límites y problemas comunes.
