@@ -23,7 +23,7 @@ for (let e = 0; e <= 19; e++) {
     const solo = (x) => Object.fromEntries(COLS.map((c) => [c, x[c]]));
     const okP = norm(d.prealertas.map(solo)) === norm(M.prealertas().map(solo));
     // alerta_id (parche 33) es solo el enlace al detalle: tiene que ser una ventana del mismo problema; el resto, igual que antes
-    const sinId = (xs) => xs.map((x) => { const y = Object.assign({}, x); delete y.alerta_id; return y; });
+    const sinId = (xs) => xs.map((x) => { const y = Object.assign({}, x); delete y.alerta_id; delete y.causa_resolucion; return y; });   // causa_resolucion: parche 36
     const idsOk = d.incidentes.every((i) => { const h = db.prepare('select tipo_alerta, cliente_id, servicio_id, canal_id from alertas_historico where alerta_id = ?').get(i.alerta_id); return h && h.tipo_alerta === i.tipo_alerta && h.cliente_id === i.cliente_id && h.servicio_id === i.servicio_id && h.canal_id === i.canal_id; });
     const okI = idsOk && norm(sinId(d.incidentes)) === norm(db.prepare(OLD.inc).all());
     const kp = db.prepare(OLD.kpis).get();
@@ -41,7 +41,7 @@ for (const t of tiempos) for (const off of [-1, 0, 1]) {
   const ahora = new Date(Date.parse(t) + 30*864e5 + off*60e3).toISOString().replace('.000','');
   db.prepare('update alerta_parametros set ahora=? where id=1').run(ahora);
   const nuevo = (await call(A,'GET','/api/dashboard')).j.incidentes;
-  const sinIdC = nuevo.map((x) => { const y = Object.assign({}, x); delete y.alerta_id; return y; });   // alerta_id: enlace al detalle (parche 33)
+  const sinIdC = nuevo.map((x) => { const y = Object.assign({}, x); delete y.alerta_id; delete y.causa_resolucion; return y; });   // alerta_id: enlace al detalle (parche 33)
   if (norm(sinIdC) !== norm(db.prepare(OLD.inc).all()) || nuevo.some((x) => !x.alerta_id)) { fallas++; console.log('FALLA incidentes con ahora', ahora); }
   n++;
 }

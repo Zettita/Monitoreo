@@ -146,4 +146,12 @@ r=await call(ck.ana,'GET','/api/avisos'); ok('campanita: avisos con alerta_id pa
 r=await call(A,'POST','/api/procesar'); ok('sin la variable, /api/procesar no revisa', r.s!==200 || r.j.registradas_o_actualizadas===undefined, r.s);
 r=await call(A,'GET','/procesar'); ok('GET /procesar ya no existe', r.s!==200 || !(r.j && r.j.registradas_o_actualizadas!==undefined), r.s);
 r=await call(ck.ana,'GET','/'); ok('el tablero no tiene el botón', r.t && !r.t.includes('btn-procesar') && !r.t.includes('Revisar alertas ahora'));
+// Parche 36: distribución de fallas
+r=await call(ck.sol,'GET','/api/mis-alertas'); const misInc=r.j.incidentes||[];
+ok('Mis alertas trae los problemas de sol (30 días)', misInc.length>=1 && misInc.every(i=>i.inicio && i.tipo_alerta), misInc.length);
+ok('…con la causa elegida al resolver', misInc.some(i=>i.causa_resolucion==='Proveedor o gateway'));
+r=await call(ck.pedro,'GET','/api/mis-alertas'); ok('pedro no ve los problemas de sol', (r.j.incidentes||[]).every(i=>!(i.tipo_alerta==='RECHAZO_ALTO'&&i.cliente_id==='CLI_004')), (r.j.incidentes||[]).length);
+r=await call(ck.ana,'GET','/api/dashboard'); ok('el tablero trae la causa en los incidentes', (r.j.incidentes||[]).some(i=>i.causa_resolucion==='Proveedor o gateway'));
+r=await call(ck.gero,'GET','/'); ok('el Gerente tiene la distribución de fallas', r.t.includes('id="fallas"'));
+r=await call(ck.sol,'GET','/mis-alertas'); ok('Soporte también', r.t.includes('id="fallas"'));
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');

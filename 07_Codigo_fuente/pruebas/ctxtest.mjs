@@ -40,11 +40,13 @@ globalThis.fetch = async (url, op) => {
       '<item><title>Nota vieja - La Nación</title><link>https://news.google.com/rss/articles/old</link><pubDate>' + f(80) + '</pubDate><source url="https://www.lanacion.com.ar">La Nación</source></item>' +
       '</channel></rss>', { status: 200, headers: { 'content-type': 'application/rss+xml' } });
   }
+  // Fechas relativas a ahora (antes eran fijas del 13/11 y la prueba fallaba a las 48 h)
+  const gdeltHace = (min) => new Date(Date.now() - min * 60000).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   if (url.startsWith('https://api.gdeltproject.org/'))
     return j({ articles: [
-      { url: 'https://www.ambito.com/paro-bancario', title: 'La Bancaria anunció un paro para el lunes', seendate: '20261113T140000Z', domain: 'ambito.com' },
-      { url: 'https://www.ambito.com/paro-bancario-2', title: 'La Bancaria anunció un paro para el lunes ', seendate: '20261113T141500Z', domain: 'ambito.com' },
-      { url: 'http://inseguro.com/x', title: 'Sin https', seendate: '20261113T140000Z', domain: 'inseguro.com' },
+      { url: 'https://www.ambito.com/paro-bancario', title: 'La Bancaria anunció un paro para el lunes', seendate: gdeltHace(120), domain: 'ambito.com' },
+      { url: 'https://www.ambito.com/paro-bancario-2', title: 'La Bancaria anunció un paro para el lunes ', seendate: gdeltHace(105), domain: 'ambito.com' },
+      { url: 'http://inseguro.com/x', title: 'Sin https', seendate: gdeltHace(120), domain: 'inseguro.com' },
     ] });
   return new Response('no', { status: 404 });
 };

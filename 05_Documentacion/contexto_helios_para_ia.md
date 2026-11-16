@@ -470,6 +470,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Distribución de fallas (16/11, parche 36; sin SQL, falta publicar junto con el 32 al 35)**
+
+- Nueva sección "Distribución de fallas": qué porcentaje de los problemas corresponde a cada **cliente**, **tipo de falla** o **causa** (la elegida al resolver; si no hay: "Todavía abierto", "Se normalizó solo" o "Resuelto sin causa cargada"), en **hoy, 7 días o 30 días**. Lista ordenada con barra de un solo color, porcentaje y cantidad, y el detalle (graves, abiertos, minutos) al pasar el mouse. No cuenta avisos informativos ni clientes nuevos sin historia; cada problema cuenta una vez.
+- Dónde: **tablero** (Analista, **Gerente** —la vista para un directivo— y Administrador; todos los clientes) y **Mis alertas** (Soporte; solo lo asignado a su usuario o a sus equipos).
+- Datos: `Q_INCIDENTES_30D` suma `causa_resolucion`; `/api/mis-alertas` suma `incidentes` (30 días por el índice de `ventana_inicio`, solo lo propio). La página calcula los porcentajes: no hay consultas nuevas en el tablero.
+- Se pidió como "torta": se hizo con barras porque con 8 clientes las porciones no se distinguen y los colores cambiarían de cliente al cambiar de período.
+
 **Leyenda de colores en la conversación del detalle (14/11, parche 35; sin SQL, falta publicar junto con el 32 al 34)**
 
 - Al lado del título "Conversación" se explica qué significa cada punto: gris = movimiento (derivar, tomar, devolver, reasignar, borrar un archivo), verde azulado = comentario, azul = archivo, verde = resolución. El color depende del tipo de movimiento, no de quién lo hizo.

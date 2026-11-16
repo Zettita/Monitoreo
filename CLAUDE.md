@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch35.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch36.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,8 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch36.py          "Distribución de fallas": % de problemas por cliente / tipo / causa, hoy-7-30 días, en el tablero
+                        y en Mis alertas (solo lo propio); Q_INCIDENTES_30D suma causa_resolucion; /api/mis-alertas suma incidentes
     patch35.py          leyenda de colores en la conversación del detalle (movimiento, comentario, archivo, resolución)
     patch34.py          sin botón "Revisar alertas ahora"; POST /api/procesar solo con PERMITIR_REVISION_MANUAL = '1' (umbtest y fertest)
     patch33.py          "Ver detalle" en las resueltas (Seguimiento y Histórico del tablero) para Analista y Soporte;
@@ -103,7 +105,7 @@ for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest push
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch36.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch37.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -154,6 +156,10 @@ Para un cambio nuevo: crear `patch36.py` con una función `aplicar(s)` (como los
 ## Textos y Umbrales (14/11, patch31) — publicado el 14/11 junto con el parche 30
 - Tono: la app no nombra a la persona con "vos" ni "tuyo" ("Resuelta por Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en listas); las indicaciones siguen en rioplatense ("Elegí", "Tocá"). También los mensajes de error del servidor.
 - Umbrales: recuadro "Cómo decide Helios" (1 lo normal y su margen → 2 ¿hay alerta? → 3 ¿qué tan grave? → 4 ¿qué se atiende primero?) en la pestaña y en el diálogo; grupos del diálogo en ese orden; cada campo con "↑ Si lo subís / ↓ Si lo bajás"; tarjetas en frases simples. Sin SQL.
+
+## Distribución de fallas (16/11, patch36) — hecho; falta publicar (junto con el 32 al 35)
+- Pedido del líder que vio la demo ("torta" de fallas por cliente). Se hizo como lista con barras de un color (la guía de gráficos desaconseja torta: con 8 clientes no se distinguen porciones y el color cambiaría de significado al cambiar de período). Cortes Cliente / Tipo de falla / Causa; períodos Hoy / 7 / 30 días. Tablero (Analista, Gerente, Administrador) y Mis alertas (Soporte, solo lo suyo). Sin SQL.
+- Las pruebas: `cachetest` ignora `causa_resolucion` al comparar con la consulta vieja; `ctxtest` tenía fechas fijas en el GDELT simulado (fallaba a las 48 h): ahora son relativas a la hora actual.
 
 ## Sin botón "Revisar alertas ahora" (14/11, patch34) — hecho; falta publicar (junto con el 32 y el 33)
 - Decidido por Uriel: cada revisión lee hoy 24 h (~6.500 filas) y el botón no hacía falta (las escenas ya revisan; en producción, el cron o la ingesta). No volver a agregar un disparador manual en la barra; si hace falta, un "Recalcular últimas 24 h" para el Administrador junto con la etapa 3.
