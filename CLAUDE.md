@@ -21,7 +21,7 @@ Mapa de carpetas y para qué sirve cada archivo: @LEEME.md
 - Nunca subir claves ni tokens (el `.gitignore` deja afuera `clave_push_*.txt`, `*.sqlite` salvo `pruebas/base.sqlite`, y `w.mjs`). Revisar `git status` antes de cada commit.
 
 ## Entorno real
-- Cloudflare, plan gratuito. Base D1 `helios-monitoring-dev`; Worker `worker-alertas-cron` (todo el sistema). `worker-api-bi` (Power BI) ya no se usa: borrarlo del panel.
+- Cloudflare, plan gratuito. Base D1 `helios-monitoring-dev`; Worker `worker-alertas-cron` (todo el sistema). `worker-api-bi` (Power BI) ya no se usa, pero Uriel decidió dejarlo en el panel por las dudas (16/11): no proponer borrarlo.
 - **El Cron Trigger está apagado** (se quitó hace tiempo para no gastar lecturas): hoy las revisiones solo corren con las escenas de la demo (el botón "Revisar alertas ahora" se sacó en el parche 34). Lo que figure en el uso de D1 viene de cargas manuales o del tablero.
 - Límites D1 free: 500 MB por base, 5 GB por cuenta, **100.000 filas escritas/día**, 5 M filas leídas/día; 50 consultas por invocación; sentencia de hasta 100 KB; 100 parámetros; Workers 10 ms de CPU; `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 - Consola de D1: **una sentencia por línea, sin comentarios**. Por eso los scripts para D1 se entregan como `.txt` con bloques numerados de una línea.
@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch36.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch37.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch37.py          etapa 3: revisión incremental (marca alerta_parametros.revisado_hasta + índice ix_observadas_recepcion,
+                        revision_d1.sql = script 15); variantes *_INC armadas desde las consultas completas; caché del tablero
+                        en la misma revisión; "Recalcular 24 h" (Administrador, /api/admin/recalcular). Prueba: pruebas/inctest.mjs
     patch36.py          "Distribución de fallas": % de problemas por cliente / tipo / causa, hoy-7-30 días, en el tablero
                         y en Mis alertas (solo lo propio); Q_INCIDENTES_30D suma causa_resolucion; /api/mis-alertas suma incidentes
     patch35.py          leyenda de colores en la conversación del detalle (movimiento, comentario, archivo, resolución)
@@ -103,9 +106,11 @@ node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe se
 cd ../pruebas
 for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
-done                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
+done
+# revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
+node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch37.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch38.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
@@ -175,12 +180,18 @@ Tipo de impacto (degradación / parcial / caída), servicios de acceso y correla
 
 ## Dónde estamos (modelo nuevo, 3 etapas)
 1. **Feriados — hecho.** Tabla `feriados` (API argentinadatos), opción "silenciar en feriados" por cliente/servicio.
-2. **Perfil de comportamiento — hecho en código; falta aplicarlo en Cloudflare.**
+2. **Perfil de comportamiento — hecho y publicado (11/11); demo recorrida en Cloudflare (16/11).**
    - Perfil por serie × día de la semana (0 = domingo) × franja de 15 min (hora ARG, 0–95) × tercio del mes (por día del calendario: 1–10 / 11–20 / 21 a fin de mes; columna `tercio_mes`), entrenado fuera de D1 con 12 meses de historia ficticia. Todas las celdas tienen entre 13 y 19 muestras de su propio tercio. Ya está cargado en D1 (26.208 filas, 11/11).
    - El motor (patch24) compara cada ventana con su celda del perfil por clave primaria; un feriado se compara como domingo. **No hay vistas**: su SQL está en el Worker. La demo de 19 escenas da exactamente las mismas alertas y pre-alertas que antes. Arranca **sin datos recibidos**: el perfil está entrenado hasta el lunes 26/10 10:00 y la escena 1 es la primera llegada; por eso la ventana faltante solo avisa desde el primer dato que mandó cada serie, y el tablero dice "desde las 10:00" en vez de "del día" ("Cliente nuevo" queda solo para el que no tiene perfil).
-   - **Pendiente de Uriel, en este orden:** ~~(1) correr el script 09~~ y ~~(2) publicar el Worker~~ (hechos el 11/11; también se corrió el 08 de feriados, que faltaba: solo bloques 1–26 y 35); (3) Preparar demo y recorrer las escenas; (4) borrar el Worker `worker-api-bi` del panel.
-   - Quedan 20 tablas y 0 vistas. Se borraron `core_metricas_esperadas`, `historico_metricas`, `calendario` (el día de la semana y el tercio se calculan de la fecha), `raw_metricas_recibidas` y `demo_escenarios`.
-3. **Revisión incremental + limpieza — pendiente.** Cada revisión procesa solo lo recibido desde la anterior (marca de agua + estado por serie, ~50 filas en vez de ~6.500), botón "Recalcular últimas 24 h". Limpieza que queda: `tablero_cache` pasa a ser una columna de `alerta_parametros`, y `alerta_reglas` se junta con `alerta_reglas_personalizadas` en `reglas_alerta` (queda en 18 tablas).
+   - Aplicado en Cloudflare el 11/11 (scripts 09 y 08, Worker). La demo se recorrió y anda bien (16/11). `worker-api-bi` queda en el panel (decisión de Uriel).
+   - Quedaron 20 tablas y 0 vistas en ese momento (hoy son 25: push, asistente, contexto externo y evidencia).
+3. **Revisión incremental — hecha (16/11, parche 37); falta aplicarla en Cloudflare (script 15 + Worker). Limpieza de tablas (3b) — pendiente.**
+   - Cada revisión mira solo lo recibido desde la marca `alerta_parametros.revisado_hasta` (con 2 min de solape), por el índice `ix_observadas_recepcion`: reglas del sistema solo en esas ventanas; "dejaron de llegar datos" desde 2,5 h antes de la marca; personalizadas desde 4 h antes; normalizadas solo de series con datos nuevos; "desaparecidas" solo en ventanas con datos nuevos (dato corregido o tardío). El caché del tablero se actualiza en la misma revisión (pre-alertas: episodios de las últimas 4 h, recalculados con 6 h).
+   - Revisión completa (como antes) cuando: no hay marca, el reloj volvió atrás (Preparar demo), pasaron más de 24 h, falta el script 15, "Recalcular 24 h" del Administrador (al final de Umbrales) o la ruta de pruebas `/api/procesar` (con `?incremental=1` hace la incremental).
+   - Un cambio de umbrales, reglas o feriados vale para lo que llegue después; hacia atrás, con "Recalcular 24 h".
+   - Probado: `inctest.mjs` corre la demo en incremental y en completa y da lo mismo en las 19 escenas (alertas, pre-alertas, series, avisos, incidentes); más dato tardío, dato corregido, marca vieja, sin índice, Recalcular. `out_a.txt`: en la escena 15 cambió solo el orden de la lista (es el orden de inserción).
+   - Datos que mira cada revisión en la demo: 13 contra hasta 247 de la completa (en producción con 13 series, unas 1.300 por revisión). Las series del tablero todavía se recalculan sobre 25 h (~1.300 filas con 13 series): mejora posible.
+   - Pendiente aparte: prender el cron (cada 15 min) cuando Uriel lo decida; limpieza 3b: `tablero_cache` como columna de `alerta_parametros` y `alerta_reglas` + `alerta_reglas_personalizadas` en `reglas_alerta` (quedaría en 23 tablas).
 
 Decidido (11/11): el tercio es por día del calendario, no por día hábil. El día de la semana ya separa hábiles de fines de semana; por día hábil el tercio 3 tenía 0 a 3 días por mes.
 

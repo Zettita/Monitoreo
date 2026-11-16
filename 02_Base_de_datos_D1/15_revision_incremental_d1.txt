@@ -1,0 +1,18 @@
+REVISIÓN INCREMENTAL (para la Console de D1: helios-monitoring-dev) — parche 37, etapa 3
+
+Qué hace: prepara la base para que cada revisión de alertas mire solo lo que llegó desde la anterior
+(antes recorría las últimas 24 horas en cada revisión). No crea tablas (siguen 25).
+- Índice ix_observadas_recepcion sobre la fecha de recepción de las métricas: para encontrar rápido lo nuevo.
+  No cambia las columnas de core_metricas_observadas. Suma 1 escritura por cada dato que llega.
+- Columna revisado_hasta en alerta_parametros: la "marca de agua" (hasta qué hora ya se revisó).
+
+Orden: 1) correr estos 2 bloques, uno por vez; 2) publicar 01_Worker/worker_alertas_cron.js.
+Sin este script, el Worker nuevo funciona igual que antes (revisión completa).
+El bloque 1 se puede repetir. El bloque 2 se corre UNA sola vez (si se repite da "duplicate column name" y no pasa nada).
+El índice se arma sobre las métricas que ya hay: con la base de hoy es rápido.
+
+--- 1. Índice por fecha de recepción ---
+CREATE INDEX IF NOT EXISTS ix_observadas_recepcion ON core_metricas_observadas (fecha_recepcion);
+
+--- 2. Marca de agua de la revisión ---
+ALTER TABLE alerta_parametros ADD COLUMN revisado_hasta TEXT;

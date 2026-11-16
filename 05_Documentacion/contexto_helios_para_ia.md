@@ -1,6 +1,6 @@
 # Helios: contexto del sistema para asistentes de IA
 
-> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **14 de noviembre de 2026** (el asistente de IA, parches 28 y 29, ya está publicado en Cloudflare; la ticketera, parche 30, está hecha y falta aplicarla), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
+> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **16 de noviembre de 2026** (publicado en Cloudflare hasta el parche 31; los parches 32 a 37 están hechos y probados: la revisión incremental, parche 37, necesita el script 15), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
 
 ---
 
@@ -196,7 +196,7 @@ Los mínimos y máximos los calcula el modelo; el Administrador solo puede ensan
 
 1. **Ingesta:** llega la métrica de la ventana.
 2. **Perfil:** el modelo ya tiene esperado, mínimo y máximo para esa ventana (su día de la semana, franja y tercio).
-3. **Revisión** (escena de la demo; el cron está apagado; desde el parche 34 no hay botón manual), en un solo lote (`env.DB.batch`):
+3. **Revisión** (escena de la demo; el cron está apagado; desde el parche 34 no hay botón manual), en un solo lote (`env.DB.batch`). **Desde el parche 37 es incremental:** mira solo los datos recibidos desde la última revisión (marca `alerta_parametros.revisado_hasta`, índice `ix_observadas_recepcion`) y actualiza el caché del tablero en el mismo lote; la revisión completa de 24 h queda para la primera vez, después de Preparar demo, si pasaron más de 24 h y para "Recalcular 24 h" (Administrador). Pasos:
    1. **Registrar:** `INSERT … ON CONFLICT DO UPDATE` desde el motor (reglas 1 a 11 y, en otra sentencia, la 12) y desde las reglas personalizadas. Actualiza valores, severidad, severidad máxima y última detección. Reabre las cerradas por `CONDICION_DESAPARECIDA`.
    2. **Heredar asignación:** las ventanas nuevas de un problema ya asignado copian su asignación.
    3. **Cerrar normalizadas:** si llegó una ventana posterior de la misma serie sin ese tipo de alerta. La fecha de resolución es el fin de esa ventana.
@@ -341,6 +341,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `GET /mis-alertas` · `GET /api/mis-alertas` · `GET /api/asignables` | Bandeja personal (incluye `umbrales` para la prioridad y `mis_pendientes`) y a quién se puede derivar (solo Soporte) |
 | `GET /alerta/{id}` · `GET /api/alertas/{id}/detalle` | Ticketera (parche 30): página y datos del detalle (ventanas, eventos, adjuntos, resolución, opciones del catálogo, qué botones mostrar) |
 | `POST /api/alertas/{id}/adjuntos` · `GET /api/alertas/{id}/adjuntos/{archivo}` · `POST /api/alertas/{id}/adjuntos/{archivo}/borrar` | Evidencia. Va a la tabla `evidencia_archivos` de D1 (o a R2 si el Worker tiene el binding `EVIDENCIA`), en la carpeta `alertas/<primera ventana del problema>/`; en `alerta_eventos` queda el comentario "Adjuntó el archivo «…»". Subir: el cuerpo es el archivo, nombre en `x-nombre-archivo` (URL-encoded); hasta 1 MB en D1 (10 MB en R2), 15 por alerta y 200 MB en total en D1; tipos png, jpg, gif, webp, pdf, txt, log, csv, json, har, zip, eml, xlsx, docx. Borrar: solo quien lo subió y con la alerta abierta |
+| `POST /api/admin/recalcular` | Recalcular las últimas 24 h (parche 37; solo Administrador): revisión completa; devuelve lo mismo que el proceso, con `modo` |
 | `GET/POST /api/admin/catalogo-resolucion` | Causas y acciones (solo Administrador): alta `{tipo, nombre}`, cambio `{id, nombre, activo}`; queda en auditoría |
 | `GET /seguimiento` · `GET /api/seguimiento` | Seguimiento: abiertas con asignación, eventos, resueltas de las últimas 24 h (por índice de `ventana_inicio`), equipos, miembros y umbrales |
 | `GET /api/avisos` · `GET /api/avisos/contador` · `POST /api/avisos/{id}/leido` · `POST /api/avisos/leer-todos` | Campanita |
@@ -469,6 +470,14 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Revisión incremental: etapa 3 (16/11, parche 37; falta el script 15 y publicar)**
+
+- Cada revisión mira **solo lo que llegó desde la anterior**, en vez de las últimas 24 h. Marca de agua `alerta_parametros.revisado_hasta` (hasta qué hora se revisó; se relee con 2 minutos de solape) e índice nuevo `ix_observadas_recepcion` sobre `core_metricas_observadas.fecha_recepcion` (no cambia columnas). Script `15_revision_incremental_d1.txt`; siguen 25 tablas.
+- Qué mira: reglas del sistema, solo las ventanas de los datos nuevos; "dejaron de llegar datos", las ventanas desde 2,5 h antes de la marca (la gracia llega a 120 min); reglas personalizadas, desde 4 h antes; cierre por normalización, solo series con datos nuevos; cierre por "desaparecida", solo en ventanas que recibieron datos nuevos (dato corregido, o dato tardío que cierra un "dejaron de llegar datos"). El caché del tablero (series y pre-alertas) se actualiza en la misma revisión: el tablero ya no recalcula al abrirse.
+- **Revisión completa** (como antes) si no hay marca, si el reloj volvió atrás (Preparar demo), si pasaron más de 24 h, si falta el script 15 y con **"Recalcular 24 h"** (Administración > Umbrales, solo Administrador, `POST /api/admin/recalcular`, auditoría `RECALCULAR_24H`). Un cambio de umbrales, reglas o feriados vale para lo que llegue después; hacia atrás, con ese botón.
+- `CERRAR_NORMALIZADAS` ahora usa el índice de la serie (antes recorría toda su historia).
+- Probado con `inctest.mjs`: la demo de 19 escenas en incremental y en completa da lo mismo en cada escena (alertas, pre-alertas, series, avisos e incidentes). Cada revisión de la demo miró 13 datos contra hasta 247. Respaldo: `99_Archivo_viejo/worker_antes_parche37/`, ramas `respaldo-antes-parche-37` y `version-parche-37-revision-incremental`.
 
 **Distribución de fallas (16/11, parche 36; sin SQL, falta publicar junto con el 32 al 35)**
 
@@ -681,9 +690,10 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Optimizar el motor (filtro por fecha con índice, mismo resultado) y sacar las vistas (11/11).
 - [ ] Ticketera (parches 30 y 31, publicados el 14/11): probar con Soporte y Analista en Cloudflare.
 - [ ] Tablero de causas a partir de `alertas_historico.causa_resolucion` y `acciones_resolucion` (por cliente, servicio y mes) y retención de la evidencia vieja en R2.
-- [ ] Etapa 3: revisión incremental, `tablero_cache` como columna de `alerta_parametros` y `reglas_alerta` (sistema + personalizadas juntas).
+- [x] Etapa 3a: revisión incremental (16/11, parche 37). Falta aplicarla en Cloudflare (script 15 + Worker) y decidir cuándo prender el cron.
+- [ ] Etapa 3b: `tablero_cache` como columna de `alerta_parametros` y `reglas_alerta` (sistema + personalizadas juntas).
 - [ ] Quitar el modo demo y poner el reloj real (`ahora` = NULL).
-- [ ] Borrar el Worker `worker-api-bi` y su token (Power BI ya no se usa). Para el agente, un token propio.
+- [ ] Para el agente, un token propio. (`worker-api-bi` queda en el panel por decisión de Uriel, 16/11.)
 - [ ] Contraseñas: PBKDF2 a 600.000 iteraciones (se actualizan solas al ingresar), pepper secreto, política y duración de sesión; idealmente SSO.
 - [ ] Ingesta real: endpoint `POST /api/metricas` con el formato acordado, que normalice las fechas (si hace falta guardar lo recibido crudo, se diseña la tabla en ese momento).
 - [x] Modelo de largo plazo: perfil por día de la semana × franja × tercio del mes con 12 meses de historia (11/11).
