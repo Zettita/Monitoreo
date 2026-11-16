@@ -490,7 +490,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 
 **"Comunicar incidente" sin el resumen de destinatarios (16/11, parche 47; sin SQL, falta publicar)**
 
-- Pedido de Ale: el diálogo ya no muestra "Le llega a hasta N personas (…)". Solo la página del detalle; se publica junto con el 46. Respaldo: `99_Archivo_viejo/worker_antes_parche47/`, ramas `respaldo-antes-parche-47` y `version-parche-47-comunicar-sin-resumen`.
+- Pedido de Ale: el diálogo ya no muestra "Le llega a hasta N personas (…)". **Decidido también:** los destinatarios del correo se escriben siempre a mano (Para y CC libres); no hay destinatarios sugeridos ni agenda de contactos, y las listas de difusión son solo para el push, no para el correo. Solo la página del detalle; se publica junto con el 46. Respaldo: `99_Archivo_viejo/worker_antes_parche47/`, ramas `respaldo-antes-parche-47` y `version-parche-47-comunicar-sin-resumen`.
 
 **Comunicar incidente por push (16/11, parche 46; script 21, falta publicar)**
 

@@ -276,6 +276,8 @@ persona (informado / técnico / líder).
   El mismo correo reabierto en 10 min no se repite. Cada confirmación se aparea con el primer correo pendiente de ese asunto. Texto hasta 6000 caracteres.
 - Vale con la alerta abierta o resuelta. **Sin SQL.** Se publica junto con el parche 40.
 - Más adelante (si IT lo aprueba): Microsoft Graph para crear el borrador directo en el buzón, con formato y adjuntos.
+- **Decidido con Ale (16/11): los destinatarios del correo se escriben siempre a mano** (Para y CC libres, cualquier dirección). Sin destinatarios
+  sugeridos en las plantillas ni agenda de contactos. Las listas de difusión son solo para el push de "Comunicar incidente", no para el correo.
 
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
 Tipo de impacto (degradación / parcial / caída), servicios de acceso y correlación, coeficientes, segmentos, registro de incidentes y problemas con causa, SLAs por prioridad con escalamiento, SLO y ventanas de mantenimiento. **Nada implementado.** Falta que Hugo mande: lista de servicios con los de acceso marcados, ejemplo de coeficientes reales, cómo distingue degradación / parcial / caída, SLAs y escalamiento por prioridad, lista de causas, la foto del incidente de login y el documento que prometió. Detalle en la sección 18 de `contexto_helios_para_ia.md`. Si alguien pide implementar algo de esto, primero preguntar si ya llegaron esas definiciones.
