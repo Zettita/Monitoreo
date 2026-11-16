@@ -4,13 +4,13 @@
 - `worker_alertas_cron.js` — Worker principal (`worker-alertas-cron`): tablero, Mis alertas, Seguimiento, Administración, login, cron que evalúa alertas y trae feriados. **Es siempre la última versión**; se publica con "Edit code".
 
 ## 02_Base_de_datos_D1 — scripts para la Console de D1 (en el orden en que se corren)
-Del 1 al 15 ya están aplicados: sirven para reconstruir la base desde cero o como referencia.
+Del 1 al 15 ya están aplicados (el 16 y el 17, pendientes): sirven para reconstruir la base desde cero o como referencia.
 1. `01_acceso_d1_tablas.txt` — usuarios, perfiles y sesiones (login).
 2. `02_admin_d1_tablas.txt` — reglas personalizadas y auditoría (pantalla de Administración).
 3. `03_asignacion_d1_tablas.txt` — tomar / derivar / resolver alertas y equipos.
 4. `04_avisos_d1_tablas.txt` — avisos de la campanita.
 5. `05_vistas_por_fecha_d1.txt` — vistas de alertas filtradas por fecha (menos lecturas).
-6. `06_cache_d1_tablas.txt` — caché del tablero (`tablero_cache`).
+6. `06_cache_d1_tablas.txt` — caché del tablero (`tablero_cache`, que desde el parche 38 pasó a columnas de `alerta_parametros`; ver 16 y 17).
 7. `07_umbrales_d1_tablas.txt` — umbrales configurables por cliente/servicio y prioridad.
 8. `08_feriados_d1_tablas.txt` — tabla de feriados y opción "silenciar en feriados". **Desde el modelo v2 solo valen los bloques 1 a 26 y 35** (del 27 al 34 recrean vistas viejas: no correrlos).
 9. `09_modelo_v2_d1.txt` — **ya corrido (11/11, 21 bloques).** Índice del perfil, borra las 7 vistas y las tablas sin uso (`core_metricas_esperadas`, `historico_metricas`, `calendario`, `raw_metricas_recibidas`, `demo_escenarios`) y vacía alertas y métricas: la demo arranca sin datos recibidos (el perfil ya está entrenado hasta el arranque).
@@ -20,6 +20,8 @@ Del 1 al 15 ya están aplicados: sirven para reconstruir la base desde cero o co
 13. `13_ticketera_d1.txt` — **ya corrido (14/11).** 3 columnas para la ticketera (`causa_resolucion` y `acciones_resolucion` en `alertas_historico`, `opciones_resolucion` en `alerta_parametros`).
 14. `14_evidencia_d1.txt` — **ya corrido (14/11).** Tabla `evidencia_archivos`: la evidencia adjunta a las alertas (capturas, logs, PDF), en D1 porque R2 pide tarjeta.
 15. `15_revision_incremental_d1.txt` — **ya corrido (16/11).** Índice por fecha de recepción y columna `revisado_hasta`: cada revisión mira solo lo nuevo. Sin él, el Worker sigue con la revisión completa.
+16. `16_reglas_y_cache_d1.txt` — **falta correrlo (parche 38, etapa 3b).** Crea `reglas_alerta` (reglas del sistema y personalizadas juntas), copia lo que hay y agrega las columnas del caché del tablero a `alerta_parametros`. No borra nada: se corre antes de publicar el Worker.
+17. `17_borrar_tablas_viejas_d1.txt` — **falta correrlo, después de publicar y comprobar.** Borra `alerta_reglas`, `alerta_reglas_personalizadas` y `tablero_cache`. Quedan 23 tablas.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
@@ -46,7 +48,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 37 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 38 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
 - `word/` — helper para armar los Word con el estilo de la compañera.

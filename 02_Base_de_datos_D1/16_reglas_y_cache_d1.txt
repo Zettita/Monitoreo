@@ -1,0 +1,37 @@
+LIMPIEZA DE TABLAS, PARTE 1: CREAR Y COPIAR (para la Console de D1: helios-monitoring-dev) — parche 38, etapa 3b
+
+Qué hace (no borra nada): prepara el lugar nuevo para 2 cosas y copia lo que hay.
+- Tabla reglas_alerta: junta las 12 reglas del sistema (alerta_reglas) y las reglas personalizadas
+  (alerta_reglas_personalizadas) en una sola. Las personalizadas conservan su número, así sus alertas (PERS_1, PERS_2...)
+  siguen igual; las del sistema llevan ids negativos para que las nuevas personalizadas sigan numerándose desde donde iban.
+- Columnas tablero_revision y tablero_calculado en alerta_parametros: reemplazan a la tabla tablero_cache (una sola fila).
+
+Orden: 1) correr estos 7 bloques, uno por vez (sin tocar reglas mientras tanto);
+       2) publicar 01_Worker/worker_alertas_cron.js;
+       3) probar: Administración > Reglas de alerta (se ven las mismas reglas) y el tablero;
+       4) recién ahí, 17_borrar_tablas_viejas_d1.txt.
+Hasta el paso 4 las tablas viejas siguen ahí: se puede volver al Worker anterior (Deployments > Rollback) sin perder nada.
+Los bloques 5 y 6 (ALTER TABLE) se corren UNA sola vez: si se repiten dan "duplicate column name" y no pasa nada.
+Los demás se pueden repetir: no duplican ni pisan (usan IF NOT EXISTS / OR IGNORE).
+No hace falta /bookmark (son pocas filas). Quedan 26 tablas hasta el script 17 (después, 23).
+
+--- 1. Tabla reglas_alerta (reglas del sistema y personalizadas juntas) ---
+CREATE TABLE IF NOT EXISTS reglas_alerta ( id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT NOT NULL CHECK (tipo IN ('SISTEMA', 'PERSONALIZADA')), regla TEXT, orden INTEGER, grupo TEXT CHECK (grupo IN ('VOLUMEN', 'TRANSACCIONES', 'CALIDAD_DATO')), descripcion TEXT, nombre TEXT, metrica TEXT CHECK (metrica IN ('VOLUMEN', 'APROBACION', 'RECHAZO', 'ERROR', 'IMPORTE', 'LATENCIA')), direccion TEXT CHECK (direccion IN ('BAJO', 'ALTO')), ventanas_seguidas INTEGER CHECK (ventanas_seguidas BETWEEN 1 AND 8), cliente_id TEXT, servicio_id TEXT, canal_id TEXT, severidad TEXT CHECK (severidad IN ('CRITICA', 'ALTA', 'MEDIA')), activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1)), creada_por INTEGER REFERENCES usuarios (id), creada TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), actualizada TEXT, CHECK (tipo <> 'SISTEMA' OR (regla IS NOT NULL AND orden IS NOT NULL AND grupo IS NOT NULL AND descripcion IS NOT NULL)), CHECK (tipo <> 'PERSONALIZADA' OR (regla IS NULL AND nombre IS NOT NULL AND metrica IS NOT NULL AND direccion IS NOT NULL AND ventanas_seguidas IS NOT NULL AND severidad IS NOT NULL)) );
+
+--- 2. Índice único por nombre de regla del sistema ---
+CREATE UNIQUE INDEX IF NOT EXISTS ux_reglas_alerta_regla ON reglas_alerta (regla);
+
+--- 3. Copiar las reglas personalizadas (con el mismo número) ---
+INSERT OR IGNORE INTO reglas_alerta (id, tipo, nombre, metrica, direccion, ventanas_seguidas, cliente_id, servicio_id, canal_id, severidad, activa, creada_por, creada, actualizada) SELECT id, 'PERSONALIZADA', nombre, metrica, direccion, ventanas_seguidas, cliente_id, servicio_id, canal_id, severidad, activa, creada_por, creada, actualizada FROM alerta_reglas_personalizadas;
+
+--- 4. Copiar las 12 reglas del sistema (con su estado: activa o apagada) ---
+INSERT OR IGNORE INTO reglas_alerta (id, tipo, regla, orden, grupo, descripcion, activa) SELECT -orden, 'SISTEMA', regla, orden, grupo, descripcion, activa FROM alerta_reglas ORDER BY orden;
+
+--- 5. Columna tablero_revision en alerta_parametros (UNA sola vez) ---
+ALTER TABLE alerta_parametros ADD COLUMN tablero_revision TEXT;
+
+--- 6. Columna tablero_calculado en alerta_parametros (UNA sola vez) ---
+ALTER TABLE alerta_parametros ADD COLUMN tablero_calculado TEXT;
+
+--- 7. Copiar los valores del caché del tablero ---
+UPDATE alerta_parametros SET tablero_revision = (SELECT revision FROM tablero_cache WHERE id = 1), tablero_calculado = (SELECT calculado FROM tablero_cache WHERE id = 1) WHERE id = 1 AND tablero_revision IS NULL;

@@ -134,5 +134,7 @@ ok('tablero trae umbrales', r.s===200 && r.j.umbrales.some(u=>u.cliente_id===cli
 // --- Auditoría ---
 const aud = db.prepare(`select accion, detalle from auditoria where accion like '%UMBRALES' order by id`).all();
 ok('auditoría de umbrales', aud.some(a=>a.accion==='ALTA_UMBRALES') && aud.some(a=>a.accion==='EDITAR_UMBRALES') && aud.some(a=>a.accion==='BORRAR_UMBRALES'), aud.slice(-3));
-ok('revisión del tablero marcada al guardar', db.prepare('select revision, calculado from tablero_cache').get().revision !== db.prepare('select calculado from tablero_cache').get().calculado || true);
+await call(A,'POST','/api/admin/umbrales',{cliente_id:cli, criticidad:'ALTA', objetivo_disponibilidad:0.999});   // guardar y mirar enseguida, antes de que el tablero recalcule
+const cacheT = db.prepare('select tablero_revision revision, tablero_calculado calculado from alerta_parametros').get();
+ok('revisión del tablero marcada al guardar (la revisión quedó más nueva que lo calculado)', !!cacheT.revision && cacheT.revision !== cacheT.calculado, cacheT);
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');

@@ -1,0 +1,19 @@
+LIMPIEZA DE TABLAS, PARTE 2: BORRAR LAS TABLAS VIEJAS (para la Console de D1: helios-monitoring-dev) — parche 38, etapa 3b
+
+Correr SOLO después de haber corrido el 16, publicado el Worker del parche 38 y comprobado que anda
+(Administración > Reglas de alerta con las mismas reglas, tablero y Preparar demo). Después de esto no hay vuelta atrás
+(para volver al Worker anterior habría que recrear las tablas; antes de correrlo, tomar /bookmark en la consola).
+
+Qué hace: borra alerta_reglas, alerta_reglas_personalizadas y tablero_cache, que ya no usa nadie. Quedan 23 tablas.
+
+--- 1. Comprobación (solo lee): tiene que dar sistema = sistema_viejo (12) y personalizadas = personalizadas_viejas ---
+SELECT (SELECT COUNT(*) FROM reglas_alerta WHERE tipo = 'SISTEMA') AS sistema, (SELECT COUNT(*) FROM alerta_reglas) AS sistema_viejo, (SELECT COUNT(*) FROM reglas_alerta WHERE tipo = 'PERSONALIZADA') AS personalizadas, (SELECT COUNT(*) FROM alerta_reglas_personalizadas) AS personalizadas_viejas, (SELECT COUNT(*) FROM alerta_parametros WHERE tablero_revision IS NOT NULL) AS cache_copiado;
+
+--- 2. Borrar alerta_reglas_personalizadas ---
+DROP TABLE alerta_reglas_personalizadas;
+
+--- 3. Borrar alerta_reglas ---
+DROP TABLE alerta_reglas;
+
+--- 4. Borrar tablero_cache ---
+DROP TABLE tablero_cache;

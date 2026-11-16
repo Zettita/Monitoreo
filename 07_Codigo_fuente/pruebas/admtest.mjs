@@ -109,9 +109,9 @@ r=await call(A2,'GET','/api/admin/reglas'); ok('estado reglas', !r.j.base.find(x
 // Modelo v2: el perfil (13 series); la demo recién preparada todavía no tiene datos recibidos (observadas_desde puede ser null)
 r=await call(CA,'GET','/api/admin/modelo'); ok('modelo', r.j.modelos.length===1 && r.j.modelos[0].series===13 && r.j.modelos[0].modelo_version==='2' && r.j.reloj, {m:r.j.modelos[0], d:r.j.observadas_desde, h:r.j.observadas_hasta});
 // --- Demo con reglas personalizadas ---
-r=await call(A2,'POST','/api/demo/preparar'); ok('preparar demo (reactiva las del sistema)', r.j.ok && db.prepare("select activa from alerta_reglas where regla='DATO_TARDIO'").get().activa===1);
+r=await call(A2,'POST','/api/demo/preparar'); ok('preparar demo (reactiva las del sistema)', r.j.ok && db.prepare("select activa from reglas_alerta where tipo='SISTEMA' and regla='DATO_TARDIO'").get().activa===1);
 r=await call(A2,'POST','/api/admin/reglas/base/DATO_TARDIO',{activa:false}); ok('apagar DATO_TARDIO después de preparar', r.s===200);
-const nom = Object.fromEntries(db.prepare('select id, nombre from alerta_reglas_personalizadas').all().map(x=>['PERS_'+x.id,x.nombre]));
+const nom = Object.fromEntries(db.prepare("select id, nombre from reglas_alerta where tipo='PERSONALIZADA'").all().map(x=>['PERS_'+x.id,x.nombre]));
 for (let i=0;i<20;i++) {
   r=await call(A2,'POST','/api/demo/siguiente'); if (!r.j.ok) break;
   const pers=db.prepare("select tipo_alerta t, cliente_id c, servicio_id s, canal_id k, estado e, motivo_resolucion m, count(*) n, min(substr(ventana_inicio,12,5)) i, max(substr(ventana_inicio,12,5)) f, severidad sv from alertas_historico where tipo_alerta like 'PERS_%' group by 1,2,3,4,5,6").all();
