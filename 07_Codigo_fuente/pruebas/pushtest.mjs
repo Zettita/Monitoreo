@@ -82,10 +82,10 @@ ok('páginas con manifiesto, ícono y service worker', [pag,tab].every(h=>h.incl
 // ---- Clave y suscripción
 r=await call(ck.sol,'GET','/api/push/clave'); const clavePub=r.j.clave;
 ok('soporte recibe la clave pública (65 bytes)', r.s===200 && Buffer.from(clavePub,'base64url').length===65 && Buffer.from(clavePub,'base64url')[0]===4);
-r=await call(ck.gero,'GET','/api/push/clave'); ok('gerente: sin clave (no tiene campanita)', r.j.clave===null);
+r=await call(ck.gero,'GET','/api/push/clave'); ok('gerente: con clave (parche 46: recibe comunicados de incidentes)', typeof r.j.clave==='string' && r.j.clave.length>20);
 r=await call(A,'GET','/api/push/clave'); ok('admin: sin clave', r.j.clave===null);
 const d1=dispositivo(1), d2=dispositivo(2), d3=dispositivo(3);
-r=await call(ck.gero,'POST','/api/push/suscribir',{suscripcion:d3.sub}); ok('gerente no se puede suscribir', r.s===403);
+r=await call(ck.gero,'POST','/api/push/suscribir',{suscripcion:d3.sub}); ok('gerente se puede suscribir (parche 46)', r.s===200); r=await call(ck.gero,'POST','/api/push/desuscribir',{endpoint:d3.sub.endpoint});
 r=await call(ck.sol,'POST','/api/push/suscribir',{suscripcion:{endpoint:'https://evil.example.com/x',keys:d1.sub.keys}}); ok('rechaza servicios de push desconocidos', r.s===400, r.j.error);
 r=await call(ck.sol,'POST','/api/push/suscribir',{suscripcion:{endpoint:d1.sub.endpoint,keys:{p256dh:'corta',auth:'x'}}}); ok('rechaza claves inválidas', r.s===400);
 r=await call(ck.sol,'POST','/api/push/suscribir',{suscripcion:d1.sub}); ok('sol suscribe su celular', r.s===200, r.j);
@@ -119,8 +119,8 @@ const aSol=enviados.filter(e=>e.url===d1.sub.endpoint);
 ok('un solo push al celular de sol (y ninguno a ana, que derivó)', aSol.length===1 && enviados.length===1, enviados.map(e=>e.url));
 if (aSol.length) {
   const p=descifrar(d1,aSol[0].op.body);
-  ok('push a sol: "Te asignaron una alerta", con la alerta y el comentario, lleva a Mis alertas',
-    p.avisos.length===1 && p.avisos[0].titulo==='Helios · Te asignaron una alerta' && p.avisos[0].cuerpo.includes(al.cliente_id) && p.avisos[0].cuerpo.includes('“Mirá el conector”') && p.avisos[0].url==='/mis-alertas', p.avisos[0]);
+  ok('push a sol: "Te asignaron una alerta", con la alerta y el comentario, lleva al detalle de la alerta (parche 46: la consulta ahora trae alerta_id)',
+    p.avisos.length===1 && p.avisos[0].titulo==='Helios · Te asignaron una alerta' && p.avisos[0].cuerpo.includes(al.cliente_id) && p.avisos[0].cuerpo.includes('“Mirá el conector”') && /^\/alerta\/[0-9a-f]{32}$/.test(p.avisos[0].url), p.avisos[0]);
 }
 
 // ---- Avanzar la demo hasta la escena 9 para tener más alertas sin asignar

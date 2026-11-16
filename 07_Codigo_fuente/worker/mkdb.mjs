@@ -20,6 +20,7 @@ if (!sinUmbrales) arch.push('revision_d1.sql');
 if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('reglas_cache_d1.sql', 'limpieza_d1.sql');
 if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('plantillas_d1.sql', 'tickets_d1.sql');   // parches 40 y 41: plantillas de correo (script 18) y tickets (script 19)
 if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('disponibilidad_d1.sql');   // parche 45: objetivo mensual y pesos de disponibilidad (script 20)
+if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('comunicados_d1.sql');   // parche 46: comunicar incidente (script 21)
 for (const f of arch)
   for (const l of fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8').split('\n')) if (l.trim()) db.exec(l);
 console.log('db lista', dst, sinUmbrales ? '(sin umbrales)' : '');

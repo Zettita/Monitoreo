@@ -39,7 +39,7 @@ ok('procesar informa derivadas', true);
 let ev=db.prepare("select usuario_id, accion, comentario from alerta_eventos where alerta_id=?").all(g[0].alerta_id); ok('evento automático', ev.length===1 && ev[0].usuario_id==null && ev[0].comentario.includes('Todo lo grave a Mesa'), ev);
 ok('aviso a sol y carla', avisos('sol').length===1 && avisos('carla').length===1 && avisos('pedro').length===0, avisos('sol'));
 ok('contador sol = 1', (await cont('sol')).no_leidos===1);
-r=await call(ck.gero,'GET','/api/avisos/contador'); ok('gerente sin campanita', r.j.habilitado===false);
+r=await call(ck.gero,'GET','/api/avisos/contador'); ok('gerente con campanita (parche 46: solo le llegan comunicados de incidentes)', r.j.habilitado===true && r.j.no_leidos===0);
 await sig(2); // E4: VOLUMEN_ALTO CLI_005 grave
 g=grupo('VOLUMEN_ALTO','CLI_005'); ok('E4 pico CLI_005 → Mesa', g.length>=1 && g.every(x=>x.e===EQ('Mesa')), g);
 r=await call(ck.sol,'POST',`/api/alertas/${g[0].alerta_id}/tomar`,{}); ok('sol toma el pico', r.s===200);

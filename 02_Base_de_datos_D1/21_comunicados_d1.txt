@@ -1,0 +1,33 @@
+COMUNICAR INCIDENTE (para la Console de D1: helios-monitoring-dev) — parche 46
+
+Qué hace:
+- usuarios.solo_comunicados: el perfil "Solo comunicados" (gente que solo se tiene que enterar de los incidentes).
+  Se guarda así porque la columna perfil tiene una restricción con los 4 perfiles y D1 no deja cambiarla sin rehacer la
+  tabla de usuarios (de la que dependen sesiones, equipos, avisos, etc.). Un usuario "Solo comunicados" queda con
+  perfil = 'GERENTE' y solo_comunicados = 1; Helios lo trata como su propio perfil.
+- alerta_parametros.listas_difusion: las listas de difusión que arma el Administrador (JSON).
+- Tablas comunicados_incidente y comunicado_destinatarios: cada "Comunicar incidente", a quién le llegó, quién lo vio
+  y quién dio "Recibido". Quedan 26 tablas.
+
+Orden: 1) correr estos 6 bloques, uno por vez; 2) publicar 01_Worker/worker_alertas_cron.js.
+Sin este script el Worker funciona igual, pero no deja crear usuarios "Solo comunicados", guardar listas ni comunicar.
+Los bloques 1 y 2 (ALTER TABLE) se corren UNA sola vez: si se repiten dan "duplicate column name" y no pasa nada.
+Los demás se pueden repetir (IF NOT EXISTS). No hace falta /bookmark.
+
+--- 1. Perfil "Solo comunicados" (una columna en usuarios) ---
+ALTER TABLE usuarios ADD COLUMN solo_comunicados INTEGER NOT NULL DEFAULT 0;
+
+--- 2. Listas de difusión (una columna en alerta_parametros) ---
+ALTER TABLE alerta_parametros ADD COLUMN listas_difusion TEXT;
+
+--- 3. Tabla de comunicados de incidente ---
+CREATE TABLE IF NOT EXISTS comunicados_incidente ( id INTEGER PRIMARY KEY AUTOINCREMENT, alerta_id TEXT NOT NULL, mensaje TEXT NOT NULL, listas TEXT, enviado_por INTEGER REFERENCES usuarios (id), enviado TEXT NOT NULL );
+
+--- 4. Índice para encontrar los comunicados de una alerta ---
+CREATE INDEX IF NOT EXISTS ix_comunicados_incidente_alerta ON comunicados_incidente (alerta_id);
+
+--- 5. Tabla de destinatarios de cada comunicado (quién lo vio y quién dio Recibido) ---
+CREATE TABLE IF NOT EXISTS comunicado_destinatarios ( comunicado_id INTEGER NOT NULL REFERENCES comunicados_incidente (id), usuario_id INTEGER NOT NULL REFERENCES usuarios (id), rol TEXT NOT NULL CHECK (rol IN ('INFORMADO', 'TECNICO', 'LIDER')), visto TEXT, recibido TEXT, PRIMARY KEY (comunicado_id, usuario_id) ) WITHOUT ROWID;
+
+--- 6. Índice para la página de comunicados de cada persona ---
+CREATE INDEX IF NOT EXISTS ix_comunicado_destinatarios_usuario ON comunicado_destinatarios (usuario_id, comunicado_id);

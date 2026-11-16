@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch45.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch46.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,11 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch46.py          comunicar incidente por push: perfil "Solo comunicados" (usuarios.solo_comunicados = 1 con perfil 'GERENTE', leído como
+                        COMUNICADOS), listas de difusión (Administración, JSON en alerta_parametros.listas_difusion; rol informado / técnico / líder),
+                        "Comunicar incidente" en el detalle, página /comunicados y /comunicado/<id> (comunicados.html), botones "Recibido" y
+                        "Responder" en el aviso (sw.js), campanita y push también para Gerente y "Solo comunicados", enlace "Comunicados" en el menú.
+                        comunicados_server.js; comunicados_d1.sql = script 21. Prueba: pruebas/comunicadostest.mjs. Guía: 05_Documentacion/novedades_comunicados.md
     patch45.py          disponibilidad mensual contra un objetivo, configurable: objetivo_mensual (umbrales_config, por defecto 99,9 %, con decimales,
                         general / cliente / servicio) y pesos en alerta_parametros.disponibilidad_config (JSON: cuánto cuenta cada gravedad y cuánto
                         pesa cada criticidad); dispoCalcular en el Worker; grupo "5 · Disponibilidad mensual" y "Cómo se mide la disponibilidad" en
@@ -129,7 +134,7 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest comunicadostest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done
 # etapa 3b: migración a mitad de camino (esquema viejo -> scripts 16 y 17 -> Worker nuevo); necesita w_anterior.mjs
@@ -138,7 +143,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch46.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch47.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -234,10 +239,14 @@ persona (informado / técnico / líder).
 1. **Tickets a demanda — hecho en código (parche 41, script 19), falta publicar.** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
    casilla en el correo; el número va al asunto (`[INV-1001] …`), al texto (`{ticket}` o una línea "Ticket: …"), a "Datos de la alerta" y a la conversación.
    Simulado hasta que esté la integración (`INV-1001`, `HEL-101`, marcado "simulado"). "Preparar demo" borra los tickets de Helios.
-2. **Comunicar incidente (push a demanda) — pendiente (parche 46: del 42 al 45 es el dashboard gerencial).** Listas de difusión en Administración; informados solo leen; técnicos dan
-   "Recibido" (ACK) y responden; líderes responden sumando información; todo vuelve a la conversación; el push lleva el ticket.
+2. **Comunicar incidente (push a demanda) — hecho en código (parche 46, script 21), falta publicar.** Decidido con Ale: perfil nuevo **"Solo comunicados"**
+   para quien solo se tiene que enterar; listas **generales o de un cliente**, las arma el **Administrador**. "Comunicar incidente" en el detalle (Analista;
+   Soporte en lo suyo): listas (primero las del cliente), mensaje armado con el ticket (o casilla para generarlo). Informados solo leen; técnicos dan
+   "Recibido" (desde el aviso, sin abrir Helios) y responden; líderes responden sumando información. Respuestas y resumen ("Recibido: 2 de 3 técnicos")
+   en la conversación. **El Gerente ahora tiene campanita y push** (solo le llegan comunicados). Se corrigió el push de los avisos de una alerta: ahora sí
+   abre el detalle (la consulta no traía `alerta_id`). Guía: `05_Documentacion/novedades_comunicados.md`.
 - La War Room en Teams queda en pausa hasta terminar esto.
-- **Publicar:** scripts 18, 19 y 20 → Worker (trae los parches 39 a 45).
+- **Publicar:** scripts 18, 19, 20 y 21 → Worker (trae los parches 39 a 46).
 
 ## Plantillas de correo y ajustes (16/11, patch40) — hecho en código, falta publicar
 - Pedido de Ale: el botón se llama **"Template correo alerta «<problema> · <cliente>»"** (también el título del diálogo); se sacó el texto explicativo.
