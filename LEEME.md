@@ -4,7 +4,7 @@
 - `worker_alertas_cron.js` — Worker principal (`worker-alertas-cron`): tablero, Mis alertas, Seguimiento, Administración, login, cron que evalúa alertas y trae feriados. **Es siempre la última versión**; se publica con "Edit code".
 
 ## 02_Base_de_datos_D1 — scripts para la Console de D1 (en el orden en que se corren)
-Del 1 al 12 ya están aplicados: sirven para reconstruir la base desde cero o como referencia.
+Del 1 al 15 ya están aplicados: sirven para reconstruir la base desde cero o como referencia.
 1. `01_acceso_d1_tablas.txt` — usuarios, perfiles y sesiones (login).
 2. `02_admin_d1_tablas.txt` — reglas personalizadas y auditoría (pantalla de Administración).
 3. `03_asignacion_d1_tablas.txt` — tomar / derivar / resolver alertas y equipos.
@@ -19,7 +19,7 @@ Del 1 al 12 ya están aplicados: sirven para reconstruir la base desde cero o co
 12. `12_contexto_externo_d1.txt` — **ya corrido (13/11).** Tablas `contexto_externo` (proveedores y noticias guardados una hora) y `eventos_comerciales` (con CyberMonday y Black Friday 2026 ya cargados). El Worker que las usa ya está publicado.
 13. `13_ticketera_d1.txt` — **ya corrido (14/11).** 3 columnas para la ticketera (`causa_resolucion` y `acciones_resolucion` en `alertas_historico`, `opciones_resolucion` en `alerta_parametros`).
 14. `14_evidencia_d1.txt` — **ya corrido (14/11).** Tabla `evidencia_archivos`: la evidencia adjunta a las alertas (capturas, logs, PDF), en D1 porque R2 pide tarjeta.
-15. `15_revision_incremental_d1.txt` — **falta correrlo (parche 37).** Índice por fecha de recepción y columna `revisado_hasta`: cada revisión mira solo lo nuevo. Sin él, el Worker sigue con la revisión completa.
+15. `15_revision_incremental_d1.txt` — **ya corrido (16/11).** Índice por fecha de recepción y columna `revisado_hasta`: cada revisión mira solo lo nuevo. Sin él, el Worker sigue con la revisión completa.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.

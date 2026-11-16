@@ -1,6 +1,6 @@
 # Helios: contexto del sistema para asistentes de IA
 
-> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **16 de noviembre de 2026** (publicado en Cloudflare hasta el parche 31; los parches 32 a 37 están hechos y probados: la revisión incremental, parche 37, necesita el script 15), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
+> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **16 de noviembre de 2026** (publicado en Cloudflare hasta el parche 37, con el script 15: la revisión ya es incremental), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
 
 ---
 
@@ -471,7 +471,7 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Revisión incremental: etapa 3 (16/11, parche 37; falta el script 15 y publicar)**
+**Revisión incremental: etapa 3 (16/11, parche 37; script 15 corrido y publicado el 16/11)**
 
 - Cada revisión mira **solo lo que llegó desde la anterior**, en vez de las últimas 24 h. Marca de agua `alerta_parametros.revisado_hasta` (hasta qué hora se revisó; se relee con 2 minutos de solape) e índice nuevo `ix_observadas_recepcion` sobre `core_metricas_observadas.fecha_recepcion` (no cambia columnas). Script `15_revision_incremental_d1.txt`; siguen 25 tablas.
 - Qué mira: reglas del sistema, solo las ventanas de los datos nuevos; "dejaron de llegar datos", las ventanas desde 2,5 h antes de la marca (la gracia llega a 120 min); reglas personalizadas, desde 4 h antes; cierre por normalización, solo series con datos nuevos; cierre por "desaparecida", solo en ventanas que recibieron datos nuevos (dato corregido, o dato tardío que cierra un "dejaron de llegar datos"). El caché del tablero (series y pre-alertas) se actualiza en la misma revisión: el tablero ya no recalcula al abrirse.
@@ -479,26 +479,26 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - `CERRAR_NORMALIZADAS` ahora usa el índice de la serie (antes recorría toda su historia).
 - Probado con `inctest.mjs`: la demo de 19 escenas en incremental y en completa da lo mismo en cada escena (alertas, pre-alertas, series, avisos e incidentes). Cada revisión de la demo miró 13 datos contra hasta 247. Respaldo: `99_Archivo_viejo/worker_antes_parche37/`, ramas `respaldo-antes-parche-37` y `version-parche-37-revision-incremental`.
 
-**Distribución de fallas (16/11, parche 36; sin SQL, falta publicar junto con el 32 al 35)**
+**Distribución de fallas (16/11, parche 36; publicado el 16/11)**
 
 - Nueva sección "Distribución de fallas": qué porcentaje de los problemas corresponde a cada **cliente**, **tipo de falla** o **causa** (la elegida al resolver; si no hay: "Todavía abierto", "Se normalizó solo" o "Resuelto sin causa cargada"), en **hoy, 7 días o 30 días**. Lista ordenada con barra de un solo color, porcentaje y cantidad, y el detalle (graves, abiertos, minutos) al pasar el mouse. No cuenta avisos informativos ni clientes nuevos sin historia; cada problema cuenta una vez.
 - Dónde: **tablero** (Analista, **Gerente** —la vista para un directivo— y Administrador; todos los clientes) y **Mis alertas** (Soporte; solo lo asignado a su usuario o a sus equipos).
 - Datos: `Q_INCIDENTES_30D` suma `causa_resolucion`; `/api/mis-alertas` suma `incidentes` (30 días por el índice de `ventana_inicio`, solo lo propio). La página calcula los porcentajes: no hay consultas nuevas en el tablero.
 - Se pidió como "torta": se hizo con barras porque con 8 clientes las porciones no se distinguen y los colores cambiarían de cliente al cambiar de período.
 
-**Leyenda de colores en la conversación del detalle (14/11, parche 35; sin SQL, falta publicar junto con el 32 al 34)**
+**Leyenda de colores en la conversación del detalle (14/11, parche 35; publicado el 16/11)**
 
 - Al lado del título "Conversación" se explica qué significa cada punto: gris = movimiento (derivar, tomar, devolver, reasignar, borrar un archivo), verde azulado = comentario, azul = archivo, verde = resolución. El color depende del tipo de movimiento, no de quién lo hizo.
 
-**Sin botón "Revisar alertas ahora" (14/11, parche 34; sin SQL, falta publicar junto con el 32 y el 33)**
+**Sin botón "Revisar alertas ahora" (14/11, parche 34; publicado el 16/11)**
 
 - Se sacó el botón de la barra del tablero (Administrador y Analista). Cada revisión recorre hoy las últimas 24 h (~6.500 filas): el botón multiplicaba lecturas sin hacer falta, porque cada escena de la demo ya revisa sola y en producción revisará el cron o la llegada de datos. La ruta `POST /api/procesar` solo existe con `PERMITIR_REVISION_MANUAL = '1'` (pruebas de la PC); `GET /procesar` ya no existe. Un cambio de umbrales o reglas se aplica en la próxima revisión (escena o cron). **Pendiente (etapa 3):** revisión incremental, que mire solo la ventana nueva.
 
-**"Ver detalle" en las alertas resueltas (14/11, parche 33; sin SQL, falta publicar junto con el 32)**
+**"Ver detalle" en las alertas resueltas (14/11, parche 33; publicado el 16/11)**
 
 - El Analista puede ver cómo se resolvió una alerta (conversación, evidencia, causa y qué se hizo): botón "Ver detalle" en Seguimiento > "Resueltas en las últimas 24 horas" y en Tablero > "Histórico de Alertas". Solo aparece para quien tiene el detalle (Analista y Soporte). `Q_INCIDENTES_30D` trae además `alerta_id` (una ventana del problema) para armar el enlace.
 
-**Recuadro "Urgente" del tablero con el estado real (14/11, parche 32; sin SQL, falta publicar)**
+**Recuadro "Urgente" del tablero con el estado real (14/11, parche 32; publicado el 16/11)**
 
 - Arriba del tablero, el problema más urgente decía "Sin asignar" si nadie había tomado la alerta, aunque estuviera asignada (por ejemplo, a soporte1). Ahora muestra lo mismo que la lista: "En curso: X", "Asignada a X (equipo Y), sin tomar", "Asignada al equipo Y, sin tomar", "Devuelta al analista" o "Sin asignar".
 
@@ -690,7 +690,7 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Optimizar el motor (filtro por fecha con índice, mismo resultado) y sacar las vistas (11/11).
 - [ ] Ticketera (parches 30 y 31, publicados el 14/11): probar con Soporte y Analista en Cloudflare.
 - [ ] Tablero de causas a partir de `alertas_historico.causa_resolucion` y `acciones_resolucion` (por cliente, servicio y mes) y retención de la evidencia vieja en R2.
-- [x] Etapa 3a: revisión incremental (16/11, parche 37). Falta aplicarla en Cloudflare (script 15 + Worker) y decidir cuándo prender el cron.
+- [x] Etapa 3a: revisión incremental (16/11, parche 37; publicada con el script 15). El cron sigue apagado: con el reloj de la demo no procesaría igual; tiene sentido al pasar a reloj real con ingesta real.
 - [ ] Etapa 3b: `tablero_cache` como columna de `alerta_parametros` y `reglas_alerta` (sistema + personalizadas juntas).
 - [ ] Quitar el modo demo y poner el reloj real (`ahora` = NULL).
 - [ ] Para el agente, un token propio. (`worker-api-bi` queda en el panel por decisión de Uriel, 16/11.)

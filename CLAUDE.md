@@ -162,17 +162,17 @@ Para un cambio nuevo: crear `patch38.py` con una función `aplicar(s)` (como los
 - Tono: la app no nombra a la persona con "vos" ni "tuyo" ("Resuelta por Sol Porte", "Asignada a Sol Porte", "(sesión actual)" en listas); las indicaciones siguen en rioplatense ("Elegí", "Tocá"). También los mensajes de error del servidor.
 - Umbrales: recuadro "Cómo decide Helios" (1 lo normal y su margen → 2 ¿hay alerta? → 3 ¿qué tan grave? → 4 ¿qué se atiende primero?) en la pestaña y en el diálogo; grupos del diálogo en ese orden; cada campo con "↑ Si lo subís / ↓ Si lo bajás"; tarjetas en frases simples. Sin SQL.
 
-## Distribución de fallas (16/11, patch36) — hecho; falta publicar (junto con el 32 al 35)
+## Distribución de fallas (16/11, patch36) — publicado el 16/11
 - Pedido del líder que vio la demo ("torta" de fallas por cliente). Se hizo como lista con barras de un color (la guía de gráficos desaconseja torta: con 8 clientes no se distinguen porciones y el color cambiaría de significado al cambiar de período). Cortes Cliente / Tipo de falla / Causa; períodos Hoy / 7 / 30 días. Tablero (Analista, Gerente, Administrador) y Mis alertas (Soporte, solo lo suyo). Sin SQL.
 - Las pruebas: `cachetest` ignora `causa_resolucion` al comparar con la consulta vieja; `ctxtest` tenía fechas fijas en el GDELT simulado (fallaba a las 48 h): ahora son relativas a la hora actual.
 
-## Sin botón "Revisar alertas ahora" (14/11, patch34) — hecho; falta publicar (junto con el 32 y el 33)
+## Sin botón "Revisar alertas ahora" (14/11, patch34) — publicado el 16/11
 - Decidido por Uriel: cada revisión lee hoy 24 h (~6.500 filas) y el botón no hacía falta (las escenas ya revisan; en producción, el cron o la ingesta). No volver a agregar un disparador manual en la barra; si hace falta, un "Recalcular últimas 24 h" para el Administrador junto con la etapa 3.
 
-## "Ver detalle" en las resueltas (14/11, patch33) — hecho; falta publicar (junto con el 32)
+## "Ver detalle" en las resueltas (14/11, patch33) — publicado el 16/11
 - El Analista no tenía forma de ver cómo se resolvió una alerta. Ahora: Seguimiento > Resueltas (24 h) y Tablero > Histórico tienen "Ver detalle" (conversación, evidencia, causa y qué se hizo). Solo para quien tiene `detalle_alerta`. Sin SQL.
 
-## Recuadro "Urgente" del tablero (14/11, patch32) — hecho; falta publicar
+## Recuadro "Urgente" del tablero (14/11, patch32) — publicado el 16/11
 - Decía "Sin asignar" cuando la alerta estaba asignada pero nadie la había tomado (solo miraba si estaba tomada). Ahora: "En curso: X", "Asignada a X (equipo Y), sin tomar", "Asignada al equipo Y, sin tomar", "Devuelta al analista" o "Sin asignar". Solo la página del tablero; sin SQL.
 
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
@@ -185,7 +185,7 @@ Tipo de impacto (degradación / parcial / caída), servicios de acceso y correla
    - El motor (patch24) compara cada ventana con su celda del perfil por clave primaria; un feriado se compara como domingo. **No hay vistas**: su SQL está en el Worker. La demo de 19 escenas da exactamente las mismas alertas y pre-alertas que antes. Arranca **sin datos recibidos**: el perfil está entrenado hasta el lunes 26/10 10:00 y la escena 1 es la primera llegada; por eso la ventana faltante solo avisa desde el primer dato que mandó cada serie, y el tablero dice "desde las 10:00" en vez de "del día" ("Cliente nuevo" queda solo para el que no tiene perfil).
    - Aplicado en Cloudflare el 11/11 (scripts 09 y 08, Worker). La demo se recorrió y anda bien (16/11). `worker-api-bi` queda en el panel (decisión de Uriel).
    - Quedaron 20 tablas y 0 vistas en ese momento (hoy son 25: push, asistente, contexto externo y evidencia).
-3. **Revisión incremental — hecha (16/11, parche 37); falta aplicarla en Cloudflare (script 15 + Worker). Limpieza de tablas (3b) — pendiente.**
+3. **Revisión incremental — hecha y publicada (16/11, parche 37: script 15 corrido y Worker con los parches 32 a 37 publicado). Limpieza de tablas (3b) — pendiente.**
    - Cada revisión mira solo lo recibido desde la marca `alerta_parametros.revisado_hasta` (con 2 min de solape), por el índice `ix_observadas_recepcion`: reglas del sistema solo en esas ventanas; "dejaron de llegar datos" desde 2,5 h antes de la marca; personalizadas desde 4 h antes; normalizadas solo de series con datos nuevos; "desaparecidas" solo en ventanas con datos nuevos (dato corregido o tardío). El caché del tablero se actualiza en la misma revisión (pre-alertas: episodios de las últimas 4 h, recalculados con 6 h).
    - Revisión completa (como antes) cuando: no hay marca, el reloj volvió atrás (Preparar demo), pasaron más de 24 h, falta el script 15, "Recalcular 24 h" del Administrador (al final de Umbrales) o la ruta de pruebas `/api/procesar` (con `?incremental=1` hace la incremental).
    - Un cambio de umbrales, reglas o feriados vale para lo que llegue después; hacia atrás, con "Recalcular 24 h".
