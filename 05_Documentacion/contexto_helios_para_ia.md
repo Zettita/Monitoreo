@@ -51,7 +51,7 @@ Perfil de comportamiento (entrenado fuera de D1 con 12 meses de historia) ─►
 | Cron Trigger | **Apagado** (se quitó para no gastar lecturas). Si se vuelve a configurar: cada 15 min (`5-59/15 * * * *`) | Con `alerta_parametros.ahora` con fecha (reloj simulado) no procesa |
 | `worker-api-bi` | **Ya no se usa** (sin Power BI desde el 11/11): hay que borrarlo del panel. Su código quedó en `99_Archivo_viejo/power_bi/` | — |
 | Avisos push (Web Push) | Los avisos de la campanita llegan al celular o la PC aunque Helios esté cerrado (parche 26) | Estándar de los navegadores, gratis: los entregan Google (Chrome, Edge en Android, Samsung), Apple (iPhone con Helios instalado), Mozilla o Microsoft. El Worker firma con la clave VAPID (secreto `VAPID_JWK`) y cifra el contenido |
-| Workers AI (asistente, parche 28) | Modelo de lenguaje del asistente de IA. Enlace (binding) `AI` del Worker; modelo en la variable `ASISTENTE_MODELO` (por defecto `@cf/qwen/qwen3-30b-a3b-fp8`) | Cupo gratuito: 10.000 neuronas por día para toda la cuenta. Una pregunta usa unas 30 a 70 neuronas con ese modelo: el Worker limita a 150 preguntas por día y 20 por persona por hora |
+| Workers AI (asistente, parche 28) | Modelo de lenguaje del asistente de IA. Enlace (binding) `AI` del Worker; modelo en la variable `ASISTENTE_MODELO` (por defecto `@cf/qwen/qwen3.8-27b` desde el parche 54; el anterior, `@cf/qwen/qwen3-30b-a3b-fp8`, se da de baja el 20/11/2026) | Cupo gratuito: 10.000 neuronas por día para toda la cuenta. Una pregunta usa unas 30 a 70 neuronas con ese modelo: el Worker limita a 150 preguntas por día y 20 por persona por hora |
 | D1 `helios-monitoring-dev` | Toda la persistencia | SQLite administrado. En la cuenta hay otra base, `cliente-demo-transaccional-dev`, que este trabajo no usa |
 | Perfil de comportamiento (modelo v2) | Esperado, mínimo y máximo por serie × día de la semana × franja de 15 min × tercio del mes (ver sección 6) | Se entrena fuera de D1 (PostgreSQL o PGlite) y se carga con `perfil_comportamiento_d1.txt` |
 
@@ -267,7 +267,7 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 - **Cuida D1:** lee del caché del tablero (`series_estado`, `prealertas_estado`) y por índice, con límite de filas; cada pregunta escribe 2 filas (`asistente_uso` y `auditoria` con acción `ASISTENTE` y el texto de la pregunta). Unas 15 a 20 consultas por pregunta (tope del plan: 50).
 - **Límites:** 600 caracteres por pregunta; 6 mensajes de historia (solo de la persona y del asistente); `ASISTENTE_POR_HORA` (20) por persona y `ASISTENTE_POR_DIA` (150) en total, para no pasar el cupo diario gratuito de Workers AI. Al pasarlos responde 429 con un mensaje claro.
 - **Seguridad:** lo que devuelven las herramientas (comentarios, nombres) va como dato y el sistema le indica que no son órdenes; igual, aunque un texto lo "convenza", no puede leer fuera del perfil ni ejecutar nada. La respuesta se muestra escapada (solo negrita y listas). Si el modelo falla responde 502 y nada cambia.
-- **Modelo:** variable `ASISTENTE_MODELO` (por defecto `@cf/qwen/qwen3-30b-a3b-fp8`: buena relación calidad / neuronas y soporta herramientas). Acepta las respuestas en formato OpenAI o en el propio de Workers AI, y si un modelo no acepta mensajes de herramienta reintenta con los datos como texto. Para cambiar a otro modelo (por ejemplo `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, mejor en español pero unas 5 veces más caro en neuronas) alcanza con la variable.
+- **Modelo:** variable `ASISTENTE_MODELO` (por defecto `@cf/qwen/qwen3.8-27b` desde el parche 54; el anterior, `@cf/qwen/qwen3-30b-a3b-fp8`, se da de baja el 20/11/2026: buena relación calidad / neuronas y soporta herramientas). Acepta las respuestas en formato OpenAI o en el propio de Workers AI, y si un modelo no acepta mensajes de herramienta reintenta con los datos como texto. Para cambiar a otro modelo (por ejemplo `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, mejor en español pero unas 5 veces más caro en neuronas) alcanza con la variable.
 - **Probar sin Cloudflare:** `ASISTENTE_LOCAL=simulado node --no-warnings servidor_local.mjs prueba.sqlite` usa un modelo de mentira que muestra qué datos recibió (sirve para ver la pantalla y los permisos).
 
 ---
@@ -474,6 +474,14 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+
+**Asistente: cambio de modelo de IA (16/11, parche 54; sin SQL, falta publicar)**
+
+- Cloudflare da de baja el **20/11/2026** el modelo del asistente (`@cf/qwen/qwen3-30b-a3b-fp8`); después responde 410 y el asistente falla. El de fábrica pasa a `@cf/qwen/qwen3.8-27b` (misma familia, el reemplazo "chico" que sugiere Cloudflare; alternativa `@cf/google/gemma-4-26b-a4b-it`).
+- Si la variable `ASISTENTE_MODELO` apunta a un modelo dado de baja, el Worker la ignora y usa el de fábrica (`asistNombreModelo`, lista `ASISTENTE_MODELOS_BAJA`).
+- **Pendiente:** probar las preguntas sugeridas con el modelo real (calidad, uso de herramientas, neuronas por pregunta: el límite de 150 por día se calculó con el modelo anterior).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
 
 **Jira real, proyecto KAN (16/11, parche 53; sin SQL)**
 

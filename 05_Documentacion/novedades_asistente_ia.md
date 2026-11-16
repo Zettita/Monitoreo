@@ -17,7 +17,7 @@ Opcional, en Settings › Variables and Secrets (tipo Text):
 
 | Variable | Para qué | Por defecto |
 |---|---|---|
-| `ASISTENTE_MODELO` | Modelo de Workers AI | `@cf/qwen/qwen3-30b-a3b-fp8` |
+| `ASISTENTE_MODELO` | Modelo de Workers AI | `@cf/qwen/qwen3.8-27b` |
 | `ASISTENTE_POR_HORA` | Preguntas por persona por hora | 20 |
 | `ASISTENTE_POR_DIA` | Preguntas por día, entre todos | 150 |
 

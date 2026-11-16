@@ -18,7 +18,10 @@
 // Tabla: asistente_uso (script 11_asistente_d1.txt).
 // =====================================================================
 
-const ASISTENTE_MODELO_FABRICA = '@cf/qwen/qwen3-30b-a3b-fp8';
+const ASISTENTE_MODELO_FABRICA = '@cf/qwen/qwen3.8-27b';
+// Modelos que Cloudflare da de baja el 20/11/2026 (después responden 410): si la variable ASISTENTE_MODELO todavía apunta a uno, se usa el de fábrica
+const ASISTENTE_MODELOS_BAJA = ['@cf/qwen/qwen3-30b-a3b-fp8', '@cf/qwen/qwq-32b', '@cf/meta/llama-3.1-8b-instruct-fp8', '@cf/meta/llama-3.2-1b-instruct', '@cf/meta/llama-3.2-3b-instruct', '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', '@cf/moonshotai/kimi-k2.6', '@cf/zai-org/glm-5.2'];
+function asistNombreModelo(env) { const m = env.ASISTENTE_MODELO; return m && !ASISTENTE_MODELOS_BAJA.includes(m) ? m : ASISTENTE_MODELO_FABRICA; }
 const ASIST_MAX_PREGUNTA = 600;
 const ASIST_MAX_HISTORIA = 6;           // mensajes anteriores que se mandan al modelo
 const ASIST_MAX_VUELTAS = 3;            // llamadas al modelo por pregunta
@@ -557,7 +560,7 @@ function asistSinMensajesDeHerramienta(mensajes) {
   return out;
 }
 async function asistModelo(env, mensajes, herramientas, nombres) {
-  const modelo = env.ASISTENTE_MODELO || ASISTENTE_MODELO_FABRICA;
+  const modelo = asistNombreModelo(env);
   const pedido = { messages: mensajes, max_tokens: ASIST_TOKENS_RESPUESTA, temperature: 0.2 };
   if (herramientas && herramientas.length) pedido.tools = herramientas;
   let r;
@@ -634,7 +637,7 @@ async function asistResponder(env, yo, entrada) {
     pregunta += '\n\nDatos de Helios para responder (JSON):\n' + JSON.stringify(datos);
     if (entrada.sugerencia && entrada.sugerencia.guia) pregunta += '\n\nCómo responder: ' + entrada.sugerencia.guia + (acciones.length ? ' (Ya le dejamos a la persona el botón "Hacerlo" para: ' + acciones.map((x) => x.titulo.toLowerCase()).join(', ') + '.)' : '');
   }
-  if (/qwen3/i.test(env.ASISTENTE_MODELO || ASISTENTE_MODELO_FABRICA)) pregunta += ' /no_think';
+  if (/qwen3/i.test(asistNombreModelo(env))) pregunta += ' /no_think';
   mensajes.push({ role: 'user', content: pregunta });
 
   let texto = '';
