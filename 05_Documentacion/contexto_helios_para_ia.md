@@ -507,7 +507,13 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - Probado: `comunicadostest.mjs` (58 controles, incluido sin el script 21), la demo y todas las pruebas (`avtest`, `perftest` y `pushtest` actualizadas al Gerente con campanita y al push que abre el detalle); pantallas en PC y celular. Guía: `05_Documentacion/novedades_comunicados.md`. Respaldo: `99_Archivo_viejo/worker_antes_parche46/`, ramas `respaldo-antes-parche-46` y `version-parche-46-comunicar-incidente`.
 - **Para publicar:** scripts 18, 19, 20 y 21 → Worker (trae los parches 39 a 46).
 
-**Disponibilidad más clara (16/11, parche 50; sin SQL, falta publicar)**
+**Tendencia por cliente (16/11, parche 51; sin SQL, falta publicar)**
+
+- En el desplegable de disponibilidad de cada cliente hay un gráfico lineal: la disponibilidad de cada uno de los últimos 30 días (terminan en el período elegido o en hoy), el objetivo punteado y un punto por día con el color del semáforo; abajo, cuántos días cumplió y cuál fue el peor. `GET /api/tablero/periodo` trae `tendencia` por cliente y global.
+- **Arreglo:** "desde cuándo se mide" cada servicio salía de `series_estado` (solo las últimas 25 h), así que con datos reales la semana y el mes se habrían medido solo desde ayer. Ahora sale de la primera ventana recibida dentro del rango mirado (una consulta por servicio, por el índice de `ventana_inicio`).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche51/`, ramas `respaldo-antes-parche-51` y `version-parche-51-tendencia-disponibilidad`.
+
+**Disponibilidad más clara (16/11, parche 50; sin SQL, publicado el 16/11)**
 
 - El texto largo de cómo se mide la disponibilidad se reemplaza por una línea: `Cuenta como sin servicio: alerta Grave = 100 % · Importante = 50 % · Leve = 0 %` (valores configurados).
 - **Corrección del semáforo y la barra:** antes el tiempo sin servicio se comparaba contra el margen de errores de **todo el mes** (por eso un día con 96 % de disponibilidad salía verde con un objetivo de 99,9 %). Ahora se compara la disponibilidad del período elegido (día, semana o mes) con el objetivo: `minutos_permitidos = (1 − objetivo) × minutos medidos`, `consumo = (1 − disponibilidad) / (1 − objetivo)`. Verde: llega al objetivo. Amarillo: no llega pero tuvo hasta `umbral_amarillo` veces (1,5 por defecto, editable) el tiempo sin servicio que permite el objetivo. Rojo: más. Para un mes completo da lo mismo que antes; para un día, una semana o un mes a medias es más exigente.

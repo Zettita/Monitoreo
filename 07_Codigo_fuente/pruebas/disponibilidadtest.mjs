@@ -158,6 +158,34 @@ ok('ya no están los recuadros del período, y sí el resumen por estado y el fi
 r=await call(ck.gero,'GET','/');
 ok('el tablero dibuja la disponibilidad', r.s===200 && r.t.includes('function pintarDispo') && r.t.includes('pintarDispo(r);') && r.t.includes('dd-global'));
 
+// ---- Tendencia diaria y desde cuándo se mide (parche 51) ----
+r=await P(ck.gero,'?tipo=mes'); const tc=r.j.disponibilidad.clientes;
+ok('cada cliente y el global traen su tendencia diaria', tc.every(c=>Array.isArray(c.tendencia) && c.tendencia.length>=1 && c.tendencia.every(p=>p.fecha && typeof p.disponibilidad==='number' && ['verde','amarillo','rojo'].includes(p.estado))) && Array.isArray(r.j.disponibilidad.global.tendencia), tc.map(c=>c.tendencia.length));
+const t6=tc.find(c=>c.cliente_id==='CLI_006').tendencia, u6=t6[t6.length-1];
+ok('hoy (26/10) es el último punto y coincide con la disponibilidad del cliente (la demo es de un solo día)', u6.fecha==='2026-10-26' && cerca(u6.disponibilidad,tc.find(c=>c.cliente_id==='CLI_006').disponibilidad,1e-5) && u6.hasta_ahora===true, u6);
+// Días anteriores armados a mano para CLI_006 / PAGO_SERVICIOS: se empezó a recibir el 20/10 a las 10:00 (hora de Argentina) y el 22/10 hubo una ventana Grave
+db.exec("CREATE TEMP TABLE obs_t AS SELECT * FROM core_metricas_observadas WHERE cliente_id='CLI_006' AND servicio_id='PAGO_SERVICIOS' LIMIT 1");
+for (const [id,ini,fin] of [['t1','2026-10-20T13:00:00.000Z','2026-10-20T13:15:00.000Z'],['t2','2026-10-22T13:00:00.000Z','2026-10-22T13:15:00.000Z']]) {
+  db.exec("UPDATE obs_t SET metrica_id='MET-TEND-"+id+"', ventana_inicio='"+ini+"', ventana_fin='"+fin+"'");
+  db.exec("INSERT INTO core_metricas_observadas SELECT * FROM obs_t");
+}
+db.exec("CREATE TEMP TABLE al_t AS SELECT * FROM alertas_historico WHERE cliente_id='CLI_006' AND servicio_id='PAGO_SERVICIOS' AND severidad='CRITICA' AND tipo_alerta NOT IN ('DATO_TARDIO','DATO_INCONSISTENTE','SIN_PREDICCION') LIMIT 1");
+db.exec("UPDATE al_t SET alerta_id=lower(hex(randomblob(16))), ventana_inicio='2026-10-22T13:00:00Z', ventana_fin='2026-10-22T13:15:00Z', estado='RESUELTA', fecha_resolucion='2026-10-22T13:20:00Z', motivo_resolucion='MANUAL', asignado_usuario_id=NULL, asignado_equipo_id=NULL");
+db.exec("INSERT INTO alertas_historico SELECT * FROM al_t");
+r=await P(ck.gero,'?tipo=mes'); const tt=r.j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006').tendencia, pt=(f)=>tt.find(p=>p.fecha===f);
+ok('con datos de días anteriores, la tendencia tiene el pasado (antes de las últimas 25 h): hay puntos desde el 20/10', pt('2026-10-20') && pt('2026-10-21') && pt('2026-10-22') && pt('2026-10-25'), tt.map(p=>p.fecha));
+ok('…y no hay puntos antes de empezar a recibir datos (19/10)', !pt('2026-10-19'));
+ok('el 20/10 se mide desde las 10:00 y está al 100 %', cerca(pt('2026-10-20').disponibilidad,1) && pt('2026-10-20').estado==='verde', pt('2026-10-20'));
+ok('el 22/10 hubo una ventana Grave de 96: 98,96 % (rojo con objetivo 99,9 %)', cerca(pt('2026-10-22').disponibilidad,1-1/96,1e-5) && pt('2026-10-22').estado==='rojo' && cerca(pt('2026-10-22').minutos_perdidos,15,0.051), pt('2026-10-22'));
+ok('los puntos vienen en orden de fecha y sin repetir días', tt.every((p,i,a)=>i===0||a[i-1].fecha<p.fecha));
+const tg51=r.j.disponibilidad.global.tendencia; ok('el global también tiene su tendencia', tg51.length>=tt.length && tg51.some(p=>p.fecha==='2026-10-22'));
+const mesAnt=await P(ck.gero,'?tipo=dia&fecha=2026-10-22'); const dAnt=mesAnt.j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006');
+ok('mirar el día 22/10 da la misma disponibilidad que su punto de la tendencia, y la tendencia termina ese día', cerca(dAnt.disponibilidad,1-1/96,1e-5) && dAnt.tendencia[dAnt.tendencia.length-1].fecha==='2026-10-22' && mesAnt.j.disponibilidad.global.tendencia.length>0, dAnt.tendencia.map(p=>p.fecha));
+r=await call(ck.gero,'GET','/');
+ok('la página trae el gráfico de tendencia en el desplegable de cada cliente', r.t.includes('lineaDispoHtml') && r.t.includes('Tendencia diaria') && r.t.includes('dd-linea'));
+ok('un solo servicio por consulta: el índice de ventana_inicio, sin recorrer toda la tabla', /USING (COVERING )?INDEX/i.test(JSON.stringify(db.prepare("EXPLAIN QUERY PLAN SELECT o.ventana_inicio FROM core_metricas_observadas o WHERE o.ventana_inicio >= '2026-10-01T03:00:00' AND o.cliente_id='CLI_006' AND o.servicio_id='PAGO_SERVICIOS' ORDER BY o.ventana_inicio LIMIT 1").all())));
+db.exec("DELETE FROM core_metricas_observadas WHERE metrica_id LIKE 'MET-TEND-%'"); db.exec("DELETE FROM alertas_historico WHERE ventana_inicio='2026-10-22T13:00:00Z' AND cliente_id='CLI_006'");
+
 // ---- Sin el script 20 (sin las columnas nuevas) ----
 db.exec('ALTER TABLE alerta_parametros DROP COLUMN disponibilidad_config');
 r=await P(ck.gero,'?tipo=mes');

@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py y patch50.py → w.mjs (no hay patch49.py: el 49 es la rama de Jira de Ale)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py y patch51.py → w.mjs (no hay patch49.py: el 49 es la rama de Jira de Ale)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch51.py          gráfico lineal de tendencia en el desplegable de cada cliente (disponibilidad de cada uno de los últimos 30 días, objetivo punteado,
+                        un punto por día con el color del semáforo; `tendencia` en GET /api/tablero/periodo) y arreglo de "desde cuándo se mide" cada
+                        servicio (antes salía de series_estado, que solo recuerda 25 h). Sin SQL. Prueba: pruebas/disponibilidadtest.mjs
     patch50.py          disponibilidad más clara: el texto largo de "cómo se mide" pasa a una línea (Grave = 100 % · Importante = 50 % · Leve = 0 %), el semáforo
                         y la barra comparan la disponibilidad del período elegido con el objetivo (antes, el tiempo sin servicio contra el margen de todo el mes:
                         un día con 96 % salía verde con objetivo 99,9 %) y la barra tiene una marca de lo que permite el objetivo. Sin SQL.
@@ -152,7 +155,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch51.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch52.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -231,7 +234,15 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 2. **Plantillas de correo — hecho (parche 40), Worker publicado el 16/11; falta correr el script 18 (Ale).**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
 
-## Disponibilidad más clara (16/11, parche 50) — hecho en código, falta publicar (sin SQL)
+## Tendencia por cliente (16/11, parche 51) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel (el último punto del pedido original, que había quedado afuera del parche 48): "un gráfico lineal para mostrar las tendencias en el tiempo, como si fuera una crypto", dentro del desplegable de disponibilidad de cada cliente.
+- **Gráfico:** en cada cliente, "Tendencia diaria · 27/09 al 26/10": línea con la disponibilidad de cada uno de los últimos 30 días (siempre terminan en el período que se mira, o en hoy si es el actual), el objetivo como línea punteada (leyenda arriba), un punto por día con el color del semáforo (verde / amarillo / rojo, con el mismo criterio del parche 50) y un texto abajo: "Cumplió el objetivo 21 de 30 días · peor día: 29/09 (96,88 %)". Al pasar el mouse por un punto: fecha, disponibilidad, minutos sin servicio y estado. Los días sin datos dejan un hueco. SVG propio, sin librerías; funciona en celular y en modo oscuro.
+- **Datos:** `GET /api/tablero/periodo` suma `tendencia` (lista de `{fecha, disponibilidad, estado, minutos_perdidos, hasta_ahora}`) a cada cliente y a `disponibilidad.global` (el global todavía no se dibuja). Cada día se calcula con la misma cuenta del período (`dispoCalcular`); una sola consulta nueva por el índice de `ventana_inicio` (`Q_DISPO_DIARIO`).
+- **Arreglo importante (venía de los parches 44 y 45):** "desde cuándo se mide" cada servicio salía de `series_estado.primera_ventana_inicio`, que solo mira las últimas 25 horas. En la demo (todo en un día) no se notaba, pero con datos reales la semana y el mes se habrían medido solo desde ayer: un mes de alertas dividido por ~100 ventanas, o sea una disponibilidad muy baja. Ahora sale de la primera ventana recibida dentro del rango mirado (`Q_DISPO_PRIMERAS`: una consulta correlacionada por servicio que se detiene en la primera fila, por el índice de `ventana_inicio`).
+- Probado: `disponibilidadtest` (tendencia con días anteriores armados a mano: desde el 20/10 a las 10:00, ventana Grave el 22/10 = 98,96 %, sin puntos antes de recibir datos, día 22/10 coincide con su punto, el índice), demo igual y todas las pruebas; pantallas en PC, celular y modo oscuro.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche51/`, ramas `respaldo-antes-parche-51` y `version-parche-51-tendencia-disponibilidad`.
+
+## Disponibilidad más clara (16/11, parche 50) — publicado el 16/11 (sin SQL)
 Pedido de Uriel al mirar el tablero publicado: (1) sacar el texto largo de abajo de la disponibilidad y dejar algo simple ("Alerta Grave = 100 %", etc.); (2) la barra salía verde con 96 % de disponibilidad aunque el objetivo era 99,9 %.
 - **Texto:** queda una línea, `Cuenta como sin servicio: alerta Grave = 100 % · Importante = 50 % · Leve = 0 %` (con los valores configurados). Se fue lo de los datos tardíos, el margen del mes y quién define el objetivo.
 - **Causa del verde:** `consumo` y `minutos_permitidos` se medían contra el margen de **todo el mes** (43 minutos). Un día con una ventana Grave (15 minutos, 96 % del día) usaba 35 % del margen del mes y salía verde ("Cumple") aunque el número grande dijera 96 % contra 99,9 %.
