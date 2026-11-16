@@ -71,9 +71,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         actualización automática del tablero cada 2 min (GET /api/tablero/version) y pregunta del asistente. Prueba: pruebas/gerentetest.mjs
     patch41.py          tickets a demanda en InvGate o Jira: "Generar ticket" en el detalle y casilla en el correo (el número va al asunto,
                         al texto y a {ticket}); tickets_server.js (POST /api/alertas/<id>/ticket, novedadTicket) y tickets_integracion.js
-                        (PUNTO DE ENGANCHE del equipo de integración: crearTicketInvgate / crearTicketJira / rutasTicketsIntegracion);
-                        modo por herramienta TICKETS_INVGATE / TICKETS_JIRA = 'real' (si no, simulado). tickets_d1.sql = script 19
-                        (tabla tickets_alerta). Prueba: pruebas/integraciontest.mjs (con una integración de mentira). Guía: 05_Documentacion/integracion_tickets.md
+                        (crearTicketJira ya crea el issue en monitoreo-helios.atlassian.net, proyecto KAN, con TICKETS_JIRA = real y los
+                        secretos JIRA_USUARIO / JIRA_TOKEN; crearTicketInvgate sigue simulado; rutasTicketsIntegracion para webhooks).
+                        Sin la variable, simulado. tickets_d1.sql = script 19 (tabla tickets_alerta). Prueba: pruebas/integraciontest.mjs. Guía: 05_Documentacion/integracion_tickets.md
     patch40.py          plantillas de correo (Administración > "Plantillas de correo", solo Administrador; plantillas_server.js,
                         alerta_parametros.plantillas_correo en JSON, plantillas_d1.sql = script 18; sin la columna usa las 6 de fábrica)
                         y ajustes al 39: botón "Template correo alerta «problema · cliente»", sin texto explicativo, selector de plantilla,
@@ -251,7 +251,8 @@ cada alerta; generan tickets y comunican Analista y Soporte (lo suyo o de su equ
 persona (informado / técnico / líder).
 1. **Tickets a demanda — hecho en código (parche 41, script 19), falta publicar.** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
    casilla en el correo; el número va al asunto (`[INV-1001] …`), al texto (`{ticket}` o una línea "Ticket: …"), a "Datos de la alerta" y a la conversación.
-   Simulado hasta que esté la integración (`INV-1001`, `HEL-101`, marcado "simulado"). "Preparar demo" borra los tickets de Helios.
+   **Jira** crea el issue en el proyecto KAN de `monitoreo-helios.atlassian.net` cuando `TICKETS_JIRA = real` y están los secretos `JIRA_USUARIO` y `JIRA_TOKEN`
+   (rama `version-parche-49-conexion-jira`). Sin eso, simulado (`HEL-101`). **InvGate** sigue simulado (`INV-1001`). "Preparar demo" borra los tickets de Helios.
 2. **Comunicar incidente (push a demanda) — hecho en código (parche 46, script 21), falta publicar.** Decidido con Ale: perfil nuevo **"Solo comunicados"**
    para quien solo se tiene que enterar; listas **generales o de un cliente**, las arma el **Administrador**. "Comunicar incidente" en el detalle (Analista;
    Soporte en lo suyo): listas (primero las del cliente), mensaje armado con el ticket (o casilla para generarlo). Informados solo leen; técnicos dan

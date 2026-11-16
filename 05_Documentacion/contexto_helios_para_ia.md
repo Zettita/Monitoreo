@@ -475,17 +475,24 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Conexión con Jira, proyecto KAN (16/11; sin SQL, en la rama `version-parche-49-conexion-jira`)**
+
+- `crearTicketJira` en `tickets_integracion.js` crea el issue en `https://monitoreo-helios.atlassian.net`, proyecto **KAN** (`POST /rest/api/3/issue`). InvGate sigue simulado.
+- No cambia el botón: con `TICKETS_JIRA` distinto de `real`, Jira sigue inventando `HEL-101`. Para usarlo de verdad, en el Worker: variable `TICKETS_JIRA = real` y secretos `JIRA_USUARIO` (mail de Atlassian) y `JIRA_TOKEN` (API token). Opcionales: `JIRA_URL`, `JIRA_PROYECTO` (por defecto ese sitio y KAN) y `JIRA_TIPO` (si no está, elige Task / Tarea / Story / Historia / Bug, el que exista). Sin los secretos avisa y no guarda nada.
+- El issue lleva el resumen, la descripción (con el enlace a la alerta, tocable) y quién lo pidió en Helios. La cuenta del token queda como reporter en Jira. Devuelve la clave (`KAN-12`) y `https://monitoreo-helios.atlassian.net/browse/KAN-12`. Una consulta para el tipo de tarea y una para crear; el tipo se recuerda en esa instancia del Worker.
+- Probado: `integraciontest.mjs` (API de Jira simulada: sin secretos, alta en KAN, rechazo de Jira sin guardar, y el modo simulado de siempre). InvGate no se tocó.
+
 **Tickets a demanda en InvGate o Jira (16/11, parche 41; script 19, falta publicar)**
 
 - Pedido de Ale: "veo un evento, lo gestiono, mando un push, cargo el mail, **tildo que genere un ticket** (a demanda, no sale solo) y el ticket se suma al mail y al push". La integración con InvGate y Jira la arma el mismo equipo dentro de esta demo.
 - **"Generar ticket"** en el detalle de la alerta (Analista; Soporte en lo suyo o de su equipo; abierta o resuelta): se elige **InvGate o Jira** y Helios arma el resumen (`[P2 · Importante] CLI_004 · servicio: problema`) y la descripción (qué pasa, cliente, servicio, desde, gravedad, medición, estado, enlace), editables. Uno por herramienta y por problema.
 - En **"Template correo alerta"**: si la alerta tiene ticket, el número va solo al asunto (`[INV-1001] …`) y al texto (variable nueva `{ticket}` en las plantillas o, si la plantilla no la trae, una línea "Ticket: …"); y la casilla **"Generar ticket ahora en [InvGate / Jira]"** lo genera en el momento y lo suma al correo.
 - El ticket se ve en "Datos de la alerta" (con enlace si la herramienta lo devuelve, y su estado) y en la conversación ("Generó el ticket INV-1001 en InvGate"); avisa a quien tiene la alerta y a quien la derivó; auditoría `GENERAR_TICKET`.
-- **Punto de enganche para la integración:** `07_Codigo_fuente/worker/tickets_integracion.js` (`crearTicketInvgate`, `crearTicketJira`, `rutasTicketsIntegracion` para webhooks bajo `/api/integraciones/…`) y `novedadTicket(env, sistema, clave, {estado, comentario})` para los cambios de estado, que quedan en la conversación. Modo por herramienta con las variables del Worker `TICKETS_INVGATE` / `TICKETS_JIRA` = `real`; si no, **simulado** (`INV-1001`, `HEL-101`, marcado "simulado"). Guía completa: `05_Documentacion/integracion_tickets.md`.
+- **Punto de enganche para la integración:** `07_Codigo_fuente/worker/tickets_integracion.js`. **Jira ya está conectado** al proyecto KAN (ver el cambio de arriba): hace falta `TICKETS_JIRA = real` y los secretos. `crearTicketInvgate` sigue sin completar. `rutasTicketsIntegracion` (webhooks bajo `/api/integraciones/…`) y `novedadTicket(env, sistema, clave, {estado, comentario})` quedan para los cambios de estado. Sin la variable de cada herramienta, **simulado** (`INV-1001`, `HEL-101`, marcado "simulado"). Guía: `05_Documentacion/integracion_tickets.md`.
 - Tabla nueva **`tickets_alerta`** (script `19_tickets_d1.txt`; quedan **24 tablas**): `alerta_id`, `sistema` (`INVGATE`/`JIRA`), `clave` (única por herramienta), `url`, `estado`, `simulado`, `resumen`, `descripcion`, `creado_por`, `creado`, `actualizado`. Ruta `POST /api/alertas/{id}/ticket` (body `{sistema, resumen, descripcion, prioridad}`); el detalle trae `tickets` y `tickets_sistemas`. "Preparar demo" borra los tickets de Helios. Sin el script, "Generar ticket" avisa (503) y el resto anda igual.
 - Corrige además el botón "Template correo alerta «…»" del parche 40, que en el celular se salía de la pantalla.
 - **Para publicar:** scripts 18 y 19 → Worker (trae los parches 39, 40 y 41).
-- Probado: `integraciontest.mjs` (31 controles, con una integración de mentira para el modo real y su webhook), la demo y todas las pruebas iguales; pantallas en PC y celular. Respaldo: `99_Archivo_viejo/worker_antes_parche41/`, ramas `respaldo-antes-parche-41` y `version-parche-41-tickets-invgate-jira`.
+- Probado: `integraciontest.mjs` (37 controles: la integración de mentira de InvGate y su webhook, y la API de Jira simulada contra el proyecto KAN), la demo y todas las pruebas iguales; pantallas en PC y celular. Respaldo del parche 41: `99_Archivo_viejo/worker_antes_parche41/`, ramas `respaldo-antes-parche-41` y `version-parche-41-tickets-invgate-jira`.
 - **Sigue (parche 42):** "Comunicar incidente" por push con listas de difusión (informados, técnicos con ACK y respuesta, líderes que suman información), con el ticket incluido.
 
 **"Comunicar incidente" sin el resumen de destinatarios (16/11, parche 47; sin SQL, falta publicar)**
@@ -780,7 +787,7 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Avisos push con Helios cerrado e instalar como app (12/11, parche 26; publicado).
 - [x] Preparar correo desde la alerta y confirmar el envío (16/11, parche 39; falta publicar).
 - [x] Plantillas de correo por tipo de incidente y sector (16/11, parche 40; falta publicar con el script 18). Destinatarios por cliente: más adelante, si hace falta.
-- [x] Tickets a demanda en InvGate o Jira (16/11, parche 41; simulado hasta que el equipo complete `tickets_integracion.js`; falta publicar con el script 19).
+- [x] Tickets a demanda en InvGate o Jira (16/11, parche 41; falta publicar con el script 19). Jira conectado al proyecto KAN (`crearTicketJira`; se prende con `TICKETS_JIRA = real` y los secretos). InvGate sigue simulado.
 - [x] Comunicar incidente por push con listas de difusión, Recibido y respuestas (16/11, parche 46; falta publicar con el script 21). Más adelante: adjuntar captura al responder.
 - [x] Dashboard gerencial: Gerente con lista de alertas y detalle en solo lectura, incidentes activos, resumen por Día / Semana / Mes y disponibilidad mensual configurable (16/11, parches 42 a 45; falta publicar con el script 20).
 - [ ] Disponibilidad: con datos reales, revisar si el objetivo de 99,9 % y los pesos (Grave 100 %, Importante 50 %) le sirven a Hugo; evaluar la evolución mes a mes de cada cliente.

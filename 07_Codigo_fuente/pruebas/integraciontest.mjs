@@ -78,17 +78,52 @@ await call(ck.ana,'POST',`/api/alertas/${AL}/derivar`,{equipo_id:MESA});
 r=await call(ck.sol,'GET',`/api/alertas/${AL}/detalle`); ok('sol (equipo) ve los tickets y puede generar', r.j.tickets.length===2 && r.j.puedo.ticket===true);
 r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'INVGATE',resumen:'Errores técnicos CLI_002'}); ok('otro problema: INV-1002', r.s===200 && r.j.ticket.clave==='INV-1002');
 
-// Modo real sin la integración terminada: avisa y no guarda nada
+// Jira real: sin secretos avisa y no guarda; con secretos crea en el proyecto KAN (API simulada)
 const antes=tickets().length;
 env.TICKETS_JIRA='real';
-r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'JIRA',resumen:'Errores técnicos CLI_002'}); ok('Jira real sin completar = 502 con aviso, sin guardar', r.s===502 && /Jira todavía no está terminada/.test(r.j.error) && tickets().length===antes, r.j.error);
+r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'JIRA',resumen:'Errores técnicos CLI_002'}); ok('Jira real sin secretos = 502 con aviso, sin guardar', r.s===502 && /Falta configurar Jira/.test(r.j.error) && tickets().length===antes, r.j.error);
 r=await call(ck.ana,'GET',`/api/alertas/${OTRA}/detalle`); ok('el detalle dice que Jira está en real', r.j.tickets_sistemas.find(x=>x.id==='JIRA').modo==='real');
-delete env.TICKETS_JIRA;
+env.JIRA_USUARIO='helios@ejemplo.com'; env.JIRA_TOKEN='token-de-prueba';
+const jiraLlamadas=[];
+const fetchOriginal=globalThis.fetch;
+globalThis.fetch=async (url, op)=>{
+  const u=String(url); jiraLlamadas.push({url:u, op});
+  const body=op && op.body ? JSON.parse(op.body) : null;
+  if (u.endsWith('/rest/api/3/issue/createmeta/KAN/issuetypes')) {
+    return new Response(JSON.stringify({ issueTypes: [
+      { id: '10000', name: 'Epic', subtask: false, hierarchyLevel: 1 },
+      { id: '10001', name: 'Task', subtask: false, hierarchyLevel: 0 },
+      { id: '10002', name: 'Sub-task', subtask: true, hierarchyLevel: -1 },
+    ] }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
+  if (u.endsWith('/rest/api/3/issue') && body && String(body.fields.summary).includes('FALLA-JIRA')) {
+    return new Response(JSON.stringify({ errorMessages: [], errors: { issuetype: 'Elegí un tipo válido' } }), { status: 400, headers: { 'content-type': 'application/json' } });
+  }
+  if (u.endsWith('/rest/api/3/issue')) {
+    return new Response(JSON.stringify({ id: '10099', key: 'KAN-7', self: u + '/10099' }), { status: 201, headers: { 'content-type': 'application/json' } });
+  }
+  return fetchOriginal(url, op);
+};
+r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'JIRA',resumen:'Errores técnicos CLI_002',descripcion:'Qué pasa: errores',prioridad:'P2'});
+const post=jiraLlamadas.filter(x=>x.url.endsWith('/rest/api/3/issue')).pop();
+const pedido=post ? JSON.parse(post.op.body) : {};
+const adf=JSON.stringify(pedido.fields && pedido.fields.description || {});
+ok('Jira real: guarda KAN-7 y el enlace, sin simulado', r.s===200 && r.j.ticket.clave==='KAN-7' && r.j.ticket.simulado===0 && r.j.ticket.url==='https://monitoreo-helios.atlassian.net/browse/KAN-7' && r.j.ticket.estado==='Abierto', r.j);
+ok('Jira recibe el proyecto KAN, el tipo Task y la descripción', jiraLlamadas.some(x=>x.url==='https://monitoreo-helios.atlassian.net/rest/api/3/issue/createmeta/KAN/issuetypes') && pedido.fields.project.key==='KAN' && pedido.fields.issuetype.id==='10001' && adf.includes('Qué pasa: errores') && adf.includes('/alerta/'+OTRA) && adf.includes('Ana Lista'), pedido.fields);
+ok('Jira se autentica con el secreto, sin dejarlo en el ticket', post && post.op.headers.authorization==='Basic '+Buffer.from('helios@ejemplo.com:token-de-prueba').toString('base64') && !JSON.stringify(tickets()).includes('token-de-prueba'));
+ok('en la conversación, sin "simulado"', db.prepare("select count(*) n from alerta_eventos where comentario='Generó el ticket KAN-7 en Jira'").get().n===1);
+r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'JIRA',resumen:'Otro Jira del mismo problema'}); ok('Jira real: uno por problema = 409', r.s===409 && /KAN-7/.test(r.j.error), r.j.error);
+const nAntesFalla=tickets().length;
+const AL_J=db.prepare("select alerta_id from alertas_historico where tipo_alerta not in ('RECHAZO_ALTO','ERROR_ALTO') order by ventana_inicio").get().alerta_id;
+r=await call(ck.ana,'POST',`/api/alertas/${AL_J}/ticket`,{sistema:'JIRA',resumen:'FALLA-JIRA a propósito'}); ok('si Jira rechaza el alta: 502 con su mensaje, sin guardar', r.s===502 && /Elegí un tipo válido/.test(r.j.error) && tickets().length===nAntesFalla, r.j.error);
+globalThis.fetch=fetchOriginal;
+delete env.TICKETS_JIRA; delete env.JIRA_USUARIO; delete env.JIRA_TOKEN;
 
 // Modo real con una integración de mentira (lo que va a completar el equipo)
 worker=conInteg; env.TICKETS_INVGATE='real';
 const AL3=db.prepare("select alerta_id from alertas_historico where tipo_alerta not in ('RECHAZO_ALTO','ERROR_ALTO') order by ventana_inicio").get().alerta_id;
-r=await call(ck.ana,'POST',`/api/alertas/${AL3}/ticket`,{sistema:'INVGATE',resumen:'FALLA a propósito'}); ok('si la integración falla: 502 con su mensaje, sin guardar', r.s===502 && r.j.error==='InvGate no respondió (prueba).' && tickets().length===antes);
+const antesInv=tickets().length;
+r=await call(ck.ana,'POST',`/api/alertas/${AL3}/ticket`,{sistema:'INVGATE',resumen:'FALLA a propósito'}); ok('si la integración falla: 502 con su mensaje, sin guardar', r.s===502 && r.j.error==='InvGate no respondió (prueba).' && tickets().length===antesInv);
 r=await call(ck.ana,'POST',`/api/alertas/${AL3}/ticket`,{sistema:'INVGATE',resumen:'Caída en la alerta 3',descripcion:'detalle',prioridad:'P1'});
 const rec=globalThis.__recibido||{};
 ok('real: guarda la clave y el enlace que devuelve', r.s===200 && r.j.ticket.clave==='INV-4501' && r.j.ticket.url==='https://invgate.ejemplo/requests/1' && r.j.ticket.simulado===0 && r.j.ticket.estado==='Nuevo', r.j);

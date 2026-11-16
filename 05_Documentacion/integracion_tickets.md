@@ -1,6 +1,6 @@
 # Integración de tickets con InvGate y Jira (parche 41)
 
-Guía para quien arme la integración con InvGate y Jira. Helios ya tiene todo lo de su lado; falta completar **un solo archivo**.
+Guía de la integración con InvGate y Jira. Helios ya tiene todo lo de su lado. Jira crea el issue; InvGate falta completarlo, en el mismo archivo.
 
 ## Qué hace Helios hoy
 
@@ -8,16 +8,17 @@ Guía para quien arme la integración con InvGate y Jira. Helios ya tiene todo l
 - **No sale solo:** el ticket se genera solo cuando una persona lo pide.
 - Un ticket por herramienta y por problema (todas las ventanas de la misma alerta). Queda en la tabla `tickets_alerta`, en la conversación ("Generó el ticket INV-1001 en InvGate"), en la auditoría (`GENERAR_TICKET`) y avisa a quien tiene la alerta y a quien la derivó.
 - El número se suma solo al **correo** (asunto `[INV-1001] …`, variable `{ticket}` de las plantillas) y va a sumarse al **push de incidente** (parche 42).
-- Mientras la integración no esté, cada herramienta funciona en **modo simulado**: Helios inventa el número (`INV-1001`, `HEL-101`…) y lo marca "simulado" en pantalla.
+- **Jira ya crea el issue** en `https://monitoreo-helios.atlassian.net`, proyecto **KAN**, cuando la variable `TICKETS_JIRA` vale `real` y están los secretos. **InvGate** sigue en modo simulado.
+- Sin la variable de cada herramienta, Helios inventa el número (`INV-1001`, `HEL-101`…) y lo marca "simulado" en pantalla.
 
-## Qué hay que completar
+## El archivo de la integración
 
 Archivo: `07_Codigo_fuente/worker/tickets_integracion.js`. El build lo mete en el Worker (parche 41).
 
 | Función | Qué hace |
 |---|---|
-| `crearTicketInvgate(env, datos)` | Crea el ticket en InvGate y devuelve `{ clave, url, estado }` |
-| `crearTicketJira(env, datos)` | Lo mismo en Jira |
+| `crearTicketInvgate(env, datos)` | Crea el ticket en InvGate y devuelve `{ clave, url, estado }`. **Todavía sin completar** |
+| `crearTicketJira(env, datos)` | Crea el issue en Jira Cloud (por defecto el proyecto KAN) y devuelve `{ clave, url, estado }` |
 | `rutasTicketsIntegracion(env, request, ruta)` | Rutas propias de la integración bajo `/api/integraciones/…` (por ejemplo, el webhook que avisa los cambios). **No tienen sesión de Helios:** protegerlas con un secreto propio |
 
 Funciones de Helios que se pueden usar:
@@ -44,13 +45,35 @@ Funciones de Helios que se pueden usar:
 
 `{ clave: 'INV-4521', url: 'https://…', estado: 'Abierto' }`. `url` (solo `https://`) y `estado` son opcionales. Si algo falla, **lanzar un `Error` con un mensaje para mostrar**: Helios no guarda nada y se lo muestra a la persona (respuesta 502).
 
-## Cómo se pasa a real
+## Cómo se prende Jira
 
-1. Completar la función de la herramienta.
-2. En Cloudflare, Worker `worker-alertas-cron` → Settings → Variables: `TICKETS_INVGATE = real` y/o `TICKETS_JIRA = real`. Los datos de conexión van como **secretos** (por ejemplo `INVGATE_URL`, `INVGATE_TOKEN`, `JIRA_URL`, `JIRA_USUARIO`, `JIRA_TOKEN`, `JIRA_PROYECTO`). **Nunca en el código ni en Git.**
-3. Con la variable en `real` y la función sin completar, "Generar ticket" muestra "La integración con … todavía no está terminada" y no guarda nada.
+En Cloudflare, Worker `worker-alertas-cron` → Settings → Variables and secrets:
 
-Cada herramienta se pasa por separado: se puede tener InvGate real y Jira simulado.
+| Nombre | Tipo | Valor |
+|---|---|---|
+| `TICKETS_JIRA` | variable de texto | `real` |
+| `JIRA_USUARIO` | secreto | el mail de la cuenta de Atlassian que crea los issues |
+| `JIRA_TOKEN` | secreto | un API token de esa cuenta (id.atlassian.com → Security → API tokens) |
+
+Opcionales (si no están, se usa el sitio y el proyecto de esta demo):
+
+| Nombre | Tipo | Por defecto |
+|---|---|---|
+| `JIRA_URL` | secreto o variable | `https://monitoreo-helios.atlassian.net` |
+| `JIRA_PROYECTO` | secreto o variable | `KAN` |
+| `JIRA_TIPO` | secreto o variable | el que encuentre: Task, Tarea, Story, Historia, Bug, Error |
+
+Sin `TICKETS_JIRA = real`, el botón sigue en simulado. Con `real` y sin los dos secretos, "Generar ticket" dice que falta configurarlos y no guarda nada. El token no se escribe en el código ni en Git.
+
+La cuenta del token queda como quien creó el issue en Jira. En la descripción va quién lo pidió desde Helios y el enlace a la alerta. Son dos pedidos como máximo: uno para ver los tipos de tarea del proyecto y uno para crear. El tipo se recuerda mientras el Worker sigue en marcha.
+
+## Cómo se pasa InvGate a real
+
+1. Completar `crearTicketInvgate`.
+2. Variable `TICKETS_INVGATE = real` y los secretos que use (`INVGATE_URL`, `INVGATE_TOKEN`). **Nunca en el código ni en Git.**
+3. Con la variable en `real` y la función sin completar, "Generar ticket" muestra "La integración con InvGate todavía no está terminada" y no guarda nada.
+
+Cada herramienta se pasa por separado: hoy Jira puede estar en real y InvGate en simulado.
 
 ## Cómo probarlo sin las herramientas
 
