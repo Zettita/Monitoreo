@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py y patch51.py → w.mjs (no hay patch49.py: el 49 es la rama de Jira de Ale)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py y patch52.py → w.mjs (no hay patch49.py: el 49 es la rama de Jira de Ale)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,9 +50,11 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
-    patch51.py          gráfico lineal de tendencia en el desplegable de cada cliente (disponibilidad de cada uno de los últimos 30 días, objetivo punteado,
-                        un punto por día con el color del semáforo; `tendencia` en GET /api/tablero/periodo) y arreglo de "desde cuándo se mide" cada
-                        servicio (antes salía de series_estado, que solo recuerda 25 h). Sin SQL. Prueba: pruebas/disponibilidadtest.mjs
+    patch52.py          la tendencia pasa a ser por ventana y acumulada del período (Día: un punto cada 15 minutos; Semana: cada hora; Mes: cada día; el paso se
+                        adapta a los datos medidos), con el último punto igual al número de arriba. Reemplaza al gráfico diario de 30 días del 51, que pedía varios
+                        días de datos. `dispoTendencia` y `tendencia: {inicio_utc, paso_minutos, pt}` en GET /api/tablero/periodo. Sin SQL.
+    patch51.py          gráfico lineal de tendencia en el desplegable de cada cliente (reemplazado por el 52) y arreglo de "desde cuándo se mide" cada
+                        servicio (antes salía de series_estado, que solo recuerda 25 h; el arreglo sigue). Sin SQL. Prueba: pruebas/disponibilidadtest.mjs
     patch50.py          disponibilidad más clara: el texto largo de "cómo se mide" pasa a una línea (Grave = 100 % · Importante = 50 % · Leve = 0 %), el semáforo
                         y la barra comparan la disponibilidad del período elegido con el objetivo (antes, el tiempo sin servicio contra el margen de todo el mes:
                         un día con 96 % salía verde con objetivo 99,9 %) y la barra tiene una marca de lo que permite el objetivo. Sin SQL.
@@ -155,7 +157,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch52.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch53.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -234,7 +236,15 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 2. **Plantillas de correo — hecho (parche 40), Worker publicado el 16/11; falta correr el script 18 (Ale).**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
 
-## Tendencia por cliente (16/11, parche 51) — hecho en código, falta publicar (sin SQL)
+## Evolución por ventana (16/11, parche 52) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel al ver el gráfico del parche 51 en la demo ("Todavía no hay datos de varios días"): la tendencia no tiene que necesitar varios días sino varias ventanas, que los clientes sí tienen. Elegido con Uriel: **acumulada, un punto por ventana**.
+- **Qué muestra:** en el desplegable de cada cliente, "Evolución de la disponibilidad · cada 15 minutos": cada punto es la disponibilidad **acumulada desde el inicio del período** hasta ese momento, y el último punto es el número grande de arriba (se ve cuándo cruzó el objetivo). Objetivo punteado, puntos con el color del semáforo (con más de 40 puntos solo se marcan los cambios de color y el último), tooltip al pasar por cualquier momento y una frase: "Está por debajo del objetivo y lejos desde 13:30 (94,74 %)".
+- **Paso (`paso_minutos`) según lo medido:** Día siempre 15 minutos; con hasta un día y medio de datos también 15 minutos (Semana y Mes); Semana, o hasta ~8 días de datos, cada hora; con más datos (Mes), cada día. Los pasos empiezan en el primer momento medido, no en el inicio del período (un mes con un día de datos no trae miles de pasos vacíos). Respuesta de ~15 KB.
+- **Datos:** `GET /api/tablero/periodo` trae `tendencia: { inicio_utc, paso_minutos, pt: [[disponibilidad, estado] | null, …] }` por cliente y en `disponibilidad.global` (`estado`: 0 verde, 1 amarillo, 2 rojo; null = todavía no se medía). `dispoTendencia` usa la misma cuenta que `dispoCalcular` con "hasta" en el final de cada paso, así que el último punto es la disponibilidad del período. Una consulta nueva (`Q_DISPO_PUNTOS`: ventanas con problema del período, por el índice de `ventana_inicio`). Reemplaza a la tendencia diaria de 30 días del parche 51.
+- Probado: `disponibilidadtest` (último punto = disponibilidad y semáforo en global y clientes, en Día / Semana / Mes y con datos de varios días; la caída de una ventana Grave aparece en su ventana exacta; pasos adaptables; sin pasos vacíos), demo igual y toda la batería; pantalla en PC con la demo de 19 escenas.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche52/`, ramas `respaldo-antes-parche-52` y `version-parche-52-evolucion-por-ventana`.
+
+## Tendencia por cliente (16/11, parche 51) — publicado el 16/11 (sin SQL; el gráfico diario lo reemplaza el parche 52)
 Pedido de Uriel (el último punto del pedido original, que había quedado afuera del parche 48): "un gráfico lineal para mostrar las tendencias en el tiempo, como si fuera una crypto", dentro del desplegable de disponibilidad de cada cliente.
 - **Gráfico:** en cada cliente, "Tendencia diaria · 27/09 al 26/10": línea con la disponibilidad de cada uno de los últimos 30 días (siempre terminan en el período que se mira, o en hoy si es el actual), el objetivo como línea punteada (leyenda arriba), un punto por día con el color del semáforo (verde / amarillo / rojo, con el mismo criterio del parche 50) y un texto abajo: "Cumplió el objetivo 21 de 30 días · peor día: 29/09 (96,88 %)". Al pasar el mouse por un punto: fecha, disponibilidad, minutos sin servicio y estado. Los días sin datos dejan un hueco. SVG propio, sin librerías; funciona en celular y en modo oscuro.
 - **Datos:** `GET /api/tablero/periodo` suma `tendencia` (lista de `{fecha, disponibilidad, estado, minutos_perdidos, hasta_ahora}`) a cada cliente y a `disponibilidad.global` (el global todavía no se dibuja). Cada día se calcula con la misma cuenta del período (`dispoCalcular`); una sola consulta nueva por el índice de `ventana_inicio` (`Q_DISPO_DIARIO`).
