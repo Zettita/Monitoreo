@@ -2,13 +2,12 @@
 // INTEGRACIÓN CON INVGATE Y JIRA (parche 41) — ARCHIVO PARA EL EQUIPO DE INTEGRACIÓN
 //
 // Helios ya resuelve todo lo de su lado (botón "Generar ticket", permisos, conversación, auditoría, el número en el correo
-// y en el push). Acá solo falta completar cómo se crea el ticket en cada herramienta. Mientras tanto, cada herramienta
-// funciona en modo SIMULADO (INV-1001, HEL-101…).
+// y en el push). Jira crea el issue (parche 53). InvGate sigue en modo simulado (INV-1001…) hasta completar crearTicketInvgate.
 //
-// Para pasar una herramienta a real:
-//   1. Completar la función de abajo (crearTicketInvgate o crearTicketJira).
-//   2. En el Worker de Cloudflare: Settings → Variables → TICKETS_INVGATE = real (o TICKETS_JIRA = real),
-//      y los secretos que necesite (por ejemplo INVGATE_URL, INVGATE_TOKEN, JIRA_URL, JIRA_USUARIO, JIRA_TOKEN, JIRA_PROYECTO).
+// Para pasar InvGate a real:
+//   1. Completar crearTicketInvgate.
+//   2. En el Worker de Cloudflare: Settings → Variables → TICKETS_INVGATE = real,
+//      y los secretos que necesite (por ejemplo INVGATE_URL, INVGATE_TOKEN).
 //      Nunca poner claves en el código ni en Git.
 //
 // Qué recibe cada función (datos):
@@ -45,15 +44,89 @@ async function crearTicketInvgate(env, datos) {
   throw new Error('La integración con InvGate todavía no está terminada (TICKETS_INVGATE = real sin completar crearTicketInvgate).');
 }
 
+// ---- JIRA (parche 53) ----------------------------------------------------------------------------------------------
+// Jira Cloud, API REST v3 (POST /rest/api/3/issue). Secretos en Cloudflare (nunca en el código ni en Git):
+//   JIRA_USUARIO    correo de la cuenta de Atlassian     JIRA_TOKEN  token de API de esa cuenta
+//   TICKETS_JIRA    real
+// Opcionales (si no están, se usa el sitio y el proyecto de esta demo):
+//   JIRA_URL        por defecto https://monitoreo-helios.atlassian.net
+//   JIRA_PROYECTO   por defecto KAN
+//   JIRA_TIPO       nombre del tipo tal como figura en el proyecto: "Tarea", "Task", "Bug"… (por defecto "Task")
+// No se manda el campo "prioridad" (no todos los proyectos lo tienen): la prioridad P1–P4 va en la descripción y como etiqueta.
+// Hasta 2 llamadas por ticket (la 2.ª solo si el proyecto no admite etiquetas).
+const JIRA_SITIO = 'https://monitoreo-helios.atlassian.net';
+const JIRA_PROYECTO_DEF = 'KAN';
+const jiraTexto = (t) => String(t || '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '');
+const jiraParrafo = (linea, enlace) => {
+  const partes = [];
+  const m = enlace ? linea.indexOf(enlace) : -1;
+  if (m >= 0) {
+    if (m > 0) partes.push({ type: 'text', text: linea.slice(0, m) });
+    partes.push({ type: 'text', text: enlace, marks: [{ type: 'link', attrs: { href: enlace } }] });
+    if (m + enlace.length < linea.length) partes.push({ type: 'text', text: linea.slice(m + enlace.length) });
+  } else partes.push({ type: 'text', text: linea });
+  return { type: 'paragraph', content: partes };
+};
+function jiraDescripcion(datos) {
+  const lineas = [];
+  if (datos.prioridad) lineas.push('Prioridad en Helios: ' + datos.prioridad + (datos.gravedad ? ' · Gravedad: ' + datos.gravedad : ''));
+  jiraTexto(datos.descripcion).split('\n').forEach((l) => { if (l.trim()) lineas.push(l); });
+  if (datos.enlace && !lineas.some((l) => l.indexOf(datos.enlace) >= 0)) lineas.push('Alerta en Helios: ' + datos.enlace);
+  const quien = datos.solicitante && jiraTexto(datos.solicitante.nombre || datos.solicitante.usuario).replace(/\s+/g, ' ').trim();
+  if (quien) lineas.push('Lo pidió en Helios: ' + quien.slice(0, 120));
+  const content = lineas.slice(0, 200).map((l) => jiraParrafo(l.slice(0, 2000), datos.enlace));
+  return { type: 'doc', version: 1, content: content.length ? content : [{ type: 'paragraph', content: [{ type: 'text', text: '(sin descripción)' }] }] };
+}
+const jiraEtiqueta = (t) => String(t || '').replace(/[^A-Za-z0-9_\-]/g, '_').slice(0, 60);
+function jiraBase(env) {
+  const u = String(env.JIRA_URL || JIRA_SITIO).trim().replace(/\/+$/, '');
+  if (!/^https:\/\/[^\s\/]+$/.test(u)) throw new Error('Falta configurar la conexión con Jira (JIRA_URL tiene que ser https://…).');
+  return u;
+}
+function jiraAuth(usuario, token) {
+  const bytes = new TextEncoder().encode(usuario + ':' + token);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return 'Basic ' + btoa(bin);
+}
+// Mensaje claro a partir de lo que contesta Jira (nunca incluye credenciales)
+async function jiraError(r) {
+  let j = null; try { j = await r.json(); } catch (e) { /* sin cuerpo */ }
+  const detalle = j ? [].concat(j.errorMessages || [], Object.values(j.errors || {})).filter(Boolean).join(' · ').slice(0, 300) : '';
+  if (r.status === 401) return 'Jira no aceptó el usuario o el token. Revisá JIRA_USUARIO y JIRA_TOKEN.';
+  if (r.status === 403) return 'La cuenta de Helios no tiene permiso para crear tickets en ese proyecto de Jira.' + (detalle ? ' (' + detalle + ')' : '');
+  if (r.status === 404) return 'Jira no encontró el sitio o el proyecto. Revisá JIRA_URL y JIRA_PROYECTO.';
+  if (r.status === 429) return 'Jira pidió esperar un momento. Probá de nuevo en un minuto.';
+  if (r.status >= 500) return 'Jira no está respondiendo bien en este momento (error ' + r.status + ').';
+  return 'Jira no aceptó el ticket' + (detalle ? ': ' + detalle : ' (error ' + r.status + ').');
+}
+
 async function crearTicketJira(env, datos) {
-  // Ejemplo de por dónde va (a completar con la API real de Jira):
-  //   const r = await pedidoConTiempo(env.JIRA_URL + '/rest/api/3/issue', { method: 'POST',
-  //     headers: { authorization: 'Basic ' + btoa(env.JIRA_USUARIO + ':' + env.JIRA_TOKEN), 'content-type': 'application/json' },
-  //     body: JSON.stringify({ fields: { project: { key: env.JIRA_PROYECTO }, issuetype: { name: 'Incident' }, summary: datos.resumen,
-  //       description: { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text: datos.descripcion }] }] } } }) });
-  //   const j = await r.json();
-  //   return { clave: j.key, url: env.JIRA_URL + '/browse/' + j.key, estado: 'Abierto' };
-  throw new Error('La integración con Jira todavía no está terminada (TICKETS_JIRA = real sin completar crearTicketJira).');
+  const usuario = String(env.JIRA_USUARIO || '').trim();
+  const token = String(env.JIRA_TOKEN || '').trim();
+  if (!usuario || !token) throw new Error('Falta configurar la conexión con Jira (hacen falta los secretos JIRA_USUARIO y JIRA_TOKEN en el Worker).');
+  const base = jiraBase(env);
+  const proyecto = String(env.JIRA_PROYECTO || JIRA_PROYECTO_DEF).trim();
+  const campos = {
+    project: { key: proyecto },
+    issuetype: { name: String(env.JIRA_TIPO || 'Task').trim() },
+    summary: jiraTexto(datos.resumen).replace(/\s+/g, ' ').trim().slice(0, 250),
+    description: jiraDescripcion(datos),
+    labels: ['helios'].concat(datos.prioridad ? [jiraEtiqueta(datos.prioridad)] : [], datos.tipo_alerta ? [jiraEtiqueta(datos.tipo_alerta)] : []),
+  };
+  const pedir = (f) => pedidoConTiempo(base + '/rest/api/3/issue', { method: 'POST',
+    headers: { authorization: jiraAuth(usuario, token), 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ fields: f }) });
+  let r = await pedir(campos);
+  if (r.status === 400) {
+    // Algunos proyectos no tienen el campo "etiquetas" en la pantalla de creación: se reintenta una vez sin él.
+    let j = null; try { j = await r.clone().json(); } catch (e) { /* sin cuerpo */ }
+    if (j && j.errors && j.errors.labels) { delete campos.labels; r = await pedir(campos); }
+  }
+  if (r.status !== 201 && r.status !== 200) throw new Error(await jiraError(r));
+  let j = null; try { j = await r.json(); } catch (e) { /* sin cuerpo */ }
+  if (!j || !j.key) throw new Error('Jira contestó, pero no devolvió el número del ticket.');
+  return { clave: String(j.key), url: base + '/browse/' + encodeURIComponent(j.key), estado: 'Abierto' };
 }
 
 // Rutas que necesite la integración (por ejemplo, el webhook de Jira o InvGate). Devuelve una respuesta o null.
@@ -61,4 +134,3 @@ async function crearTicketJira(env, datos) {
 async function rutasTicketsIntegracion(env, request, ruta) {
   return null;
 }
-

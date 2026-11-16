@@ -81,7 +81,7 @@ r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'INVGATE',resu
 // Modo real sin la integración terminada: avisa y no guarda nada
 const antes=tickets().length;
 env.TICKETS_JIRA='real';
-r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'JIRA',resumen:'Errores técnicos CLI_002'}); ok('Jira real sin completar = 502 con aviso, sin guardar', r.s===502 && /Jira todavía no está terminada/.test(r.j.error) && tickets().length===antes, r.j.error);
+r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/ticket`,{sistema:'JIRA',resumen:'Errores técnicos CLI_002'}); ok('Jira real sin secretos = 502 con aviso, sin guardar', r.s===502 && /Falta configurar la conexión con Jira/.test(r.j.error) && tickets().length===antes, r.j.error);
 r=await call(ck.ana,'GET',`/api/alertas/${OTRA}/detalle`); ok('el detalle dice que Jira está en real', r.j.tickets_sistemas.find(x=>x.id==='JIRA').modo==='real');
 delete env.TICKETS_JIRA;
 

@@ -6,8 +6,9 @@
 //
 // Se guarda en la tabla tickets_alerta (script 19), con el alerta_id con que se generó: el detalle encuentra los tickets
 // de todas las ventanas del problema (GRUPO_IDS). Uno por herramienta y por problema.
-// Cómo se crea en cada herramienta: tickets_integracion.js (crearTicketInvgate / crearTicketJira). Modo por herramienta:
-// variable TICKETS_INVGATE / TICKETS_JIRA = 'real'; si no, SIMULADO (clave inventada INV-1001 / HEL-101, marcada "simulado").
+// Cómo se crea en cada herramienta: tickets_integracion.js (crearTicketInvgate / crearTicketJira).
+// Jira, con TICKETS_JIRA = 'real' y los secretos, crea el issue en el proyecto KAN. InvGate sigue simulado.
+// Sin la variable, SIMULADO (clave inventada INV-1001 / HEL-101, marcada "simulado").
 // En la conversación queda "Generó el ticket <clave> en <herramienta>" (comentario con marca) y en la auditoría GENERAR_TICKET.
 // =====================================================================
 const TICKETS_SISTEMAS = {
