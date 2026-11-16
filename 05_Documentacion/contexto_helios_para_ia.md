@@ -1,6 +1,6 @@
 # Helios: contexto del sistema para asistentes de IA
 
-> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **16 de noviembre de 2026** (publicado en Cloudflare hasta el parche 37, con el script 15: la revisión ya es incremental), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
+> **Para la IA que lee esto:** este archivo describe la plataforma de alertas Helios tal como está al **16 de noviembre de 2026** (publicado en Cloudflare hasta el parche 38: revisión incremental y 23 tablas), con lo publicado en Cloudflare, las decisiones ya tomadas por el equipo y hacia dónde se quiere migrar. Usalo como fuente de verdad: reemplaza a cualquier versión anterior de este archivo y al documento de contexto del 26/10/2026; los cambios están en la sección 16. Si algo de lo que te piden contradice la sección "Reglas que no se deben romper", avisalo antes de hacerlo. Si algo no está acá, preguntá antes de inventarlo. Respondé en español rioplatense, con lenguaje claro.
 
 ---
 
@@ -478,7 +478,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - Próximos pasos acordados: **plantillas de correo** por tipo de incidente o sector, con destinatarios conocidos (punto 2), y evaluar la **War Room en Teams** (punto 3). Más adelante, si IT lo aprueba, Microsoft Graph para crear el borrador directamente en el buzón (con formato y adjuntos).
 - Probado: `correotest.mjs` (35 controles: permisos por perfil, direcciones mal escritas, repetidos, texto largo, confirmaciones, mismo asunto dos veces, alerta resuelta), la demo y todas las pruebas anteriores iguales; pantallas en claro, oscuro y celular. Respaldo: `99_Archivo_viejo/worker_antes_parche39/`, ramas `respaldo-antes-parche-39` y `version-parche-39-correo-desde-alerta`.
 
-**Limpieza de tablas: etapa 3b (16/11, parche 38; scripts 16 y 17 y publicar)**
+**Limpieza de tablas: etapa 3b (16/11, parche 38; publicado: scripts 16 y 17 corridos y Worker)**
 
 - **De 25 a 23 tablas, mismo comportamiento.** `alerta_reglas` + `alerta_reglas_personalizadas` pasan a `reglas_alerta` (columna `tipo` SISTEMA / PERSONALIZADA; las personalizadas conservan su id, las del sistema llevan ids negativos para que las nuevas sigan numerándose desde donde iban) y `tablero_cache` pasa a las columnas `tablero_revision` y `tablero_calculado` de `alerta_parametros`.
 - **Cómo se aplica:** script `16_reglas_y_cache_d1.txt` (crea lo nuevo y copia, no borra nada) → publicar el Worker → comprobar → script `17_borrar_tablas_viejas_d1.txt` (borra las 3 viejas). Hasta el 17 se puede volver al Worker anterior. **Regla del Worker:** como siempre, primero el SQL, después el Worker.
@@ -705,7 +705,7 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [ ] Ticketera (parches 30 y 31, publicados el 14/11): probar con Soporte y Analista en Cloudflare.
 - [ ] Tablero de causas a partir de `alertas_historico.causa_resolucion` y `acciones_resolucion` (por cliente, servicio y mes) y retención de la evidencia vieja en R2.
 - [x] Etapa 3a: revisión incremental (16/11, parche 37; publicada con el script 15). El cron sigue apagado: con el reloj de la demo no procesaría igual; tiene sentido al pasar a reloj real con ingesta real.
-- [x] Etapa 3b: `tablero_cache` como columnas de `alerta_parametros` y `reglas_alerta` (sistema + personalizadas juntas): 23 tablas (16/11, parche 38). Falta correr el script 16, publicar y correr el 17.
+- [x] Etapa 3b: `tablero_cache` como columnas de `alerta_parametros` y `reglas_alerta` (sistema + personalizadas juntas): 23 tablas (16/11, parche 38). Publicada el 16/11 (scripts 16 y 17 corridos, Worker publicado).
 - [ ] Quitar el modo demo y poner el reloj real (`ahora` = NULL).
 - [ ] Para el agente, un token propio. (`worker-api-bi` queda en el panel por decisión de Uriel, 16/11.)
 - [ ] Contraseñas: PBKDF2 a 600.000 iteraciones (se actualizan solas al ingresar), pepper secreto, política y duración de sesión; idealmente SSO.
