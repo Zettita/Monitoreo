@@ -42,8 +42,8 @@ let r;
 
 // Página y permisos
 r=await call(ck.sol,'GET',`/alerta/${AL}`); ok('página de detalle para soporte', r.s===200 && r.t.includes('Ventanas con problema') && r.t.includes('id="toast"'));
-r=await call(ck.gero,'GET',`/alerta/${AL}`); ok('gerente no tiene detalle (redirige)', r.s===302);
-r=await call(A,'GET',`/api/alertas/${AL}/detalle`); ok('administrador no tiene detalle', r.s===403);
+r=await call(ck.gero,'GET',`/alerta/${AL}`); ok('gerente abre el detalle (solo lectura, parche 42)', r.s===200);
+r=await call(A,'GET',`/api/alertas/${AL}/detalle`); ok('administrador abre el detalle en solo lectura', r.s===200 && r.j.puedo.lectura===true && !r.j.puedo.comentar && !r.j.puedo.resolver && !r.j.puedo.derivar);
 r=await call(ck.sol,'GET',`/api/alertas/${AL}/detalle`); ok('soporte no ve lo que no es suyo', r.s===403, r.j.error);
 r=await call(ck.ana,'GET',`/api/alertas/${AL}/detalle`); ok('analista ve el detalle', r.s===200 && r.j.ventanas.length===2 && r.j.causas.length===5 && r.j.acciones.length===4, {v:r.j.ventanas&&r.j.ventanas.length});
 ok('analista: derivar y resolver, no tomar', r.j.puedo.derivar && r.j.puedo.resolver && r.j.puedo.comentar && r.j.puedo.adjuntar && !r.j.puedo.tomar);

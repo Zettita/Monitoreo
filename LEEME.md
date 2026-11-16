@@ -4,7 +4,7 @@
 - `worker_alertas_cron.js` — Worker principal (`worker-alertas-cron`): tablero, Mis alertas, Seguimiento, Administración, login, cron que evalúa alertas y trae feriados. **Es siempre la última versión**; se publica con "Edit code".
 
 ## 02_Base_de_datos_D1 — scripts para la Console de D1 (en el orden en que se corren)
-Del 1 al 17 ya están aplicados (el 18 y el 19, pendientes): sirven para reconstruir la base desde cero o como referencia.
+Del 1 al 17 ya están aplicados (el 18, el 19 y el 20, pendientes): sirven para reconstruir la base desde cero o como referencia.
 1. `01_acceso_d1_tablas.txt` — usuarios, perfiles y sesiones (login).
 2. `02_admin_d1_tablas.txt` — reglas personalizadas y auditoría (pantalla de Administración).
 3. `03_asignacion_d1_tablas.txt` — tomar / derivar / resolver alertas y equipos.
@@ -26,6 +26,7 @@ Del 1 al 17 ya están aplicados (el 18 y el 19, pendientes): sirven para reconst
 18. `18_plantillas_correo_d1.txt` — **falta correrlo (parche 40).** Columna `plantillas_correo` en `alerta_parametros` para las plantillas de "Template correo alerta". Sin él se usan las 6 de fábrica y no se pueden editar. Se corre antes de publicar el Worker.
 
 19. `19_tickets_d1.txt` — **falta correrlo (parche 41).** Tabla `tickets_alerta` para los tickets de InvGate y Jira que se generan desde una alerta (simulados hasta que esté la integración). Quedan 24 tablas. Se corre antes de publicar el Worker.
+20. `20_disponibilidad_d1.txt` — **falta correrlo (parche 45, después del 18 y el 19).** Columnas `umbrales_config.objetivo_mensual` y `alerta_parametros.disponibilidad_config` y el objetivo general de disponibilidad en 99,9 %. Se corre antes de publicar el Worker: con el Worker nuevo y sin este script, guardar umbrales da error.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
@@ -53,7 +54,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 41 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 45 que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
 - `word/` — helper para armar los Word con el estilo de la compañera.

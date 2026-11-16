@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch41.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch45.py → w.mjs
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
     *_server.js         lógica de servidor por módulo (auth, admin, asignacion, avisos, umbrales, feriados)
@@ -50,6 +50,15 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     patch28.py          asistente de IA (Workers AI): asistente_server.js (herramientas de solo lectura por permiso, propuestas de
                         acción validadas, límites de uso) y asistente.html (panel y botón "¿Qué está pasando?" en las alertas)
     asistente_d1.sql    tabla asistente_uso (02_Base_de_datos_D1/11_asistente_d1.txt)
+    patch45.py          disponibilidad mensual contra un objetivo, configurable: objetivo_mensual (umbrales_config, por defecto 99,9 %, con decimales,
+                        general / cliente / servicio) y pesos en alerta_parametros.disponibilidad_config (JSON: cuánto cuenta cada gravedad y cuánto
+                        pesa cada criticidad); dispoCalcular en el Worker; grupo "5 · Disponibilidad mensual" y "Cómo se mide la disponibilidad" en
+                        Administración > Umbrales; bloque de disponibilidad en el tablero. disponibilidad_d1.sql = script 20. Prueba: pruebas/disponibilidadtest.mjs
+    patch44.py          resumen por período (Día / Semana / Mes con ‹ ›): GET /api/tablero/periodo, KPIs y "Distribución de fallas" del período
+                        (reemplaza a la sección hoy / 7 / 30 días). Prueba: pruebas/periodotest.mjs
+    patch43.py          gráfico "Incidentes activos ahora" (barras por cliente o tipo de falla; tocar una barra filtra la lista). Solo página
+    patch42.py          Gerente y Administrador ven la lista de alertas activas y el detalle, en solo lectura (rolEnAlerta.lectura / botonesDe),
+                        actualización automática del tablero cada 2 min (GET /api/tablero/version) y pregunta del asistente. Prueba: pruebas/gerentetest.mjs
     patch41.py          tickets a demanda en InvGate o Jira: "Generar ticket" en el detalle y casilla en el correo (el número va al asunto,
                         al texto y a {ticket}); tickets_server.js (POST /api/alertas/<id>/ticket, novedadTicket) y tickets_integracion.js
                         (PUNTO DE ENGANCHE del equipo de integración: crearTicketInvgate / crearTicketJira / rutasTicketsIntegracion);
@@ -120,7 +129,7 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done
 # etapa 3b: migración a mitad de camino (esquema viejo -> scripts 16 y 17 -> Worker nuevo); necesita w_anterior.mjs
@@ -129,10 +138,10 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch42.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch46.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
-- Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h e histórico; sin lista de alertas, pre-alertas ni Seguimiento.
+- Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
 - Analista: tablero completo, Seguimiento, deriva, resuelve, "Avisar a Soporte" en pre-alertas, reglas de derivación. Sin reglas de alerta.
 - Soporte: solo Mis alertas (`/` lo redirige, `/api/dashboard` da 403, historial solo de lo suyo o de su equipo).
 - Administrador: arranca en Administración; tablero y Seguimiento en lectura; no recibe alertas ni tiene campanita.
@@ -208,6 +217,14 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 2. **Plantillas de correo — hecho en código (parche 40, script 18), falta publicar.**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
 
+## Dashboard gerencial (16/11, parches 42 a 45) — hecho en código, falta publicar (script 20 y Worker)
+Pedido de Hugo (ejemplo: un dueño no podía transferir, el gerente no tenía acceso a estas vistas y tuvo que preguntarle a un analista que no estaba, así que nadie sabía si alguien ya lo trabajaba). Uriel decidió hacerlo en Helios.
+- **42 · Gerente y Administrador ven lo activo y el detalle en solo lectura.** Permisos `alertas_abiertas` (suma Gerente) y `detalle_alerta` (suma Gerente y Administrador). El servidor sigue rechazando tomar, derivar, comentar, adjuntar, resolver, devolver, correo y tickets (`rol.lectura`; `botonesDe` devuelve todo apagado); el detalle muestra "Solo lectura". El tablero se actualiza solo cada 2 minutos con la pestaña visible: consulta `GET /api/tablero/version` (1 fila) y recarga todo solo si hubo una revisión. El asistente suma la pregunta "¿Qué incidentes están activos y quién los está trabajando?" para Gerente y Administrador.
+- **43 · "Incidentes activos ahora":** barras por cliente (o por tipo de falla) divididas por gravedad, con los números en texto; tocar una barra filtra la lista de abajo. Solo página.
+- **44 · Resumen por período:** selector Día / Semana (lunes a domingo) / Mes con ‹ ›, "Volver a hoy" y hasta 400 días atrás (`GET /api/tablero/periodo?tipo=&fecha=`, por el índice de `ventana_inicio`). KPIs y "Distribución de fallas" del período elegido.
+- **45 · Disponibilidad mensual configurable.** Se mide en ventanas de 15 minutos de cada servicio: una ventana con alerta Grave cuenta como no disponible (100 %), Importante 50 %, Leve 0 % (editable); no cuentan datos tardíos ni inconsistentes ni series sin perfil. La disponibilidad de un cliente es el promedio de sus servicios ponderado por criticidad (Alta 3, Media 2, Baja 1, editable). **Objetivo mensual por defecto 99,9 %** (43,2 minutos por mes ≈ 2,9 ventanas Graves; 99,98 % = 8,6 minutos, una sola ventana Grave ya lo supera), editable con decimales en general, por cliente o por servicio (Administración > Umbrales, grupo "5 · Disponibilidad mensual", con la equivalencia en vivo y "↑ Si lo subís / ↓ Si lo bajás"); los pesos, en "Cómo se mide la disponibilidad" (`POST /api/admin/umbrales/disponibilidad`, auditoría `EDITAR_DISPONIBILIDAD`). En el tablero: disponibilidad global y por cliente contra su objetivo, barra del margen de errores del mes que se usó (un día o una semana se comparan contra el margen del mes), "Cumple" mientras no se gaste todo el margen, comparación con el período anterior y detalle por servicio. **Script 20** (`20_disponibilidad_d1.txt`: columnas `umbrales_config.objetivo_mensual` y `alerta_parametros.disponibilidad_config`, objetivo general 99,9 %); sin él se usan los valores de fábrica y Administración avisa. **Primero el SQL, después el Worker** (con el Worker nuevo y sin script, guardar umbrales da error).
+- Probado: `gerentetest` (36), `periodotest`, `disponibilidadtest` (disponibilidad calculada a mano contra la del Worker, pesos, objetivos, sin script 20), la demo igual y todas las pruebas; pantallas en PC, celular y oscuro.
+
 ## Integración InvGate / Jira y comunicación de incidentes (16/11) — en curso
 Flujo pedido por Ale: veo un evento → lo gestiono → mando un push "Tenemos este incidente" → cargo el mail → tildo que genere un ticket
 (a demanda, nunca solo) → el ticket se suma al mail y al push. La integración con InvGate y Jira la hace **el mismo equipo, en esta misma demo**:
@@ -217,10 +234,10 @@ persona (informado / técnico / líder).
 1. **Tickets a demanda — hecho en código (parche 41, script 19), falta publicar.** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
    casilla en el correo; el número va al asunto (`[INV-1001] …`), al texto (`{ticket}` o una línea "Ticket: …"), a "Datos de la alerta" y a la conversación.
    Simulado hasta que esté la integración (`INV-1001`, `HEL-101`, marcado "simulado"). "Preparar demo" borra los tickets de Helios.
-2. **Comunicar incidente (push a demanda) — pendiente (parche 42).** Listas de difusión en Administración; informados solo leen; técnicos dan
+2. **Comunicar incidente (push a demanda) — pendiente (parche 46: del 42 al 45 es el dashboard gerencial).** Listas de difusión en Administración; informados solo leen; técnicos dan
    "Recibido" (ACK) y responden; líderes responden sumando información; todo vuelve a la conversación; el push lleva el ticket.
 - La War Room en Teams queda en pausa hasta terminar esto.
-- **Publicar:** scripts 18 y 19 → Worker (trae los parches 39, 40 y 41).
+- **Publicar:** scripts 18, 19 y 20 → Worker (trae los parches 39 a 45).
 
 ## Plantillas de correo y ajustes (16/11, patch40) — hecho en código, falta publicar
 - Pedido de Ale: el botón se llama **"Template correo alerta «<problema> · <cliente>»"** (también el título del diálogo); se sacó el texto explicativo.

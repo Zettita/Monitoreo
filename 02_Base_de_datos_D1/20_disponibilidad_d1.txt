@@ -1,0 +1,22 @@
+DISPONIBILIDAD MENSUAL (para la Console de D1: helios-monitoring-dev) — parche 45
+
+Qué hace: agrega la columna objetivo_mensual a umbrales_config (el objetivo mensual de disponibilidad, que se puede cambiar
+por cliente o por servicio, con decimales) y la columna disponibilidad_config a alerta_parametros (los pesos con los que se mide:
+cuánto cuenta cada gravedad y cuánto pesa cada criticidad). Deja el objetivo general en 99,9 %. No crea tablas: siguen 24.
+Mientras disponibilidad_config esté vacía, Helios usa los pesos de fábrica (Grave 100 %, Importante 50 %, Leve 0 %; criticidad
+Alta 3, Media 2, Baja 1).
+
+Orden: 1) correr los scripts 18 y 19 (plantillas de correo y tickets) si todavía no se corrieron, y después estos 3 bloques, uno por vez;
+2) publicar 01_Worker/worker_alertas_cron.js (trae los parches 39 a 45).
+IMPORTANTE: primero el SQL y después el Worker. Con el Worker nuevo y sin este script, guardar umbrales da error.
+Se corre UNA sola vez: si se repite, los bloques 1 y 2 dan "duplicate column name" y no pasa nada (el 3 se puede repetir).
+No hace falta /bookmark.
+
+--- 1. Objetivo mensual por cliente o servicio ---
+ALTER TABLE umbrales_config ADD COLUMN objetivo_mensual REAL;
+
+--- 2. Pesos de la disponibilidad ---
+ALTER TABLE alerta_parametros ADD COLUMN disponibilidad_config TEXT;
+
+--- 3. Objetivo general: 99,9 % (unos 43 minutos sin servicio por mes) ---
+UPDATE umbrales_config SET objetivo_mensual = 0.999 WHERE cliente_id = '*' AND servicio_id = '*';

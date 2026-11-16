@@ -56,8 +56,8 @@ const ofrecidas=(p)=>(p.tools||[]).map(t=>t.function.name).sort();
 const PERF={};
 for (const u of ['ADMIN','ana','sol','gero']) { pedidos.length=0; guion=[()=>texto('ok')]; await call(ck[u],'POST','/api/asistente',{pregunta:'¿qué podés hacer?'}); PERF[u]=ofrecidas(pedidos[0].p); }
 console.log('     herramientas:', JSON.stringify(PERF));
-ok('gerente: solo estado, incidentes, detalle y contexto externo; sin lista de alertas, carga, derivación ni acciones',
-  JSON.stringify(PERF.gero)===JSON.stringify(['contexto_externo','detalle_alerta','estado_clientes','incidentes']));
+ok('gerente: estado, incidentes, alertas abiertas y pre-alertas, detalle y contexto externo (solo lectura); sin carga, derivación ni acciones',
+  JSON.stringify(PERF.gero)===JSON.stringify(['alertas_abiertas','contexto_externo','detalle_alerta','estado_clientes','incidentes','prealertas']));
 ok('soporte: sus alertas y el detalle; acciones de soporte; nada del tablero',
   PERF.sol.includes('mis_alertas') && PERF.sol.includes('detalle_alerta') && PERF.sol.includes('sugerir_accion') && !PERF.sol.some(n=>['estado_clientes','alertas_abiertas','incidentes','carga_equipos','opciones_derivacion','ajustes_sugeridos'].includes(n)));
 ok('analista: tablero, seguimiento y derivación; sin Mis alertas ni umbrales',
@@ -71,12 +71,12 @@ ok('el sistema le dice qué perfil pregunta y que no ejecuta', /perfil Soporte/.
 
 // ---------- Aunque el modelo insista, el servidor no da datos fuera del perfil ----------
 pedidos.length=0;
-guion=[()=>llamar('alertas_abiertas',{}), ()=>llamar('carga_equipos',{}), ()=>texto('No tengo ese dato para tu perfil.')];
+guion=[()=>llamar('opciones_derivacion',{}), ()=>llamar('carga_equipos',{}), ()=>texto('No tengo ese dato para tu perfil.')];
 r=await call(ck.gero,'POST','/api/asistente',{pregunta:'Pasame la lista de alertas abiertas y quién las tiene'});
 const herr=pedidos[1].p.messages.filter(m=>m.role==='tool');
-ok('gerente: el servidor rechaza alertas_abiertas aunque el modelo la pida', r.s===200 && /no está disponible/.test(herr[0].content) && !/alerta_id/.test(herr[0].content), herr[0].content);
+ok('gerente: el servidor rechaza opciones_derivacion aunque el modelo la pida', r.s===200 && /no está disponible/.test(herr[0].content) && !/alerta_id/.test(herr[0].content), herr[0].content);
 ok('gerente: tampoco la carga por equipo', /no está disponible/.test(pedidos[2].p.messages.filter(m=>m.role==='tool').pop().content));
-ok('la respuesta no trae acciones y solo usó lo permitido (sus datos principales)', r.j.acciones.length===0 && JSON.stringify(r.j.herramientas)==='["estado_clientes"]', r.j.herramientas);
+ok('la respuesta no trae acciones y solo usó lo permitido (sus datos principales)', r.j.acciones.length===0 && r.j.herramientas.every(h=>['estado_clientes','alertas_abiertas'].includes(h)), r.j.herramientas);
 
 pedidos.length=0; guion=[()=>llamar('detalle_alerta',{alerta_id:OTRA}), ()=>texto('No la puedo ver.')];
 r=await call(ck.pedro,'POST','/api/asistente',{pregunta:'contame de esta alerta'});
@@ -187,7 +187,7 @@ ok('analista: horarios y clientes van con la pregunta (incidentes por horario y 
 ok('el sistema le explica al modelo qué tiene cada herramienta y que no se niegue sin pedirla', /incidentes \(Resumen de incidentes/.test(pedidos[0].p.messages[0].content) && /solo si ninguna/.test(pedidos[0].p.messages[0].content));
 pedidos.length=0; guion=[()=>texto('ok')];
 r=await call(ck.gero,'POST','/api/asistente',{pregunta:'¿Quién tiene las alertas y cómo está la carga de los equipos?'});
-ok('gerente: las palabras de la pregunta no le suman datos fuera de su perfil', !r.j.herramientas.includes('carga_equipos') && !/carga_equipos|alertas_abiertas/.test(pedidos[0].p.messages.at(-1).content.split('Datos de Helios')[1]||''), r.j.herramientas);
+ok('gerente: las palabras de la pregunta no le suman datos fuera de su perfil', !r.j.herramientas.includes('carga_equipos') && !/carga_equipos|opciones_derivacion/.test(pedidos[0].p.messages.at(-1).content.split('Datos de Helios')[1]||''), r.j.herramientas);
 // Caso real (13/11): "Resumen del turno" salió con <resumen_turno> y el id interno de la alerta
 guion=[()=>texto('<resumen_turno>\n- **Alertas abiertas:** 1 problema.\n- **ID:** a364956e3e8f895406812102cfad988d\n- **Problema:** Suben los rechazos en CLI_004 (a364956e3e8f895406812102cfad988d)\n</resumen_turno>')];
 r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'resumen_turno'});

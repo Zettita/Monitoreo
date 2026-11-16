@@ -33,7 +33,7 @@ ok('soporte: el tablero lo manda a Mis alertas', await loc(ck.sol,'/')==='302 /m
 r=await call(ck.sol,'GET','/api/dashboard'); ok('soporte: /api/dashboard prohibido', r.s===403);
 for (const u of ['ana','gero']) { r=await call(ck[u],'GET','/api/dashboard'); ok(u+': ve el tablero', r.s===200); }
 r=await call(A,'GET','/api/dashboard'); ok('admin: ve el tablero', r.s===200);
-r=await call(ck.gero,'GET','/api/yo'); ok('gerente: sin lista de alertas, sin seguimiento, sin campanita', !r.j.permisos.includes('alertas_abiertas') && !r.j.permisos.includes('seguimiento') && !r.j.permisos.includes('avisos') && r.j.permisos.includes('tablero'));
+r=await call(ck.gero,'GET','/api/yo'); ok('gerente: con lista de alertas y detalle (solo lectura, parche 42), sin seguimiento ni campanita', r.j.permisos.includes('alertas_abiertas') && r.j.permisos.includes('detalle_alerta') && !r.j.permisos.includes('derivar') && !r.j.permisos.includes('accion_alerta') && !r.j.permisos.includes('seguimiento') && !r.j.permisos.includes('avisos') && r.j.permisos.includes('tablero'));
 r=await call(A,'GET','/api/yo'); ok('admin: sin derivar, sin Mis alertas, sin campanita', !r.j.permisos.includes('derivar') && !r.j.permisos.includes('mis_alertas') && !r.j.permisos.includes('avisos') && r.j.permisos.includes('admin_reglas'));
 r=await call(ck.ana,'GET','/api/yo'); ok('analista: deriva y avisa pre-alertas, sin reglas de alerta', r.j.permisos.includes('derivar') && r.j.permisos.includes('avisar_prealerta') && !r.j.permisos.includes('admin_reglas') && r.j.permisos.includes('admin_derivacion'));
 r=await call(A,'GET','/api/avisos/contador'); ok('admin: campanita apagada', r.j.habilitado===false);
