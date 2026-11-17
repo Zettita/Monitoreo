@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py y patch56.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py y patch57.py → w.mjs
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,8 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch57.py          el tablero se agrupa en tres pestañas (Disponibilidad · Operación ahora · Histórico) con el resumen de arriba fijo, y cambia el orden:
+                        primero Disponibilidad, después las tarjetas de Estado por cliente y después Últimas 24 horas. Solo página. Prueba: pruebas/disponibilidadtest.mjs
     patch56.py          período con Desde / Hasta en lugar de Día / Semana / Mes (GET /api/tablero/periodo?desde=&hasta=; hasta 366 días), barras de clientes más altas y letras
                         más grandes en la sección de disponibilidad, y "Comparar con otro período" (ventana con su propio Desde / Hasta, dos disponibilidades lado a lado,
                         tabla por cliente y líneas superpuestas; ?liviano=1 trae solo la disponibilidad). Sin SQL. Pruebas: pruebas/periodotest.mjs y disponibilidadtest.mjs
@@ -167,7 +169,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch57.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch58.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -197,7 +199,14 @@ Para un cambio nuevo: crear `patch57.py` con una función `aplicar(s)` (como los
 ## Cambio de modelo del asistente (16/11, patch54) — para publicar (sin SQL)
 - Cloudflare da de baja el 20/11/2026 `@cf/qwen/qwen3-30b-a3b-fp8`. El de fábrica pasa a `@cf/qwen/qwen3.8-27b`; una variable `ASISTENTE_MODELO` con un modelo dado de baja se ignora. **54b/54c (17/11, publicados):** si el modelo devuelve vacío se reintenta con el triple de tokens y se deja el detalle en el registro (`Asistente: respuesta vacía…` / `sin texto final…`). **Probado en Cloudflare con Gemma 4** (`ASISTENTE_MODELO = @cf/google/gemma-4-26b-a4b-it`, cargada como variable): responde bien (Analista: Resumen del turno, horarios y cliente, sin asignar), unas 60-80 neuronas por pregunta (496 de 10.000 tras la tanda de pruebas). Qwen3.8 cuesta ~9 veces más que el modelo viejo. Pendiente: pasar el default del código a Gemma, que el servidor arme el botón "Derivar" en "¿Qué está sin asignar y a quién lo derivo?" y bajar `ASISTENTE_POR_DIA` a 100. Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
 
-## Período con Desde / Hasta y comparación (17/11, parche 56) — hecho en código, falta publicar (sin SQL)
+## Pestañas del tablero y nuevo orden (17/11, parche 57) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel: poner primero Disponibilidad, después las tarjetas de Estado por cliente y después Últimas 24 horas (lo demás igual), y agrupar para reducir el scroll. Elegido con Uriel: **3 pestañas** y el **resumen de arriba siempre fijo** sobre ellas.
+- **Disponibilidad:** "Disponibilidad y resumen del período" con la Distribución de fallas (depende del mismo período). **Operación ahora:** Estado por cliente, Últimas 24 horas, Alertas abiertas y Pre-alertas (la pestaña muestra cuántas alertas abiertas hay). **Histórico:** Histórico de alertas, Tiempo de resolución por tipo y Clientes con más problemas. Arranca en Disponibilidad y recuerda la pestaña elegida mientras la del navegador siga abierta (`sessionStorage`).
+- Accesible: `role=tablist`, flechas / Inicio / Fin para moverse; en el celular las tres se reparten el ancho. Solo cambia la página: nada de datos ni de rutas. Los gráficos se dibujan igual aunque su pestaña esté oculta (usan un ancho de reserva y se escalan).
+- Probado: `disponibilidadtest` con el orden nuevo y las pestañas, demo igual y toda la batería; pantallas en PC y celular.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche57/`, ramas `respaldo-antes-parche-57` y `version-parche-57-pestanas-tablero`.
+
+## Período con Desde / Hasta y comparación (17/11, parche 56) — publicado el 17/11 (sin SQL)
 Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barras de clientes más altas (no se notaba que se podían tocar), letras más grandes, filtros Desde / Hasta en lugar de Día / Semana / Mes, y un botón para comparar con otros días, semanas o meses sin sumar un detalle más abajo. Decidido con Uriel: **solo Desde / Hasta (sin atajos ni flechas ‹ ›)** y comparación **lado a lado con gráfico**.
 - **Período:** dos campos de fecha; se aplica solo al completar las dos. `GET /api/tablero/periodo?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (días de Argentina, los dos incluidos; hasta 366 días y hasta 400 días atrás; un `hasta` futuro se lleva a hoy). Sin fechas sigue valiendo `?tipo=dia|semana|mes&fecha=` (el tablero arranca con el mes en curso, que se muestra del 1.º a hoy). El "período anterior" de un rango es otro de la misma duración, justo antes. El paso de la evolución sale de la duración y de lo medido: hasta 1 día cada 15 minutos, hasta 8 días cada hora, más cada día (siempre manda lo medido). Si el servidor rechaza un rango, los campos vuelven al último período bueno y se explica por qué. El último rango se recuerda mientras la pestaña esté abierta (`sessionStorage`).
 - **Gráfico de evolución de cada cliente a todo el ancho (ajuste del 17/11):** antes estaba dibujado en 420 de ancho y limitado a 620 píxeles, y quedaba a medias con mucho blanco. Ahora se dibuja a la medida del espacio (hasta 1.400, mínimo 300), con más alto y cinco marcas de hora cuando es ancho; las letras se ven del mismo tamaño en PC y celular.
@@ -267,7 +276,7 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 2. **Plantillas de correo — hecho (parche 40), Worker publicado el 16/11; falta correr el script 18 (Ale).**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
 
-## Evolución por ventana (16/11, parche 52) — hecho en código, falta publicar (sin SQL)
+## Evolución por ventana (16/11, parche 52) — publicado el 17/11 (sin SQL)
 Pedido de Uriel al ver el gráfico del parche 51 en la demo ("Todavía no hay datos de varios días"): la tendencia no tiene que necesitar varios días sino varias ventanas, que los clientes sí tienen. Elegido con Uriel: **acumulada, un punto por ventana**.
 - **Qué muestra:** en el desplegable de cada cliente, "Evolución de la disponibilidad · cada 15 minutos": cada punto es la disponibilidad **acumulada desde el inicio del período** hasta ese momento, y el último punto es el número grande de arriba (se ve cuándo cruzó el objetivo). Objetivo punteado, puntos con el color del semáforo (con más de 40 puntos solo se marcan los cambios de color y el último), tooltip al pasar por cualquier momento y una frase: "Está por debajo del objetivo y lejos desde 13:30 (94,74 %)".
 - **Paso (`paso_minutos`) según lo medido:** Día siempre 15 minutos; con hasta un día y medio de datos también 15 minutos (Semana y Mes); Semana, o hasta ~8 días de datos, cada hora; con más datos (Mes), cada día. Los pasos empiezan en el primer momento medido, no en el inicio del período (un mes con un día de datos no trae miles de pasos vacíos). Respuesta de ~15 KB.

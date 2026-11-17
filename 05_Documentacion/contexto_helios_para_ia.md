@@ -476,7 +476,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
-**Período con Desde / Hasta y comparación (17/11, parche 56; sin SQL, falta publicar)**
+**Pestañas del tablero y nuevo orden (17/11, parche 57; sin SQL, falta publicar)**
+
+- El tablero se agrupa en tres pestañas con el resumen de arriba fijo: **Disponibilidad** (con la Distribución de fallas), **Operación ahora** (Estado por cliente, Últimas 24 horas, Alertas abiertas y Pre-alertas, con el número de abiertas) e **Histórico** (Histórico de alertas, Tiempo de resolución y Clientes con más problemas). Nuevo orden pedido: Disponibilidad, tarjetas de Estado por cliente, Últimas 24 horas. Solo página.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche57/`, ramas `respaldo-antes-parche-57` y `version-parche-57-pestanas-tablero`.
+
+**Período con Desde / Hasta y comparación (17/11, parche 56; sin SQL, publicado el 17/11)**
 
 - "Disponibilidad y resumen del período" se elige con dos campos de fecha (Desde y Hasta) en lugar de Día / Semana / Mes con ‹ ›: `GET /api/tablero/periodo?desde=&hasta=` (hasta 366 días; el período anterior es otro de la misma duración). Las barras de clientes son más altas, con flecha, y las letras de la sección más grandes.
 - **"Comparar con otro período"**: ventana con las dos disponibilidades lado a lado, la diferencia, las dos líneas de evolución superpuestas y una tabla por cliente (quién mejoró y quién empeoró). El segundo período se pide con `&liviano=1` (sin incidentes ni período anterior).

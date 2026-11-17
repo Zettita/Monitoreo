@@ -151,7 +151,12 @@ ok('estado y cumple coinciden: verde si cumple', r.j.disponibilidad.clientes.eve
 r=await call(A,'GET','/admin'); ok('Administración tiene el campo del amarillo', r.t.includes('dp-amarillo') && r.t.includes('Semáforo del tablero'));
 r=await call(ck.gero,'GET','/');
 const iPan=r.t.indexOf('id=\"bloque-panorama\"')>=0?r.t.indexOf('id=\"bloque-panorama\"'):r.t.indexOf('id="bloque-panorama"'), iDisp=r.t.indexOf('id="b-periodo"'), i24=r.t.indexOf('<h2>Últimas 24 horas</h2>');
-ok('la disponibilidad va debajo de Estado por cliente y arriba de Últimas 24 horas', iPan>0 && iDisp>iPan && i24>iDisp, [iPan,iDisp,i24]);
+ok('la disponibilidad va primero, después las tarjetas de Estado por cliente y después Últimas 24 horas (parche 57)', iDisp>0 && iPan>iDisp && i24>iPan, [iDisp,iPan,i24]);
+{ const t=r.t, p=(x)=>t.indexOf(x), pd=p('id="panel-disp"'), po=p('id="panel-op"'), ph=p('id="panel-hist"');
+  ok('el tablero se agrupa en tres pestañas: Disponibilidad, Operación ahora e Histórico, en ese orden', t.includes('id="pestanas"') && p('id="tab-disp"')>0 && p('id="tab-op"')>p('id="tab-disp"') && p('id="tab-hist"')>p('id="tab-op"') && pd>0 && po>pd && ph>po, [pd,po,ph]);
+  ok('Disponibilidad lleva su período, Operación ahora las tarjetas, las 24 horas y las alertas, e Histórico lo demás', pd<p('id="b-periodo"') && p('id="b-periodo"')<po && po<p('id="bloque-panorama"') && p('id="bloque-panorama"')<i24 && i24<p('id="bloque-alertas"') && p('id="bloque-alertas"')<ph && ph<p('Histórico de Alertas') && p('Histórico de Alertas')<p('Clientes con más problemas'));
+  ok('el resumen de arriba queda fijo sobre las pestañas', p('id="portada"')>0 && p('id="portada"')<p('id="pestanas"'));
+  ok('Operación ahora muestra el número de alertas abiertas', t.includes('id="tab-n-op"') && t.includes('actualizarPestanas(casos)')); }
 ok('ya no están los recuadros del período, y sí el resumen por estado y el filtro de estado', !r.t.includes('id="per-kpis"') && r.t.includes('data-dd-grupo') && r.t.includes('data-act-estado') && r.t.includes('Asignada sin tomar'));
 
 // ---- La página del tablero ----
