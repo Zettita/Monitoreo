@@ -4705,10 +4705,11 @@ async function asistResponder(env, yo, entrada) {
   if (/qwen3/i.test(asistNombreModelo(env))) pregunta += ' /no_think';
   mensajes.push({ role: 'user', content: pregunta });
 
-  let texto = '';
+  let texto = '', crudo = '';
   for (let vuelta = 0; vuelta < ASIST_MAX_VUELTAS; vuelta++) {
     const ultima = vuelta === ASIST_MAX_VUELTAS - 1;
     let r = await asistModelo(env, mensajes, ultima ? null : schemas, ultima ? null : schemas.map((x) => x.function.name));
+    crudo = (r.texto || '') + (r.llamadas.length ? ' [llamadas: ' + r.llamadas.map((l) => l.nombre).join(',') + ']' : '');
     if (!r.llamadas.length && asistEsEco(r.texto)) {
       // Repitió la definición de las herramientas en vez de usarlas: se pide la respuesta con los datos que ya hay
       r = await asistModelo(env, mensajes.concat([{ role: 'user', content: 'Respondé la pregunta en español, con los datos que ya tenés. No escribas herramientas ni JSON.' }]), null, null);
@@ -4728,6 +4729,7 @@ async function asistResponder(env, yo, entrada) {
   texto = asistLimpiarTexto(texto);
   if (Object.keys(enlaces).length) texto = asistEnlaces(texto, enlaces);
   if (asistEsEco(texto)) texto = '';
+  if (!texto) { try { console.error('Asistente: sin texto final con ' + asistNombreModelo(env) + '; última salida del modelo: ' + JSON.stringify(crudo).slice(0, 600)); } catch (e) { /* sin detalle */ } }
   if (!texto) texto = acciones.length ? 'Te dejo una propuesta para que la revises.' : 'No pude armar una respuesta. Probá preguntarlo de otra forma.';
   return { respuesta: texto.slice(0, 4000), acciones, herramientas: usadas };
 }
