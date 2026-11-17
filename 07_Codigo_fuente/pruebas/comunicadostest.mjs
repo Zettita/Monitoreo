@@ -58,30 +58,33 @@ r=await call(A,'POST',`/api/admin/usuarios/${id('juan')}`,{perfil:'COMUNICADOS'}
 ok('y volver a "Solo comunicados"', r.s===200 && fila('juan').perfil==='GERENTE' && fila('juan').solo_comunicados===1);
 ck.juan=await login('juan','Clavejuan123456');
 
-// ---------- Listas de difusión ----------
-r=await call(ck.ana,'GET','/api/admin/listas-difusion'); ok('el analista no arma listas', r.s===403);
-r=await call(A,'GET','/api/admin/listas-difusion'); ok('admin: personas (sin administradores) y clientes', r.s===200 && r.j.listas.length===0 && !r.j.usuarios.some(u=>u.id===id('uriel')) && r.j.usuarios.find(u=>u.id===id('laura')).perfil==='COMUNICADOS' && r.j.clientes.includes('CLI_004'), r.j.clientes);
-r=await call(A,'POST','/api/admin/listas-difusion',{nombre:'Vacía',miembros:[]}); ok('sin personas = 400', r.s===400);
-r=await call(A,'POST','/api/admin/listas-difusion',{nombre:'Con admin',miembros:[{usuario_id:id('uriel'),rol:'TECNICO'}]}); ok('un administrador no se puede sumar', r.s===400);
-const L1=(await call(A,'POST','/api/admin/listas-difusion',{nombre:'Atención al cliente',miembros:[{usuario_id:id('laura'),rol:'INFORMADO'},{usuario_id:id('gero'),rol:'LIDER'}]})).j.id;
-const L2=(await call(A,'POST','/api/admin/listas-difusion',{nombre:'Guardia técnica',miembros:[{usuario_id:id('sol'),rol:'TECNICO'},{usuario_id:id('carla'),rol:'TECNICO'},{usuario_id:id('ana'),rol:'TECNICO'}]})).j.id;
-const L3=(await call(A,'POST','/api/admin/listas-difusion',{nombre:'Negocio CLI_004',cliente_id:'CLI_004',miembros:[{usuario_id:id('juan'),rol:'LIDER'},{usuario_id:id('sol'),rol:'LIDER'}]})).j.id;
-ok('tres listas creadas', L1===1 && L2===2 && L3===3);
-r=await call(A,'POST','/api/admin/listas-difusion',{nombre:'guardia técnica',miembros:[{usuario_id:id('sol'),rol:'TECNICO'}]}); ok('nombre repetido = 409', r.s===409);
-ok('auditoría ALTA_LISTA_DIFUSION', db.prepare("select count(*) n from auditoria where accion='ALTA_LISTA_DIFUSION'").get().n===3);
+// ---------- Equipos con rol de comunicado (parche 63: reemplazan a las listas de difusión) ----------
+r=await call(ck.ana,'GET','/api/admin/listas-difusion'); ok('ya no hay listas aparte (403)', r.s===403);
+r=await call(ck.ana,'GET','/api/admin/equipos'); ok('el analista ve equipos, personas y clientes', r.s===200 && r.j.clientes.includes('CLI_004') && r.j.usuarios.find(u=>u.id===id('laura')).perfil==='COMUNICADOS' && r.j.falta_script_22===false, r.j.clientes);
+r=await call(A,'POST','/api/admin/equipos',{nombre:'Atención al cliente',miembros:[{usuario_id:id('laura'),rol:'INFORMADO'},{usuario_id:id('gero'),rol:'LIDER'}]}); ok('equipo con roles', r.s===200, r.j);
+r=await call(ck.ana,'POST','/api/admin/equipos',{nombre:'Guardia técnica',miembros:[{usuario_id:id('sol'),rol:'TECNICO'},{usuario_id:id('carla'),rol:'TECNICO'},{usuario_id:id('ana'),rol:'TECNICO'}]}); ok('el analista crea un equipo', r.s===200, r.j);
+r=await call(A,'POST','/api/admin/equipos',{nombre:'Negocio CLI_004',cliente_id:'CLI_004',miembros:[{usuario_id:id('juan'),rol:'LIDER'},{usuario_id:id('sol'),rol:'LIDER'}]}); ok('equipo de un cliente', r.s===200, r.j);
+const eqId=(n)=>{const x=db.prepare('select id from equipos where nombre=?').get(n); return x&&x.id;};
+const E3=eqId('Atención al cliente'), E4=eqId('Guardia técnica'), E5=eqId('Negocio CLI_004'), PAGOS=eqId('Pagos');
+ok('se guardan el cliente del equipo y el rol de cada persona', db.prepare('select alcance_cliente_id c from equipos where id=?').get(E5).c==='CLI_004' && db.prepare('select rol_comunicado r from equipo_miembros where equipo_id=? and usuario_id=?').get(E3,id('gero')).r==='LIDER' && db.prepare('select rol_comunicado r from equipo_miembros where equipo_id=? and usuario_id=?').get(MESA,id('sol')).r===null);
+r=await call(A,'POST','/api/admin/equipos',{nombre:'Cliente mal',cliente_id:'CLI 004',miembros:[]}); ok('cliente mal escrito = 400', r.s===400);
+r=await call(ck.sol,'POST','/api/admin/equipos',{nombre:'Soporte arma',miembros:[]}); ok('Soporte no arma equipos', r.s===403);
+await call(ck.ana,'POST','/api/admin/equipos',{nombre:'Temporal',miembros:[id('pedro')]}); const ET=eqId('Temporal');
+r=await call(ck.ana,'POST',`/api/admin/equipos/${ET}/borrar`,{}); ok('un equipo sin historial se elimina', r.s===200 && !eqId('Temporal') && !db.prepare('select 1 from equipo_miembros where equipo_id=?').get(ET) && db.prepare("select count(*) n from auditoria where accion='BORRAR_EQUIPO'").get().n===1);
+r=await call(ck.ana,'GET','/api/admin/plantillas-correo'); ok('el analista administra las plantillas de correo', r.s===200);
 
 // ---------- Comunicar ----------
 r=await call(ck.ana,'GET',`/api/alertas/${AL}/detalle`);
-ok('detalle: las listas de la alerta (primero la del cliente) y puede comunicar', r.j.puedo.comunicar===true && r.j.listas_difusion.map(l=>l.id).join()==='3,1,2' && r.j.listas_difusion[0].por_rol.LIDER===2, r.j.listas_difusion);
-r=await call(ck.ana,'GET',`/api/alertas/${OTRA}/detalle`); ok('en una alerta de otro cliente no aparece la lista de CLI_004', r.j.listas_difusion.map(l=>l.id).join()==='1,2');
+ok('detalle: las listas de la alerta (primero la del cliente) y puede comunicar', r.j.puedo.comunicar===true && r.j.listas_difusion.map(l=>l.id).join()===[E5,E3,E4,MESA,PAGOS].join() && r.j.listas_difusion[0].por_rol.LIDER===2, r.j.listas_difusion);
+r=await call(ck.ana,'GET',`/api/alertas/${OTRA}/detalle`); ok('en una alerta de otro cliente no aparece el equipo de CLI_004', r.j.listas_difusion.map(l=>l.id).join()===[E3,E4,MESA,PAGOS].join());
 r=await call(ck.gero,'POST',`/api/alertas/${AL}/comunicar`,{listas:[1],mensaje:'Tenemos un incidente de prueba'}); ok('el Gerente (solo lectura) no comunica', r.s===403);
 r=await call(ck.sol,'POST',`/api/alertas/${AL}/comunicar`,{listas:[1],mensaje:'Tenemos un incidente de prueba'}); ok('Soporte sin la alerta asignada no', r.s===403);
 r=await call(ck.laura,'POST',`/api/alertas/${AL}/comunicar`,{listas:[1],mensaje:'Tenemos un incidente de prueba'}); ok('"Solo comunicados" no', r.s===403);
-r=await call(ck.ana,'POST',`/api/alertas/${AL}/comunicar`,{listas:[],mensaje:'Tenemos un incidente de prueba'}); ok('sin listas = 400', r.s===400);
-r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/comunicar`,{listas:[3],mensaje:'Tenemos un incidente de prueba'}); ok('una lista de otro cliente = 400', r.s===400);
+r=await call(ck.ana,'POST',`/api/alertas/${AL}/comunicar`,{listas:[],mensaje:'Tenemos un incidente de prueba'}); ok('sin equipos ni personas = 400', r.s===400);
+r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/comunicar`,{listas:[E5],mensaje:'Tenemos un incidente de prueba'}); ok('una lista de otro cliente = 400', r.s===400);
 r=await call(ck.ana,'POST',`/api/alertas/${AL}/comunicar`,{listas:[1],mensaje:'corto'}); ok('mensaje corto = 400', r.s===400);
 const MSG='Tenemos un incidente: suben los rechazos en Transferencias de CLI_004.\nTicket: INV-1001 (InvGate)\nYa lo estamos revisando.';
-r=await call(ck.ana,'POST',`/api/alertas/${AL}/comunicar`,{listas:[1,2,3],mensaje:MSG});
+r=await call(ck.ana,'POST',`/api/alertas/${AL}/comunicar`,{listas:[E3,E4,E5],mensaje:MSG});
 ok('comunica a 5 personas (sin Ana, que está en una lista); sol como técnico', r.s===200 && r.j.comunicado.personas===5 && r.j.comunicado.por_rol.TECNICO===2 && r.j.comunicado.por_rol.LIDER===2 && r.j.comunicado.por_rol.INFORMADO===1, r.j);
 const CID=r.j.comunicado.id;
 const dest=db.prepare('select usuario_id, rol from comunicado_destinatarios where comunicado_id=? order by usuario_id').all(CID);
@@ -90,6 +93,10 @@ const av=db.prepare("select usuario_id, tipo, alerta_id, texto from avisos where
 ok('un aviso por persona, con su rol, que lleva al comunicado', av.length===5 && av.every(a=>a.alerta_id==='c'+CID) && av.find(a=>a.usuario_id===id('carla')).tipo==='COMUNICADO_TECNICO' && /^Incidente: Suben los rechazos · CLI_004, Transferencias por /.test(av[0].texto), av[0]);
 ok('queda en la conversación y en la auditoría', db.prepare("select count(*) n from alerta_eventos where comentario like ?").get('Comunicó el incidente (comunicado '+CID+') a Atención al cliente, Guardia técnica, Negocio CLI_004 (5 personas)%').n===1 && db.prepare("select count(*) n from auditoria where accion='COMUNICAR_INCIDENTE'").get().n===1);
 r=await call(ck.laura,'GET','/api/avisos/contador'); ok('campanita de Laura: 1 aviso', r.j.habilitado && r.j.no_leidos===1);
+r=await call(ck.ana,'POST',`/api/alertas/${AL}/comunicar`,{listas:[],personas:[id('pedro')],mensaje:'Pedro, mirá este incidente por favor'});
+ok('parche 63: comunicar a una persona suelta (como técnico)', r.s===200 && r.j.comunicado.personas===1 && r.j.comunicado.por_rol.TECNICO===1 && db.prepare("select count(*) n from alerta_eventos where comentario like ?").get('Comunicó el incidente (comunicado '+r.j.comunicado.id+') a Pedro Pagos (1 persona)%').n===1, r.j);
+r=await call(ck.ana,'POST',`/api/alertas/${AL}/comunicar`,{personas:[id('uriel')],mensaje:'Esto no debería salir'}); ok('a un administrador no se le comunica', r.s===400);
+r=await call(ck.ana,'POST',`/api/alertas/${OTRA}/derivar`,{equipo_id:PAGOS}); r=await call(ck.ana,'POST',`/api/admin/equipos/${PAGOS}/borrar`,{}); ok('un equipo con alertas no se elimina (409)', r.s===409);
 r=await call('','GET','/sw.js'); ok('el service worker tiene "Recibido" y "Responder"', r.t.includes("e.action === 'recibido'") && r.t.includes('/recibido') && r.t.includes("'?responder'") && r.t.includes('actions: a.acciones'));
 
 // ---------- Ver, Recibido y responder ----------
@@ -112,16 +119,18 @@ r=await call(ck.juan,'GET','/api/comunicados'); ok('la lista de Juan', r.j.comun
 r=await call(ck.ana,'GET',`/api/alertas/${AL}/detalle`); const cc=r.j.comunicados[0];
 ok('el detalle de la alerta resume el comunicado', cc.id===CID && cc.personas===5 && cc.tecnicos===2 && cc.recibidos===2 && cc.vistos>=4, cc);
 r=await call(ck.ana,'GET',`/alerta/${AL}`); ok('la página del detalle trae "Comunicar incidente"', r.t.includes('id="dlg-comunicar"') && r.t.includes('Comunicar incidente') && r.t.includes('<i class="cmi"></i>Comunicado'));
-r=await call(A,'GET','/admin'); ok('Administración: perfil, pestaña de listas y auditoría', r.t.includes('value="COMUNICADOS"') && r.t.includes("{ id: 'listas', txt: 'Listas de difusión', permiso: 'admin_listas' }") && r.t.includes("COMUNICAR_INCIDENTE: 'Comunicó un incidente'"));
+r=await call(A,'GET','/admin'); ok('Administración: perfil, pestaña de listas y auditoría', r.t.includes('value="COMUNICADOS"') && r.t.includes('id="e-cliente"') && r.t.includes('data-rol=') && r.t.includes("COMUNICAR_INCIDENTE: 'Comunicó un incidente'"));
 
 // ---------- Preparar demo y sin el script 21 ----------
 await call(A,'POST','/api/demo/preparar'); ok('Preparar demo borra los comunicados', db.prepare('select count(*) n from comunicados_incidente').get().n===0 && db.prepare('select count(*) n from comunicado_destinatarios').get().n===0);
-db.exec('DROP TABLE comunicado_destinatarios; DROP TABLE comunicados_incidente; ALTER TABLE usuarios DROP COLUMN solo_comunicados; ALTER TABLE alerta_parametros DROP COLUMN listas_difusion');
+db.exec('DROP TABLE comunicado_destinatarios; DROP TABLE comunicados_incidente; ALTER TABLE usuarios DROP COLUMN solo_comunicados; ALTER TABLE alerta_parametros DROP COLUMN listas_difusion; ALTER TABLE equipos DROP COLUMN alcance_cliente_id; ALTER TABLE equipo_miembros DROP COLUMN rol_comunicado');
 r=await call(ck.ana,'GET','/api/yo'); ok('sin el script 21 el ingreso sigue andando', r.s===200 && r.j.usuario.perfil==='ANALISTA');
 r=await call(A,'GET','/api/admin/usuarios'); ok('y la lista de usuarios', r.s===200 && r.j.usuarios.length>5);
 r=await call(A,'POST','/api/admin/usuarios',{usuario:'nuevo',nombre:'Nuevo Comunicado',perfil:'COMUNICADOS'}); ok('crear "Solo comunicados" avisa que falta el script (503)', r.s===503 && /21_comunicados_d1/.test(r.j.error), r.j.error);
 r=await call(A,'POST','/api/admin/usuarios',{usuario:'nuevo2',nombre:'Nuevo Soporte',perfil:'SOPORTE'}); ok('los demás perfiles se crean igual', r.s===200);
-r=await call(A,'GET','/api/admin/listas-difusion'); ok('listas: avisa que falta el script', r.s===200 && r.j.falta_script===true);
+r=await call(A,'GET','/api/admin/equipos'); ok('equipos sin los scripts 21 y 22: se ven y avisa que falta el 22', r.s===200 && r.j.falta_script_22===true && r.j.equipos.length>=4);
+r=await call(A,'POST','/api/admin/equipos',{nombre:'Sin script',cliente_id:'CLI_004',miembros:[]}); ok('elegir cliente sin el script 22 = 503', r.s===503 && /22_equipos/.test(r.j.error));
+r=await call(A,'POST','/api/admin/equipos',{nombre:'Sin script',miembros:[id('pedro')]}); ok('un equipo común se crea igual', r.s===200);
 await sig(8);
 const AL5=db.prepare("select alerta_id from alertas_historico where tipo_alerta='RECHAZO_ALTO' and cliente_id='CLI_004' order by ventana_inicio").get().alerta_id;
 r=await call(ck.ana,'GET',`/api/alertas/${AL5}/detalle`); ok('el detalle anda (sin listas)', r.s===200 && r.j.listas_difusion===null && r.j.comunicados.length===0);

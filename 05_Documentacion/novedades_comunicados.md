@@ -1,4 +1,6 @@
-# Comunicar incidente por push (parche 46)
+# Comunicar incidente por push (parche 46; con equipos desde el parche 63)
+
+> **Desde el parche 63 (17/11) las listas de difusión son los equipos.** En Administración > Equipos, cada persona tiene su rol para los comunicados (técnico, líder o informado) y el equipo puede servir para todas las alertas o solo para las de un cliente. "Comunicar incidente" elige equipos y, si hace falta, personas sueltas (les llega como técnicos). Los arma el Administrador o el Analista. Hace falta correr `22_equipos_y_comunicados_d1.txt`, que pasa solo las listas que ya había a equipos. Donde abajo dice "lista", leer "equipo".
 
 Guía para poner en marcha y usar **"Comunicar incidente"**: el aviso "Tenemos este incidente" que el analista manda desde la alerta al celular o la PC de las personas que se tienen que enterar, con el ticket incluido y la posibilidad de dar "Recibido" y responder.
 

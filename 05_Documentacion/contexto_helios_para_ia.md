@@ -109,7 +109,7 @@ Hoy pesa unos 7 MB (13 series con historia, unos 9 días). Casi todo son métric
 | `feriados` | Feriados nacionales y días no laborables (+ los agregados a mano). Se cargan de `https://api.argentinadatos.com/v1/feriados/{año}`: el cron trae solo el año en curso y, desde octubre, el siguiente; el Administrador puede actualizar o agregar desde Administración > Umbrales | `fecha` (PK, `AAAA-MM-DD`, fecha de Argentina), `nombre`, `tipo` (`inamovible`, `trasladable`, `puente`, `manual`), `origen` (`API` o `MANUAL`; la API nunca pisa los manuales) |
 | `usuarios` | Personas | `id`, `usuario`, `nombre`, `perfil` (`ADMIN`, `GERENTE`, `ANALISTA`, `SOPORTE`), `hash`, `sal`, `iteraciones`, `debe_cambiar`, `activo`, `intentos_fallidos`, `bloqueado_hasta`, `ultimo_ingreso` |
 | `sesiones` | Sesiones abiertas | `token_hash` (SHA-256 del token de la cookie), `usuario_id`, `creada`, `vence` |
-| `equipos` · `equipo_miembros` | Equipos y su gente | `equipos`: `id`, `nombre`, `descripcion`, `responsable_id`, `activo` · `equipo_miembros`: (`equipo_id`, `usuario_id`) |
+| `equipos` · `equipo_miembros` | Equipos y su gente (desde el parche 63, también los destinatarios de los comunicados: reemplazan a las listas de difusión) | `equipos`: `id`, `nombre`, `descripcion`, `responsable_id`, `activo`, `alcance_cliente_id` (script 22: NULL = todas las alertas) · `equipo_miembros`: (`equipo_id`, `usuario_id`), `rol_comunicado` (script 22: `TECNICO`/`LIDER`/`INFORMADO`, NULL = técnico) |
 | `auditoria` | Quién hizo qué | `id`, `fecha`, `usuario_id`, `accion`, `detalle` |
 | `series_estado` · `prealertas_estado` (+ `alerta_parametros.tablero_revision` y `tablero_calculado`) | **Cache del tablero.** Cada revisión de alertas y "Preparar demo" cambian `alerta_parametros.tablero_revision`; con la revisión incremental (parche 37) la misma revisión actualiza el caché y deja `tablero_calculado` igual a `tablero_revision` (al día). La tabla `tablero_cache` (una fila) se reemplazó por esas dos columnas en la etapa 3b | Las escribe el Worker; no se tocan a mano. Si una ingesta nueva carga métricas sin pasar por la revisión, tiene que marcar `tablero_revision` |
 | `suscripciones_push` | **Avisos push (parche 26, script 10).** Un dispositivo (celular o PC) que activó los avisos desde la campanita. Si el servicio de push responde que ya no existe (404/410), se borra sola; también al cerrar sesión o tocar "Desactivar" | `endpoint` (PK: la dirección del dispositivo en Google, Apple, Mozilla o Microsoft), `usuario_id`, `clave_p256dh` y `clave_auth` (claves del navegador para cifrar el contenido), `creada`, `actualizada`. Índice `ix_suscripciones_push_usuario` |
@@ -476,7 +476,14 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
-**Operaciones e Histórico (17/11, parche 62; sin SQL, falta publicar)**
+**Equipos y listas de difusión en uno (17/11, parche 63; script 22, falta publicar)**
+
+- Las listas de difusión pasan a ser los **equipos**: cada persona del equipo tiene un rol para los comunicados (técnico, líder o informado) y el equipo puede ser general o de un cliente (`equipos.alcance_cliente_id`). Las alertas derivadas a un equipo solo le llegan a su gente de Soporte; los comunicados, a todos con su rol. "Comunicar incidente" elige equipos y también personas sueltas (como técnicos).
+- Sin la pestaña "Listas de difusión". El Analista crea, modifica y elimina equipos y plantillas de correo. Un equipo se elimina solo si nunca tuvo alertas ni reglas de derivación; si no, se desactiva.
+- Script `22_equipos_y_comunicados_d1.txt`: columnas `equipo_miembros.rol_comunicado` y `equipos.alcance_cliente_id`, y pasa las listas existentes a equipos (el JSON viejo queda de respaldo). Siguen 26 tablas. Primero el SQL, después el Worker.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche63/`, ramas `respaldo-antes-parche-63` y `version-parche-63-equipos-y-listas`.
+
+**Operaciones e Histórico (17/11, parche 62; sin SQL, publicado el 17/11)**
 
 - Operaciones > Alertas abiertas: dona "Alertas por estado" (tocar un estado filtra la lista) y al lado "Problemas activos" por cliente o tipo de falla, divididos por gravedad.
 - Histórico: gravedad en su propia columna, filtros por cliente, gravedad y problema, y "Clientes con más problemas" con el mismo período y filtros del Histórico (sin Desde / Hasta propio).

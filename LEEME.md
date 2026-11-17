@@ -4,7 +4,7 @@
 - `worker_alertas_cron.js` — Worker principal (`worker-alertas-cron`): tablero, Mis alertas, Seguimiento, Administración, login, cron que evalúa alertas y trae feriados. **Es siempre la última versión**; se publica con "Edit code".
 
 ## 02_Base_de_datos_D1 — scripts para la Console de D1 (en el orden en que se corren)
-Del 1 al 21 ya están aplicados: sirven para reconstruir la base desde cero o como referencia.
+Del 1 al 21 ya están aplicados (el 22, pendiente): sirven para reconstruir la base desde cero o como referencia.
 1. `01_acceso_d1_tablas.txt` — usuarios, perfiles y sesiones (login).
 2. `02_admin_d1_tablas.txt` — reglas personalizadas y auditoría (pantalla de Administración).
 3. `03_asignacion_d1_tablas.txt` — tomar / derivar / resolver alertas y equipos.
@@ -30,6 +30,8 @@ Del 1 al 21 ya están aplicados: sirven para reconstruir la base desde cero o co
 
 21. `21_comunicados_d1.txt` — **ya corrido (parche 46).** Perfil "Solo comunicados" (`usuarios.solo_comunicados`), listas de difusión (`alerta_parametros.listas_difusion`) y tablas `comunicados_incidente` y `comunicado_destinatarios` para "Comunicar incidente". Quedan 26 tablas. Se corre antes de publicar el Worker.
 
+22. `22_equipos_y_comunicados_d1.txt` — **falta correrlo (parche 63).** Equipos y listas de difusión en uno: rol de cada persona en los comunicados (`equipo_miembros.rol_comunicado`) y para qué alertas sirve el equipo (`equipos.alcance_cliente_id`); pasa las listas que había a equipos. Siguen 26 tablas. Se corre antes de publicar el Worker.
+
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
 - `perfil_comportamiento_d1.sql` — las mismas sentencias, para correr de una con Wrangler:
@@ -46,7 +48,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 ## 05_Documentacion
 - `Helios_inventario_de_tablas.docx` — inventario y detalle de todas las tablas (estilo de los documentos del equipo).
 - `contexto_helios_para_ia.md` — contexto completo del proyecto para pasarle a otra IA.
-- `novedades_comunicados.md` — comunicar incidente por push (parche 46): perfil "Solo comunicados", listas de difusión, Recibido y respuestas; cómo ponerlo en marcha y límites.
+- `novedades_comunicados.md` — comunicar incidente por push (parche 46; desde el 63 con equipos en lugar de listas de difusión): perfil "Solo comunicados", equipos con rol por persona, Recibido y respuestas; cómo ponerlo en marcha y límites.
 - `integracion_tickets.md` — Jira ya crea el issue en el proyecto KAN; InvGate sigue para completar. Qué recibe y devuelve cada función, cómo prenderlo y cómo probarlo.
 - `novedades_ticketera.md` — ticketera (14/11): detalle de cada alerta, evidencia adjunta y resolución con causa; cómo activarlo.
 - `novedades_avisos_push_y_app.md` — avisos push, app instalable y logo nuevo (12/11): guía por dispositivo y problemas comunes.
@@ -57,7 +59,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55, 56, 57 y 58 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58 y 60 a 63 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
 - `word/` — helper para armar los Word con el estilo de la compañera.

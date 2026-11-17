@@ -38,7 +38,7 @@ r=await call(ck.ana,'POST',`/api/alertas/${AL}/derivar`,{equipo_id:MESA,comentar
 r=await call(ck.ana,'POST','/api/admin/derivacion',{nombre:'A una analista',equipo_id:null,usuario_id:id('ana2')}); ok('regla de derivación a analista = 400', r.s===400, r.j.error);
 // Datos del seguimiento
 r=await call(ck.ana,'GET','/api/seguimiento');
-ok('seguimiento trae abiertas, equipos, miembros y umbrales', r.j.abiertas.some(a=>a.alerta_id===AL && a.equipo_nombre==='Mesa') && r.j.equipos.length===1 && r.j.miembros.length===2 && r.j.umbrales.length>=1, {ab:r.j.abiertas.length, eq:r.j.equipos.length});
+ok('seguimiento trae abiertas, equipos, miembros y umbrales', r.j.abiertas.some(a=>a.alerta_id===AL && a.equipo_nombre==='Mesa') && r.j.equipos.length===1 && r.j.miembros.length===1 /* parche 63: en la carga del equipo solo cuenta la gente de Soporte (ana2 es analista) */ && r.j.umbrales.length>=1, {ab:r.j.abiertas.length, eq:r.j.equipos.length});
 await call(ck.sol,'POST',`/api/alertas/${AL}/tomar`,{});
 r=await call(ck.ana,'GET','/api/seguimiento'); ok('seguimiento: la tomó Sol', r.j.abiertas.filter(a=>a.alerta_id===AL).every(a=>a.estado==='RECONOCIDA' && a.asignado_nombre==='Sol Porte'));
 await call(ck.sol,'POST',`/api/alertas/${AL}/resolver`,{comentario:'Se reinició el conector'});

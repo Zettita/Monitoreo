@@ -109,7 +109,7 @@ ok('no hay tablas nuevas', !db.prepare("select name from sqlite_master where typ
 
 // ---------- Plantillas de correo (parche 40) ----------
 r=await call(A,'GET','/api/admin/plantillas-correo'); ok('admin ve las 6 de fábrica', r.s===200 && r.j.plantillas.length===6 && !r.j.falta_script, r.j.plantillas&&r.j.plantillas.map(p=>p.nombre));
-r=await call(ck.ana,'GET','/api/admin/plantillas-correo'); ok('analista no administra plantillas', r.s===403);
+r=await call(ck.ana,'GET','/api/admin/plantillas-correo'); ok('parche 63: el analista administra plantillas', r.s===200);
 r=await call(ck.ana,'GET',`/api/alertas/${AL}/detalle`); ok('el detalle trae las plantillas activas', r.j.plantillas_correo.length===6 && r.j.plantillas_correo[0].cuerpo.length>10);
 r=await call(ck.pedro,'GET',`/api/alertas/${AL}/detalle`); ok('quien no trabaja la alerta no las recibe', r.s===403 || (r.j.plantillas_correo||[]).length===0);
 r=await call(A,'POST','/api/admin/plantillas-correo',{nombre:'Escalar a Seguridad',sector:'Seguridad',cuando:'ABIERTA',tipos:['ERROR_ALTO','RECHAZO_ALTO'],asunto:'Seguridad: {alerta}',cuerpo:'Hola,\n{problema}\nNovedad: {ultima_novedad}\n{firma}',activa:1});

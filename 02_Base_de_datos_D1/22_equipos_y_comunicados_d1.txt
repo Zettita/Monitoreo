@@ -1,0 +1,28 @@
+EQUIPOS Y LISTAS DE DIFUSIÓN EN UNO (para la Console de D1: helios-monitoring-dev) — parche 63
+
+Qué hace:
+- equipo_miembros.rol_comunicado: el rol de cada persona del equipo en "Comunicar incidente" (TECNICO, LIDER o INFORMADO;
+  vacío = técnico).
+- equipos.alcance_cliente_id: para qué alertas sirve el equipo al comunicar (vacío = todas; con un cliente = solo las de ese
+  cliente, y se propone primero). Se llama así (y no cliente_id) para no chocar con las consultas que cruzan equipos y alertas.
+- Pasa las listas de difusión que ya existían a equipos, con las mismas personas y roles. Si ya había un equipo con el mismo
+  nombre, las personas de la lista se suman a ese equipo. No borra alerta_parametros.listas_difusion: queda como respaldo.
+Sigue habiendo 26 tablas.
+
+Orden: 1) correr estos 4 bloques, uno por vez (requiere el script 21 ya corrido); 2) publicar 01_Worker/worker_alertas_cron.js.
+Sin este script el Worker funciona igual: los equipos se arman como antes (sin cliente ni rol) y "Comunicar incidente" sigue
+usando las listas viejas.
+Los bloques 1 y 2 (ALTER TABLE) se corren UNA sola vez: si se repiten dan "duplicate column name" y no pasa nada.
+Los bloques 3 y 4 se pueden repetir (no duplican). No hace falta /bookmark.
+
+--- 1. Rol de cada persona en los comunicados (una columna en equipo_miembros) ---
+ALTER TABLE equipo_miembros ADD COLUMN rol_comunicado TEXT CHECK (rol_comunicado IS NULL OR rol_comunicado IN ('INFORMADO', 'TECNICO', 'LIDER'));
+
+--- 2. Para qué alertas sirve el equipo (una columna en equipos) ---
+ALTER TABLE equipos ADD COLUMN alcance_cliente_id TEXT;
+
+--- 3. Pasar las listas de difusión a equipos ---
+INSERT OR IGNORE INTO equipos (nombre, descripcion, activo, alcance_cliente_id) SELECT json_extract(l.value, '$.nombre'), 'Lista de difusión pasada a equipo', CASE WHEN json_extract(l.value, '$.activa') = 0 THEN 0 ELSE 1 END, json_extract(l.value, '$.cliente_id') FROM alerta_parametros p, json_each(p.listas_difusion, '$.listas') l WHERE p.id = 1 AND json_valid(p.listas_difusion);
+
+--- 4. Pasar las personas de cada lista (con su rol) a su equipo ---
+INSERT OR IGNORE INTO equipo_miembros (equipo_id, usuario_id, rol_comunicado) SELECT e.id, json_extract(m.value, '$.usuario_id'), json_extract(m.value, '$.rol') FROM alerta_parametros p, json_each(p.listas_difusion, '$.listas') l, json_each(l.value, '$.miembros') m, equipos e WHERE p.id = 1 AND json_valid(p.listas_difusion) AND e.nombre = json_extract(l.value, '$.nombre') COLLATE NOCASE AND json_extract(m.value, '$.usuario_id') IN (SELECT id FROM usuarios);

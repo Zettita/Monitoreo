@@ -38,7 +38,7 @@ for (const u of ['gerente','analista','soporte','admin2']) {
   ok(u+': temporal sirve, API bloqueada hasta cambiar', !!ck[u] && bloq);
 }
 // --- Permisos por perfil ---
-const matriz = { gerente:[302,403,403,403,403,403], soporte:[302,403,403,403,403,403], analista:[200,403,403,403,200,403], admin2:[200,200,200,200,200,200] };
+const matriz = { gerente:[302,403,403,403,403,403], soporte:[302,403,403,403,403,403], analista:[200,403,200,403,200,403] /* parche 63: el analista arma equipos */, admin2:[200,200,200,200,200,200] };
 for (const [u,esp] of Object.entries(matriz)) {
   const got=[];
   for (const p of ['/admin','/api/admin/usuarios','/api/admin/equipos','/api/admin/reglas','/api/admin/modelo','/api/admin/auditoria']) got.push((await call(ck[u],'GET',p)).s);
