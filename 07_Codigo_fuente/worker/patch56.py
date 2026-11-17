@@ -89,8 +89,16 @@ def servidor(s):
 CSS = """/* Período con Desde / Hasta, barras más altas, letras más grandes y comparación (parche 56) */
 .per-barra { gap: 10px 16px; align-items: flex-end; }
 .per-campo { display: grid; gap: 4px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.per-campo input[type="date"] { font: inherit; font-size: 15px; font-weight: 400; color: var(--ink); background: var(--input-bg); border: 1px solid var(--line-input); border-radius: 6px; padding: 6px 10px; min-height: 38px; color-scheme: light dark; }
-.per-campo input[type="date"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.per-campo label { font: inherit; }
+.fecha-wrap { position: relative; display: inline-flex; align-items: center; }
+.fecha-txt { font: inherit; font-size: 15px; font-weight: 400; color: var(--ink); background: var(--input-bg); border: 1px solid var(--line-input); border-radius: 6px; padding: 6px 40px 6px 12px; min-height: 40px; width: 170px; font-variant-numeric: tabular-nums; }
+.fecha-txt::placeholder { color: var(--ink-3); }
+.fecha-txt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fecha-txt.mal { border-color: var(--critica); }
+.fecha-cal { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); display: inline-flex; border: 0; background: transparent; color: var(--ink-2); padding: 5px; border-radius: 5px; cursor: pointer; }
+.fecha-cal:hover { background: var(--track); color: var(--accent); }
+.fecha-cal:focus-visible { outline: 2px solid var(--accent); }
+.fecha-nat { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
 .per-comparar { margin-left: auto; min-height: 38px; font-size: 14.5px; }
 .per-parcial { font-size: 14px; flex-basis: 100%; }
 .per-error { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: var(--critica-bg); color: var(--critica-txt); font-size: 14px; font-weight: 600; }
@@ -129,34 +137,36 @@ CSS = """/* Período con Desde / Hasta, barras más altas, letras más grandes y
   .dd-rbarra { grid-template-columns: minmax(0, 1fr) auto; }
   .dd-rbarra .dd-rpista { grid-column: 1 / -1; grid-row: 2; }
   .per-campo { flex: 1 1 140px; }
+  .fecha-txt { width: 100%; }
+  .fecha-wrap { display: flex; }
   .per-comparar { margin-left: 0; width: 100%; }
 }
 /* Ventana de comparación */
-dialog.dlg-cmp { width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 20px 22px; }
+dialog.dlg-cmp { width: min(1320px, calc(100vw - 48px)); max-height: calc(100vh - 48px); overflow: auto; padding: 24px 28px; }
 .cmp-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.cmp-elegir { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; margin: 14px 0; align-items: start; }
+.cmp-elegir { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; margin: 18px 0 22px; align-items: start; }
 .cmp-per { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; background: var(--panel); }
 .cmp-per > b { font-size: 16px; }
 .cmp-rot { font-size: 13.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .02em; }
 .cmp-campos, .cmp-atajos { display: flex; gap: 10px; flex-wrap: wrap; }
 .cmp-atajos .btn { font-size: 13.5px; }
-.cmp-tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.cmp-tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; margin-bottom: 8px; }
 .cmp-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; background: var(--panel); align-content: start; }
 .cmp-card.b { border-style: dashed; }
 .cmp-tit { font-size: 16px; }
 .cmp-gran { font-size: 42px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .cmp-card p { margin: 0; font-size: 15px; color: var(--ink-2); }
-.cmp-dif { border-radius: 10px; padding: 10px 14px; font-size: 16px; font-weight: 600; margin-bottom: 12px; background: var(--track); }
+.cmp-dif { border-radius: 10px; padding: 12px 16px; font-size: 16px; font-weight: 600; margin-bottom: 18px; background: var(--track); }
 .cmp-dif.mejor { background: var(--ok-bg); color: var(--ok-txt); }
 .cmp-dif.peor { background: var(--critica-bg); color: var(--critica-txt); }
 .cmp-nota { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--track); font-size: 14px; color: var(--ink-2); }
-.cmp-sec { margin: 18px 0 6px; font-size: 16px; }
+.cmp-sec { margin: 30px 0 8px; font-size: 17px; }
 .cmp-ley { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 6px; font-size: 14px; color: var(--ink-2); }
 .cmp-ley span { display: inline-flex; align-items: center; gap: 7px; }
 .cmp-ley i { display: inline-block; width: 26px; height: 0; border-top: 3px solid var(--accent); }
 .cmp-ley i.b { border-top: 3px dashed var(--ink-3); }
 .cmp-ley i.o { border-top: 1.5px dotted var(--ink-2); }
-.cmp-graf svg { display: block; width: 100%; max-width: 900px; height: auto; }
+.cmp-graf svg { display: block; width: 100%; max-width: 1200px; height: auto; margin-top: 6px; }
 .cmp-graf .ejeT { fill: var(--ink-3); font-size: 12px; }
 .cmp-graf .rot { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
 .cmp-graf .grilla { stroke: var(--line); stroke-width: 1; }
@@ -168,14 +178,35 @@ dialog.dlg-cmp { width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh 
 .cmp-graf circle.fin.b { fill: var(--panel); stroke: var(--ink-3); stroke-width: 2.2; }
 .cmp-graf circle.h { fill: transparent; }
 .cmp-graf circle.h:hover { fill: var(--accent); fill-opacity: .18; }
+.cmp-tabla { font-size: 15px; border-collapse: separate; border-spacing: 0; }
+.cmp-tabla th { padding: 10px 16px; font-size: 14px; }
+.cmp-tabla td { padding: 12px 16px; }
+.cmp-tabla thead tr.grupo th { text-align: center; color: var(--ink-2); border-bottom: 1px solid var(--line); }
+.cmp-tabla thead tr.grupo th:first-child { text-align: left; }
+.cmp-tabla thead tr.grupo th:last-child { text-align: right; }
+.cmp-tabla .g { border-left: 1px solid var(--line); }
+.cmp-tabla td.n { white-space: nowrap; }
+.cmp-tabla td .dd-chip { margin: 0; }
 .cmp-tabla td.mejor { color: var(--ok-txt); font-weight: 600; }
 .cmp-tabla td.peor { color: var(--critica-txt); font-weight: 600; }
 #cmp-resultado[aria-busy="true"] { opacity: .55; }
 """
 
+ICONO_CAL = ('<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+             '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>')
+
+
+def campo_fecha(id_, rotulo):
+    # Campo de texto dd/mm/aaaa (se escribe con comodidad y recién aplica con la fecha completa) + calendario del navegador al tocar el ícono
+    return ('<div class="per-campo"><label for="%s">%s</label><span class="fecha-wrap">'
+            '<input type="text" class="fecha-txt" id="%s" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" maxlength="10">'
+            '<button type="button" class="fecha-cal" data-cal="%s" aria-label="Elegir la fecha %s en el calendario" title="Elegir en el calendario">%s</button>'
+            '<input type="date" class="fecha-nat" id="%s-cal" tabindex="-1" aria-hidden="true"></span></div>') % (id_, rotulo, id_, id_, rotulo.lower(), ICONO_CAL, id_)
+
+
 BARRA = ('    <div class="per-barra" id="per-barra">\n'
-         '      <label class="per-campo" for="per-desde"><span>Desde</span><input type="date" id="per-desde"></label>\n'
-         '      <label class="per-campo" for="per-hasta"><span>Hasta</span><input type="date" id="per-hasta"></label>\n'
+         '      ' + campo_fecha('per-desde', 'Desde') + '\n'
+         '      ' + campo_fecha('per-hasta', 'Hasta') + '\n'
          '      <button type="button" class="btn primario per-comparar" id="btn-comparar" disabled>Comparar con otro período</button>\n'
          '      <span class="per-parcial" id="per-nota" aria-live="polite"></span>\n'
          '    </div>\n'
@@ -187,7 +218,7 @@ DIALOGO = r"""<dialog class="dlg dlg-cmp" id="dlg-comparar" aria-labelledby="cmp
   <div class="cmp-elegir">
     <div class="cmp-per"><span class="cmp-rot">PERÍODO ACTUAL</span><b id="cmp-a-txt"></b></div>
     <div class="cmp-per"><span class="cmp-rot">COMPARAR CON</span>
-      <div class="cmp-campos"><label class="per-campo" for="cmp-desde"><span>Desde</span><input type="date" id="cmp-desde"></label><label class="per-campo" for="cmp-hasta"><span>Hasta</span><input type="date" id="cmp-hasta"></label></div>
+      <div class="cmp-campos">@@CMP_DESDE@@@@CMP_HASTA@@</div>
       <div class="cmp-atajos" role="group" aria-label="Atajos para comparar"><button type="button" class="btn chico" data-cmp-atajo="anterior">Período anterior</button><button type="button" class="btn chico" data-cmp-atajo="mes">Mismo período del mes anterior</button><button type="button" class="btn chico" data-cmp-atajo="anio">Mismo período del año anterior</button></div>
     </div>
   </div>
@@ -197,12 +228,63 @@ DIALOGO = r"""<dialog class="dlg dlg-cmp" id="dlg-comparar" aria-labelledby="cmp
 """
 
 JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
+  // ---- Campos de fecha dd/mm/aaaa: se escriben con comodidad y recién se aplican con la fecha completa y válida (parche 56) ----
+  var FECHA_LIM = {};
+  function fTxt(iso) { return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
+  function fFormato(raw) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+    if (m) raw = m[3] + m[2] + m[1];                                        // pegaron una fecha en formato aaaa-mm-dd
+    raw = raw.replace(/(^|\D)(\d)(?=\D)/g, '$10$2');                         // "5/" pasa a "05/"
+    var ds = raw.replace(/\D/g, ''), i = 0, dia = '', mes = '', anio = '';
+    if (ds.length) { if (ds.charAt(0) > '3') { dia = '0' + ds.charAt(0); i = 1; } else { dia = ds.slice(0, 2); i = dia.length; } }   // "5" es el día 05
+    if (dia.length === 2 && ds.length > i) { if (ds.charAt(i) > '1') { mes = '0' + ds.charAt(i); i += 1; } else { mes = ds.slice(i, i + 2); i += mes.length; } }   // "7" es el mes 07
+    if (mes.length === 2) anio = ds.slice(i, i + 4);
+    return dia + (mes ? '/' + mes : '') + (anio ? '/' + anio : '');
+  }
+  function fEstado(id) {
+    var el = $(id), D = el.value.replace(/\D/g, ''), lim = FECHA_LIM[id] || {};
+    if (!D.length) return { estado: 'vacia' };
+    if (D.length < 8) return { estado: 'incompleta' };
+    var dd = +D.slice(0, 2), mm = +D.slice(2, 4), aa = +D.slice(4, 8), iso = D.slice(4, 8) + '-' + D.slice(2, 4) + '-' + D.slice(0, 2), f = new Date(Date.UTC(aa, mm - 1, dd, 12));
+    if (!(aa >= 1900) || f.getUTCFullYear() !== aa || f.getUTCMonth() !== mm - 1 || f.getUTCDate() !== dd) return { estado: 'invalida', msg: 'Esa fecha no existe. Escribila como día/mes/año, por ejemplo ' + fTxt(lim.max || '2026-01-31') + '.' };
+    if (lim.min && iso < lim.min) return { estado: 'fuera', msg: 'Se puede mirar desde el ' + fTxt(lim.min) + ' en adelante.' };
+    if (lim.max && iso > lim.max) return { estado: 'fuera', msg: 'La fecha no puede ser posterior a hoy (' + fTxt(lim.max) + ').' };
+    return { estado: 'ok', iso: iso };
+  }
+  function fPoner(id, iso) {
+    var el = $(id), n = $(id + '-cal');
+    el.value = fTxt(iso); el.classList.remove('mal'); el.removeAttribute('aria-invalid'); el.setAttribute('data-ok', iso || '');
+    if (n) n.value = iso || '';
+  }
+  function fLimites(id, min, max) { FECHA_LIM[id] = { min: min, max: max }; var n = $(id + '-cal'); if (n) { n.min = min; n.max = max; } }
+  function fEnganchar(id, alCompletar, mostrar) {
+    var el = $(id), n = $(id + '-cal');
+    function listo(iso) { el.classList.remove('mal'); el.removeAttribute('aria-invalid'); el.setAttribute('data-ok', iso); if (n) n.value = iso; mostrar(''); alCompletar(); }
+    el.addEventListener('input', function () {
+      var t = fFormato(el.value); if (t !== el.value) el.value = t;
+      var e = fEstado(id), mal = e.estado === 'invalida' || e.estado === 'fuera';
+      el.classList.toggle('mal', mal); if (mal) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+      if (e.estado === 'ok') listo(e.iso); else mostrar(mal ? e.msg : '');
+    });
+    el.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); } });
+    el.addEventListener('blur', function () {      // si quedó a medias, vuelve a la última fecha buena y lo avisa
+      var e = fEstado(id); if (e.estado === 'ok') return;
+      var ok = el.getAttribute('data-ok');
+      if (el.value) mostrar(e.msg || 'Escribí la fecha completa como día/mes/año, por ejemplo ' + fTxt((FECHA_LIM[id] || {}).max || '2026-01-31') + '.');
+      fPoner(id, ok);
+    });
+    if (n) n.addEventListener('change', function () { if (n.value) { el.value = fTxt(n.value); listo(n.value); } });
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-cal]'); if (!b) return;
+    var n = $(b.getAttribute('data-cal') + '-cal'); if (!n) return;
+    try { n.showPicker(); } catch (e) { n.focus(); n.click(); }
+  });
   function consultaPeriodo(p) { return p.desde && p.hasta ? '?desde=' + p.desde + '&hasta=' + p.hasta : '?tipo=mes'; }
   function pintarBarraPeriodo(r) {
-    var d = $('per-desde'), h = $('per-hasta');
-    d.min = h.min = r.fecha_minima; d.max = h.max = r.hoy;
-    if (document.activeElement !== d) d.value = r.desde;
-    if (document.activeElement !== h) h.value = r.hasta;
+    fLimites('per-desde', r.fecha_minima, r.hoy); fLimites('per-hasta', r.fecha_minima, r.hoy);
+    if (document.activeElement !== $('per-desde')) fPoner('per-desde', r.desde);
+    if (document.activeElement !== $('per-hasta')) fPoner('per-hasta', r.hasta);
     $('per-nota').textContent = r.parcial ? 'El último día todavía no terminó: se mide hasta ahora.' : '';
     $('per-error').hidden = true;
     $('btn-comparar').disabled = false;
@@ -210,16 +292,18 @@ JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
   }
   function errorPeriodo(msg) { var er = $('per-error'); er.textContent = msg; er.hidden = false; }
   function aplicarRango() {
-    var d = $('per-desde').value, h = $('per-hasta').value;
-    if (!d || !h) return;
+    var ea = fEstado('per-desde'), eb = fEstado('per-hasta');
+    if (ea.estado !== 'ok' || eb.estado !== 'ok') return;
+    var d = ea.iso, h = eb.iso;
     if (d > h) { errorPeriodo('La fecha "Desde" tiene que ser anterior o igual a "Hasta".'); return; }
     $('per-error').hidden = true;
     periodo = { desde: d, hasta: h };
     try { sessionStorage.setItem('helios_periodo', JSON.stringify(periodo)); } catch (e) { /* sin almacenamiento: no pasa nada */ }
     pedirPeriodo(true);
   }
-  $('per-desde').addEventListener('change', aplicarRango);
-  $('per-hasta').addEventListener('change', aplicarRango);
+  function mostrarPer(msg) { if (msg) errorPeriodo(msg); else $('per-error').hidden = true; }
+  fEnganchar('per-desde', aplicarRango, mostrarPer);
+  fEnganchar('per-hasta', aplicarRango, mostrarPer);
   try {
     var guardado = JSON.parse(sessionStorage.getItem('helios_periodo') || 'null');
     if (guardado && /^\d{4}-\d{2}-\d{2}$/.test(guardado.desde) && /^\d{4}-\d{2}-\d{2}$/.test(guardado.hasta)) periodo = { desde: guardado.desde, hasta: guardado.hasta };
@@ -236,11 +320,11 @@ JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
   function fechaCorta(f) { return f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4); }
   function rangoTxt(d, h) { return d === h ? fechaCorta(d) : fechaCorta(d) + ' al ' + fechaCorta(h); }
   function dmCorto(iso) { return aFecha(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: TZ }); }
-  function ponerFechasComp(d, h) { $('cmp-desde').value = d; $('cmp-hasta').value = h; }
+  function ponerFechasComp(d, h) { fPoner('cmp-desde', d); fPoner('cmp-hasta', h); }
   function abrirComparar() {
     var a = resumen; if (!a) return;
     $('cmp-a-txt').textContent = rangoTxt(a.desde, a.hasta) + (a.parcial ? ' (hasta ahora)' : '');
-    $('cmp-desde').min = $('cmp-hasta').min = a.fecha_minima; $('cmp-desde').max = $('cmp-hasta').max = a.hoy;
+    fLimites('cmp-desde', a.fecha_minima, a.hoy); fLimites('cmp-hasta', a.fecha_minima, a.hoy);
     var bh = sumarDias(a.desde, -1);
     ponerFechasComp(sumarDias(bh, -(diasEntre(a.desde, a.hasta) - 1)), bh);
     comp.b = null; $('cmp-resultado').innerHTML = ''; $('cmp-aviso').hidden = true;
@@ -248,15 +332,16 @@ JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
     pedirComparacion();
   }
   function pedirComparacion() {
-    var d = $('cmp-desde').value, h = $('cmp-hasta').value, av = $('cmp-aviso');
-    if (!d || !h) return;
+    var av = $('cmp-aviso'), ea = fEstado('cmp-desde'), eb = fEstado('cmp-hasta');
+    if (ea.estado !== 'ok' || eb.estado !== 'ok') return;
+    var d = ea.iso, h = eb.iso;
     if (d > h) { av.textContent = 'La fecha "Desde" tiene que ser anterior o igual a "Hasta".'; av.hidden = false; return; }
     av.hidden = true;
     var mio = ++comp.pedido; $('cmp-resultado').setAttribute('aria-busy', 'true');
     pedir('/api/tablero/periodo?desde=' + d + '&hasta=' + h + '&liviano=1').then(function (r) {
       if (mio !== comp.pedido) return;
       if (r.hasta > r.hoy) r.hasta = r.hoy;
-      comp.b = r; ponerFechasComp(r.desde, r.hasta); $('cmp-resultado').removeAttribute('aria-busy'); pintarComparacion();
+      comp.b = r; if (document.activeElement !== $('cmp-desde') && document.activeElement !== $('cmp-hasta')) ponerFechasComp(r.desde, r.hasta); $('cmp-resultado').removeAttribute('aria-busy'); pintarComparacion();
     }).catch(function (e) {
       if (mio !== comp.pedido) return;
       $('cmp-resultado').removeAttribute('aria-busy'); av.textContent = e.message; av.hidden = false;
@@ -276,14 +361,16 @@ JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
     Object.keys(mapa).forEach(function (k) { var f = mapa[k]; f.dif = f.a && f.b ? Math.round((f.a.disponibilidad - f.b.disponibilidad) * 10000) / 100 : null; filas.push(f); });
     if (!filas.length) return '';
     filas.sort(function (x, y) { var dx = x.dif == null ? 1e9 : x.dif, dy = y.dif == null ? 1e9 : y.dif; return dx - dy || (x.id < y.id ? -1 : 1); });
-    function celda(c) { return c ? pctD(c.disponibilidad, c.objetivo) + ' ' + chipEstado(c) : 'Sin datos'; }
+    function celdas(c, g) { return c ? '<td class="n' + g + '">' + pctD(c.disponibilidad, c.objetivo) + '</td><td>' + chipEstado(c) + '</td>' : '<td class="n' + g + '">Sin datos</td><td></td>'; }
     function cambio(f) {
       if (f.dif == null) return ['', '—'];
       if (f.dif === 0) return ['', 'Igual'];
       return [f.dif > 0 ? 'mejor' : 'peor', (f.dif > 0 ? '▲ Mejoró ' : '▼ Empeoró ') + fmtPuntos(f.dif)];
     }
-    return '<h3 class="cmp-sec">Por cliente</h3><p class="dd-ayuda">Ordenado de quien más empeoró a quien más mejoró.</p><div class="tabla-scroll"><table class="dd-tabla cmp-tabla"><thead><tr><th>Cliente</th><th class="n">Actual</th><th class="n">Comparado</th><th class="n">Cambio</th></tr></thead><tbody>' +
-      filas.map(function (f) { var c = cambio(f); return '<tr><td><b>' + esc(f.id) + '</b></td><td class="n">' + celda(f.a) + '</td><td class="n">' + celda(f.b) + '</td><td class="n ' + c[0] + '">' + c[1] + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    return '<h3 class="cmp-sec">Por cliente</h3><p class="dd-ayuda">Ordenado de quien más empeoró a quien más mejoró.</p><div class="tabla-scroll"><table class="dd-tabla cmp-tabla"><thead>' +
+      '<tr class="grupo"><th rowspan="2">Cliente</th><th colspan="2" class="g">Período actual</th><th colspan="2" class="g">Período comparado</th><th rowspan="2" class="g n">Cambio</th></tr>' +
+      '<tr><th class="n g">Disponibilidad</th><th>Estado</th><th class="n g">Disponibilidad</th><th>Estado</th></tr></thead><tbody>' +
+      filas.map(function (f) { var c = cambio(f); return '<tr><td><b>' + esc(f.id) + '</b></td>' + celdas(f.a, ' g') + celdas(f.b, ' g') + '<td class="n g ' + c[0] + '">' + c[1] + '</td></tr>'; }).join('') + '</tbody></table></div>';
   }
   // Una línea por período: disponibilidad acumulada alineada por el tiempo que pasó desde el inicio de cada uno
   function serieComp(r) {
@@ -299,8 +386,8 @@ JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
   function graficoComp(a, b) {
     var sa = serieComp(a), sb = serieComp(b);
     if (!sa || !sb || sa.pts.length < 2 || sb.pts.length < 2) return '<p class="vacio">Todavía no hay suficientes ventanas medidas en los dos períodos para dibujar la evolución.</p>';
-    var ancho = Math.round(Math.max(300, Math.min(900, $('cmp-resultado').clientWidth || 760))), chico = ancho < 520;   // el dibujo mide lo que el espacio: las letras no se achican en el celular
-    var W = ancho, H = chico ? 250 : Math.min(340, Math.max(270, Math.round(ancho * 0.36))), L = chico ? 52 : 60, R = chico ? 80 : 92, T = 16, B = 32, pw = W - L - R, ph = H - T - B, DIA = 86400000;
+    var ancho = Math.round(Math.max(300, Math.min(1200, $('cmp-resultado').clientWidth || 760))), chico = ancho < 520;   // el dibujo mide lo que el espacio: las letras no se achican en el celular
+    var W = ancho, H = chico ? 250 : Math.min(360, Math.max(270, Math.round(ancho * 0.32))), L = chico ? 52 : 60, R = chico ? 80 : 92, T = 16, B = 32, pw = W - L - R, ph = H - T - B, DIA = 86400000;
     var largo = Math.max(sa.largo, sb.largo), obj = Math.min(sa.obj, sb.obj), lo = obj;
     sa.pts.concat(sb.pts).forEach(function (p) { if (p.d < lo) lo = p.d; });
     var span = Math.max(1 - lo, (1 - obj) * 2, 0.0005) * 1.15, ymin = 1 - span, dec = span < 0.02 ? 2 : span < 0.2 ? 1 : 0;
@@ -350,8 +437,9 @@ JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
       '<h3 class="cmp-sec">Evolución de la disponibilidad</h3>' + graficoComp(a, b) + tablaComp(a, b);
   }
   $('btn-comparar').addEventListener('click', abrirComparar);
-  $('cmp-desde').addEventListener('change', pedirComparacion);
-  $('cmp-hasta').addEventListener('change', pedirComparacion);
+  function mostrarCmp(msg) { var av = $('cmp-aviso'); av.textContent = msg || ''; av.hidden = !msg; }
+  fEnganchar('cmp-desde', pedirComparacion, mostrarCmp);
+  fEnganchar('cmp-hasta', pedirComparacion, mostrarCmp);
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest && ev.target.closest('[data-cmp-atajo]'); if (!t || !resumen) return;
     var k = t.getAttribute('data-cmp-atajo'), a = resumen;
@@ -369,7 +457,7 @@ def tablero(h):
     h = _rep(h, "Elegí un día, una semana o un mes: todo lo de esta sección corresponde a ese período.",
              "Elegí desde qué día y hasta qué día mirar: todo lo de esta sección corresponde a ese período.")
     h = _rep(h, '    <div class="per-barra" id="per-barra"></div>\n', BARRA)
-    h = _rep(h, '<dialog class="dlg" id="dlg-derivar">', DIALOGO + '<dialog class="dlg" id="dlg-derivar">')
+    h = _rep(h, '<dialog class="dlg" id="dlg-derivar">', DIALOGO.replace('@@CMP_DESDE@@', campo_fecha('cmp-desde', 'Desde')).replace('@@CMP_HASTA@@', campo_fecha('cmp-hasta', 'Hasta')) + '<dialog class="dlg" id="dlg-derivar">')
     # estado y pedido
     h = _rep(h, "var periodo = { tipo: 'mes', fecha: null }, resumen = null,", "var periodo = { desde: null, hasta: null }, resumen = null,")
     h = _rep(h, "  var PER_TIPOS = [['dia', 'Día'], ['semana', 'Semana'], ['mes', 'Mes']];\n", "")
@@ -378,7 +466,7 @@ def tablero(h):
              "return pedir('/api/tablero/periodo' + consultaPeriodo(periodo)).then(function (r) {")
     h = _rep(h, "      $('per-dispo').innerHTML = '<p class=\"vacio\">No se pudo cargar el período: ' + esc(e.message) + '</p>';\n",
              "      if (resumen) {   // el rango no se pudo medir: los campos vuelven al último período bueno y se explica por qué\n"
-             "        periodo = { desde: resumen.desde, hasta: resumen.hasta }; $('per-desde').value = resumen.desde; $('per-hasta').value = resumen.hasta;\n"
+             "        periodo = { desde: resumen.desde, hasta: resumen.hasta }; fPoner('per-desde', resumen.desde); fPoner('per-hasta', resumen.hasta);\n"
              "        try { sessionStorage.setItem('helios_periodo', JSON.stringify(periodo)); } catch (x) { /* nada */ }\n"
              "        errorPeriodo(e.message); return;\n"
              "      }\n"
