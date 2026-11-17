@@ -476,6 +476,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
+**Textos y detalles (17/11, parche 60; sin SQL, falta publicar)**
+
+- Primera tanda de ajustes de Ale: sin los textos explicativos del tablero, Administración, Mis alertas, asistente y Resolver; "Operación ahora" pasa a "Operaciones" y "De mis equipos" a "Equipos"; pre-alertas con frases profesionales y su resumen de 48 h en tarjetas; el botón del asistente dice "Derivar" (o la acción que sea); para el Analista, Disponibilidad es la última pestaña y el tablero arranca en Operaciones; "Mis alertas" en el menú de Comunicados y del detalle; "Fecha y hora" de la auditoría en un renglón.
+- **Cambio de permisos:** Soporte (incluido el responsable de un equipo) ya no reasigna alertas: derivar y reasignar quedan para el Analista.
+- Siguen: parche 61 (Disponibilidad: tarjetas de indicadores, barras con la disponibilidad del grupo, fallas en 3 gráficos, solo causas reales), 62 (Operaciones con torta por estado y barras por cliente, Histórico con filtros por cliente, criticidad y problema) y 63 (Equipos y listas de difusión unificados, con rol por persona; el Analista gestiona equipos y plantillas).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche60/`, ramas `respaldo-antes-parche-60` y `version-parche-60-textos-y-detalles`.
+
 **Asistente: respuesta vacía con Gemma 4 (17/11, parche 59; sin SQL, publicado y probado el 17/11)**
 
 - Con Gemma 4, "¿Qué está sin asignar y a quién lo derivo?" (Analista) daba "No pude armar una respuesta": el modelo gastaba todo el margen en su razonamiento interno (`reasoning_content`) y devolvía `content` vacío, también en el reintento.

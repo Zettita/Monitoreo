@@ -235,7 +235,7 @@ r=await call(A,'POST','/api/admin/umbrales/disponibilidad',pesos(1,0.5,0,3,2,1))
 
 // ---- Textos del tablero (parche 50) ----
 r=await call(ck.gero,'GET','/');
-ok('el texto largo de cómo se mide ya no está y queda la línea corta', !r.t.includes('Se mide en ventanas de 15 minutos de cada servicio') && !r.t.includes('define el Administrador') && r.t.includes('Cuenta como sin servicio: alerta Grave = '));
+ok('parche 60: sin textos de cómo se mide (ni la línea "Cuenta como sin servicio")', !r.t.includes('Se mide en ventanas de 15 minutos de cada servicio') && !r.t.includes('define el Administrador') && !r.t.includes('Cuenta como sin servicio: alerta Grave = '));
 ok('la barra tiene la marca de lo que permite el objetivo y el texto cuenta minutos sin servicio contra los permitidos', r.t.includes('La marca indica lo que permite el objetivo') && r.t.includes('sin servicio; el objetivo permite hasta '));
 ok('ya no habla del margen de errores del mes', !r.t.includes('margen de errores del mes') && !r.t.includes('Objetivo del mes'));
 

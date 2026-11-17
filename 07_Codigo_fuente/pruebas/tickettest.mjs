@@ -49,7 +49,7 @@ r=await call(ck.ana,'GET',`/api/alertas/${AL}/detalle`); ok('analista ve el deta
 ok('analista: derivar y resolver, no tomar', r.j.puedo.derivar && r.j.puedo.resolver && r.j.puedo.comentar && r.j.puedo.adjuntar && !r.j.puedo.tomar);
 await call(ck.ana,'POST',`/api/alertas/${AL}/derivar`,{equipo_id:MESA,comentario:'Revisen el conector'});
 r=await call(ck.sol,'GET',`/api/alertas/${AL}/detalle`); ok('sol (equipo) ve el detalle y puede tomar', r.s===200 && r.j.puedo.tomar && !r.j.puedo.resolver && r.j.eventos.length===1);
-r=await call(ck.carla,'GET',`/api/alertas/${AL}/detalle`); ok('carla (responsable) puede tomar', r.j.puedo.tomar && !r.j.puedo.reasignar===false);
+r=await call(ck.carla,'GET',`/api/alertas/${AL}/detalle`); ok('carla (responsable) puede tomar y, desde el parche 60, no reasignar', r.j.puedo.tomar && r.j.puedo.reasignar===false);
 r=await call(ck.pedro,'GET',`/api/alertas/${AL}/detalle`); ok('pedro (otro equipo) no ve el detalle', r.s===403);
 await call(ck.sol,'POST',`/api/alertas/${AL}/tomar`,{});
 r=await call(ck.sol,'GET',`/api/alertas/${AL}/detalle`); ok('sol en curso: resolver y devolver', r.j.puedo.resolver && r.j.puedo.devolver && !r.j.puedo.tomar);

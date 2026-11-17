@@ -44,7 +44,8 @@ g=grupo('RECHAZO_ALTO','CLI_004'); ok('todas las ventanas en curso con sol', g.e
 ok('pendientes: sol 1 (en curso), carla 0', (await pend('sol'))===1 && (await pend('carla'))===0);
 r=await call(ck.sol,'POST',`/api/alertas/${AL}/comentar`,{comentario:'Estoy hablando con el cliente'}); ok('sol comenta', r.s===200);
 await sig(1); g=grupo('RECHAZO_ALTO','CLI_004'); ok('E9 ventana nueva hereda "en curso" de sol', g.length===3 && g.every(x=>x.estado==='RECONOCIDA' && x.u===id('sol')), g.map(x=>x.v+':'+x.estado+':'+x.u));
-r=await call(ck.carla,'POST',`/api/alertas/${AL}/derivar`,{usuario_id:id('carla'),equipo_id:999}); ok('líder reasigna a sí misma (equipo forzado al suyo)', r.s===200, r.j);
+r=await call(ck.carla,'POST',`/api/alertas/${AL}/derivar`,{usuario_id:id('carla'),equipo_id:999}); ok('parche 60: la responsable del equipo (Soporte) ya no reasigna', r.s===403, r.j);
+r=await call(ck.ana,'POST',`/api/alertas/${AL}/derivar`,{usuario_id:id('carla'),equipo_id:MESA}); ok('el analista la reasigna a carla dentro del equipo', r.s===200, r.j);
 g=grupo('RECHAZO_ALTO','CLI_004'); ok('queda asignada a carla, sin tomar, equipo Mesa', g.every(x=>x.estado==='ABIERTA' && x.u===id('carla') && x.e===MESA));
 r=await call(ck.sol,'POST',`/api/alertas/${AL}/resolver`,{comentario:'ya está'}); ok('sol ya no la puede resolver', r.s===403);
 r=await call(ck.sol,'POST',`/api/alertas/${AL}/tomar`,{}); ok('sol no la puede tomar (es de carla)', r.s===409||r.s===403, r.s);
