@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py y patch63.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py y patch64.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -174,7 +174,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch64.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch65.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -203,6 +203,16 @@ Para un cambio nuevo: crear `patch64.py` con una función `aplicar(s)` (como los
 
 ## Cambio de modelo del asistente (16/11, patch54) — para publicar (sin SQL)
 - Cloudflare da de baja el 20/11/2026 `@cf/qwen/qwen3-30b-a3b-fp8`. El de fábrica pasa a `@cf/qwen/qwen3.8-27b`; una variable `ASISTENTE_MODELO` con un modelo dado de baja se ignora. **54b/54c (17/11, publicados):** si el modelo devuelve vacío se reintenta con el triple de tokens y se deja el detalle en el registro (`Asistente: respuesta vacía…` / `sin texto final…`). **Probado en Cloudflare con Gemma 4** (`ASISTENTE_MODELO = @cf/google/gemma-4-26b-a4b-it`, cargada como variable): responde bien (Analista: Resumen del turno, horarios y cliente, sin asignar), unas 60-80 neuronas por pregunta (496 de 10.000 tras la tanda de pruebas). Qwen3.8 cuesta ~9 veces más que el modelo viejo. Pendiente: pasar el default del código a Gemma, que el servidor arme el botón "Derivar" en "¿Qué está sin asignar y a quién lo derivo?" y bajar `ASISTENTE_POR_DIA` a 100. Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
+
+## Ajustes visuales (17/11, parche 64) — hecho en código, falta publicar (sin SQL)
+Quinta tanda de ajustes de Ale.
+- **Detalle de la alerta:** sin "Todavía no hay movimientos…", sin la ayuda del mensaje del comunicado ni el aviso "Modo simulado…" del ticket; los títulos de Comunicar, Generar ticket y del correo dicen solo "problema · cliente"; el botón del correo dice **"Template correo"**. En "Comunicar incidente", **Equipos y Personas son desplegables** que muestran lo elegido (sin "Sumar personas sueltas").
+- **Disponibilidad:** estados **"Cumple / En riesgo / No cumple"** (sin "cerca" ni "lejos"; grupos "Cumplen el objetivo / En riesgo / No cumplen el objetivo") y en la tarjeta "Desvío vs. objetivo: −5,09 puntos".
+- **Histórico:** Cliente y Servicio en columnas separadas y filtro **Servicio** (por `servicio_id`).
+- **Operaciones:** "Por cliente / Por tipo de falla" solo vuelve a dibujar "Problemas activos" (`ultimoActivos`; la lista de abajo no se toca salvo que hubiera un filtro de barra puesto); "Alertas por estado" y "Problemas activos" son dos tarjetas; la leyenda de estados es más angosta.
+- **Distribución de fallas:** **tortas** con su leyenda (porcentaje y cantidad; lo que sobra va en "Otros", gris), en el tablero y en Mis alertas. Paleta fija `PALETA_FALLAS`.
+- **Pre-alertas:** "Efectividad de los avisos · últimas 48 h" con un anillo de % de acierto (confirmados sobre confirmados + no confirmados), etiquetas de avisos / confirmados / no confirmados / en observación y anticipación promedio; la lista con una etiqueta de resultado por aviso.
+- Probado: demo igual, toda la batería (`textostest` ampliada con los textos de esta tanda) y pantallas del Analista en PC (Operaciones, Disponibilidad, Histórico y Comunicar). Respaldo: `99_Archivo_viejo/worker_antes_parche64/`, ramas `respaldo-antes-parche-64` y `version-parche-64-ajustes-visuales`.
 
 ## Equipos y listas de difusión en uno (17/11, parche 63) — publicado el 17/11 (script 22 corrido)
 Cuarta y última tanda de los ajustes de Ale. Elegido con Ale: **rol por persona** dentro del equipo.

@@ -476,6 +476,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
+**Ajustes visuales (17/11, parche 64; sin SQL, falta publicar)**
+
+- Detalle: menos textos de ayuda, títulos de los diálogos con solo "problema · cliente", botón "Template correo", y en "Comunicar incidente" equipos y personas como desplegables.
+- Disponibilidad: estados "Cumple / En riesgo / No cumple" y "Desvío vs. objetivo". Histórico: cliente y servicio separados y filtro por servicio. Operaciones: dos tarjetas, y el corte por cliente o tipo de falla solo cambia "Problemas activos". Distribución de fallas en tortas. Pre-alertas con anillo de acierto y resultado por aviso.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche64/`, ramas `respaldo-antes-parche-64` y `version-parche-64-ajustes-visuales`.
+
 **Equipos y listas de difusión en uno (17/11, parche 63; script 22 corrido y publicado el 17/11)**
 
 - Las listas de difusión pasan a ser los **equipos**: cada persona del equipo tiene un rol para los comunicados (técnico, líder o informado) y el equipo puede ser general o de un cliente (`equipos.alcance_cliente_id`). Las alertas derivadas a un equipo solo le llegan a su gente de Soporte; los comunicados, a todos con su rol. "Comunicar incidente" elige equipos y también personas sueltas (como técnicos).
