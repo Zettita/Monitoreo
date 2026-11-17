@@ -119,6 +119,8 @@ CSS = """/* Período con Desde / Hasta, barras más altas, letras más grandes y
 .dd-uso { font-size: 14px; }
 .dd-detalle p, .dd-tabla { font-size: 14.5px; }
 .dd-nota { font-size: 14px; }
+.dd-linea svg { max-width: none; }
+.dd-linea { margin: 8px 0 14px; }
 .dd-linea h4 { font-size: 15px; }
 .dd-linea .ejeT { font-size: 11.5px; }
 .dd-linea-res { font-size: 14px; }
@@ -390,6 +392,14 @@ def tablero(h):
     i = h.index("  document.addEventListener('click', function (ev) {\n    var t = ev.target.closest && ev.target.closest('[data-per-tipo]')")
     j = h.index("    pedirPeriodo(true);\n  });\n", i) + len("    pedirPeriodo(true);\n  });\n")
     h = h[:i] + JS + h[j:]
+    # gráfico de evolución de cada cliente: ocupa todo el ancho (se dibuja a la medida del espacio; las letras no se agrandan ni se achican)
+    h = _rep(h, "    var W = 420, H = 170, L = 54, R = 12, T = 14, B = 26, pw = W - L - R, ph = H - T - B, obj = c.objetivo, lo = obj, i;",
+             "    var cont = $('per-dispo'), W = Math.round(Math.max(300, Math.min(1400, ((cont && cont.clientWidth) || 800) - 32))), ancha = W >= 640;\n"
+             "    var H = ancha ? Math.min(250, Math.max(200, Math.round(W * 0.2))) : 190, L = 56, R = 16, T = 16, B = 28, pw = W - L - R, ph = H - T - B, obj = c.objetivo, lo = obj, i;")
+    h = _rep(h, "    var ejeX = [[0, 'start'], [Math.floor((pts.length - 1) / 2), 'middle'], [pts.length - 1, 'end']].map(function (z) {",
+             "    var n1 = pts.length - 1, marcasX = ancha && n1 >= 4 ? [[0, 'start'], [Math.round(n1 / 4), 'middle'], [Math.round(n1 / 2), 'middle'], [Math.round(3 * n1 / 4), 'middle'], [n1, 'end']] : [[0, 'start'], [Math.floor(n1 / 2), 'middle'], [n1, 'end']];\n"
+             "    var ejeX = marcasX.map(function (z) {")
+    h = _rep(h, "y=\"' + (H - 6) + '\" text-anchor=\"' + z[1] + '\">' + etiqueta(pts[z[0]].iso)", "y=\"' + (H - 8) + '\" text-anchor=\"' + z[1] + '\">' + etiqueta(pts[z[0]].iso)")
     # barras de clientes: flecha que gira, y la indicación en el título
     h = _rep(h, "<h3>Clientes según su disponibilidad</h3>'", "<h3>Clientes según su disponibilidad <span class=\"dd-hint\">· tocá una barra para ver los clientes de cada grupo</span></h3>'")
     h = _rep(h, "cant + (cant === 1 ? ' cliente' : ' clientes') + '</span></button>';", "cant + (cant === 1 ? ' cliente' : ' clientes') + '<span class=\"dd-rflecha\" aria-hidden=\"true\">›</span></span></button>';")
