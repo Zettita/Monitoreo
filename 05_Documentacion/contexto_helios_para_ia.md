@@ -480,7 +480,8 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 
 - Cloudflare da de baja el **20/11/2026** el modelo del asistente (`@cf/qwen/qwen3-30b-a3b-fp8`); después responde 410 y el asistente falla. El de fábrica pasa a `@cf/qwen/qwen3.8-27b` (misma familia, el reemplazo "chico" que sugiere Cloudflare; alternativa `@cf/google/gemma-4-26b-a4b-it`).
 - Si la variable `ASISTENTE_MODELO` apunta a un modelo dado de baja, el Worker la ignora y usa el de fábrica (`asistNombreModelo`, lista `ASISTENTE_MODELOS_BAJA`).
-- **Pendiente:** probar las preguntas sugeridas con el modelo real (calidad, uso de herramientas, neuronas por pregunta: el límite de 150 por día se calculó con el modelo anterior).
+- **54b/54c (17/11, publicados):** respuesta vacía del modelo → un reintento con el triple de tokens y registro del detalle. **Probado con Gemma 4** (`@cf/google/gemma-4-26b-a4b-it`, variable `ASISTENTE_MODELO`): responde bien con el Analista, unas 60-80 neuronas por pregunta (Qwen3.8 cuesta ~9 veces más que el modelo viejo, Gemma ~2 veces en entrada y casi igual en salida).
+- **Pendiente:** default del código a Gemma; botón "Derivar" armado por el servidor en la pregunta de sin asignar (hoy depende de que el modelo pida la herramienta y Gemma no lo hizo); `ASISTENTE_POR_DIA` a 100; probar los otros perfiles.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
 
 **Jira real, proyecto KAN (16/11, parche 53; sin SQL)**
