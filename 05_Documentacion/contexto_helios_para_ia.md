@@ -476,10 +476,16 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
+**Gráficos de Operaciones y de fallas (17/11, parche 65; sin SQL, falta publicar junto con el 64)**
+
+- Operaciones > Alertas abiertas: tres gráficos en una línea (Alertas por estado, Problemas por cliente, Problemas por tipo de falla), sin selector; tocar una barra de cualquiera filtra la lista.
+- Distribución de fallas: las tortas del parche 64 se reemplazan por filas que son barras (nombre a la izquierda; % y cantidad a la derecha), en el tablero y en Mis alertas.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche65/`, ramas `respaldo-antes-parche-65` y `version-parche-65-graficos-operaciones-y-fallas`.
+
 **Ajustes visuales (17/11, parche 64; sin SQL, falta publicar)**
 
 - Detalle: menos textos de ayuda, títulos de los diálogos con solo "problema · cliente", botón "Template correo", y en "Comunicar incidente" equipos y personas como desplegables.
-- Disponibilidad: estados "Cumple / En riesgo / No cumple" y "Desvío vs. objetivo". Histórico: cliente y servicio separados y filtro por servicio. Operaciones: dos tarjetas, y el corte por cliente o tipo de falla solo cambia "Problemas activos". Distribución de fallas en tortas. Pre-alertas con anillo de acierto y resultado por aviso.
+- Disponibilidad: estados "Cumple / En riesgo / No cumple" y "Desvío vs. objetivo". Histórico: cliente y servicio separados y filtro por servicio. Operaciones: dos tarjetas, y el corte por cliente o tipo de falla solo cambia "Problemas activos". Distribución de fallas en tortas (reemplazadas por filas-barra en el parche 65). Pre-alertas con anillo de acierto y resultado por aviso.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche64/`, ramas `respaldo-antes-parche-64` y `version-parche-64-ajustes-visuales`.
 
 **Equipos y listas de difusión en uno (17/11, parche 63; script 22 corrido y publicado el 17/11)**
