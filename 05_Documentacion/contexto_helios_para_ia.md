@@ -476,7 +476,7 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
-**Equipos y listas de difusión en uno (17/11, parche 63; script 22, falta publicar)**
+**Equipos y listas de difusión en uno (17/11, parche 63; script 22 corrido y publicado el 17/11)**
 
 - Las listas de difusión pasan a ser los **equipos**: cada persona del equipo tiene un rol para los comunicados (técnico, líder o informado) y el equipo puede ser general o de un cliente (`equipos.alcance_cliente_id`). Las alertas derivadas a un equipo solo le llegan a su gente de Soporte; los comunicados, a todos con su rol. "Comunicar incidente" elige equipos y también personas sueltas (como técnicos).
 - Sin la pestaña "Listas de difusión". El Analista crea, modifica y elimina equipos y plantillas de correo. Un equipo se elimina solo si nunca tuvo alertas ni reglas de derivación; si no, se desactiva.
