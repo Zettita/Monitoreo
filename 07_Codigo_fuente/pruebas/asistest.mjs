@@ -142,6 +142,10 @@ pedidos.length=0; guion=[()=>texto('ok')];
 r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'});
 const msjN=pedidos[0].p.messages.pop().content, dN=JSON.parse(msjN.split('(JSON):\n')[1].split('\n\nCómo responder:')[0]);
 ok('analista "sin asignar": conteos ya separados y la guía distingue asignada sin tomar', dN.alertas_abiertas.cuantas && typeof dN.alertas_abiertas.cuantas.sin_asignar==='number' && /No hay nada sin asignar/.test(msjN) && /asignada sin tomar no está sin asignar/.test(msjN), dN.alertas_abiertas.cuantas);
+// 17/11 (parche 55): los botones "Derivar" los arma el servidor aunque el modelo no pida la herramienta (Gemma no la pedía)
+{ const n=dN.alertas_abiertas.cuantas.sin_asignar, ac=r.j.acciones||[], persona=dN.opciones_derivacion.personas_de_soporte||[];
+  ok('analista "sin asignar": un botón Derivar por cada sin asignar (máx. 3), armado por el servidor ('+n+' sin asignar)', ac.length===Math.min(3,n) && ac.every((x)=>x.tipo==='derivar' && (x.usuario_id||x.equipo_id)) && (persona.length===0 || ac.every((x)=>persona.some((u)=>u.usuario_id===x.usuario_id))), JSON.stringify(ac).slice(0,300));
+  ok('el servidor reparte: no manda las 3 a la misma persona si hay otra con menos carga', n<2 || persona.length<2 || new Set(ac.map((x)=>x.usuario_id)).size>1 || persona.every((u)=>u.problemas_abiertos>=(persona.find((w)=>w.usuario_id===ac[0].usuario_id)||{problemas_abiertos:0}).problemas_abiertos+ac.length)); }
 // Caso real (13/11, 29e): "¿Cómo está la operación?" listaba los clientes sin problemas y copiaba "Peor gravedad", "Cantidad"
 pedidos.length=0; guion=[()=>texto('ok')];
 r=await call(ck.gero,'POST','/api/asistente',{sugerencia:'operacion_hoy'});
@@ -228,4 +232,29 @@ for (const [u,p] of [['ana','/'],['pedro','/mis-alertas'],['ana','/seguimiento']
   ok('la página '+p+' trae el asistente', h.includes('id="asis-boton"') && h.includes("'/api/asistente'"));
 }
 ok('el resto de la demo no cambió (sin eventos del asistente)', db.prepare("select count(*) n from alerta_eventos where comentario like '%asistente%'").get().n===0);
+// 17/11 (parche 55): con alertas sin asignar de verdad, el servidor deja los botones Derivar aunque el modelo no pida nada
+for (let i=0;i<6;i++) await call(A,'POST','/api/demo/siguiente');
+pedidos.length=0; guion=[()=>texto('ok')];
+r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'});
+{ const m=pedidos[0].p.messages.pop().content, d=JSON.parse(m.split('(JSON):\n')[1].split('\n\nCómo responder:')[0]), n=d.alertas_abiertas.cuantas.sin_asignar, ac=r.j.acciones||[], pers=d.opciones_derivacion.personas_de_soporte||[];
+  ok('con '+n+' sin asignar hay '+Math.min(3,n)+' botones Derivar armados por el servidor', n>0 && ac.length===Math.min(3,n) && ac.every((x)=>x.tipo==='derivar' && x.usuario_id && pers.some((u)=>u.usuario_id===x.usuario_id)), JSON.stringify(ac.map((x)=>[x.alerta_id.slice(0,6),x.usuario_id,x.destino])));
+  ok('cada botón es de una alerta distinta y sin asignar', new Set(ac.map((x)=>x.alerta_id)).size===ac.length && ac.every((x)=>d.alertas_abiertas.problemas.some((q)=>q.alerta_id===x.alerta_id && q.estado==='Sin asignar')));
+  ok('"Te dejo los botones para derivarlas" llega en la nota al modelo', /botones|Hacerlo/.test(m), m.slice(-200)); }
+// 17/11 (parche 55): alertas abiertas hace más de 24 h
+ok('el Analista y el Administrador tienen la pregunta "¿Qué alertas llevan más tiempo abiertas?"', (await call(ck.ana,'GET','/api/asistente')).j.sugerencias.some((x)=>x.id==='mas_viejas') && (await call(A,'GET','/api/asistente')).j.sugerencias.some((x)=>x.id==='mas_viejas'));
+r=await call(ck.gero,'POST','/api/asistente',{sugerencia:'mas_viejas'}); ok('el Gerente no puede usar la pregunta de alertas viejas', r.s===400);
+pedidos.length=0; guion=[()=>texto('ok')];
+await call(ck.ana,'POST','/api/asistente',{sugerencia:'mas_viejas'});
+{ const m=pedidos[0].p.messages.pop().content, d=JSON.parse(m.split('(JSON):\n')[1].split('\n\nCómo responder:')[0]);
+  ok('sin alertas viejas: cuenta 0 y no hay "abierta_hace"', d.alertas_abiertas.cuantas.abiertas_hace_mas_de_24_h===0 && !/abierta_hace"/.test(JSON.stringify(d.alertas_abiertas.problemas)) && /No hay alertas abiertas hace más de un día/.test(m)); }
+// una alerta que apareció hace 3 días y sigue abierta
+const viejo=db.prepare("select alerta_id from alertas_historico where estado<>'RESUELTA' and severidad<>'BAJA' limit 1").get().alerta_id;
+const ahoraD=db.prepare("select ahora from alerta_parametros where id=1").get().ahora;
+db.prepare("update alertas_historico set primera_deteccion=strftime('%Y-%m-%dT%H:%M:%SZ', datetime(?1,'-3 days')) where alerta_id=?2").run(ahoraD.replace('Z','').replace('T',' '),viejo);
+pedidos.length=0; guion=[()=>texto('ok')];
+await call(ck.ana,'POST','/api/asistente',{sugerencia:'mas_viejas'});
+{ const d=JSON.parse(pedidos[0].p.messages.pop().content.split('(JSON):\n')[1].split('\n\nCómo responder:')[0]);
+  ok('con una alerta abierta hace 3 días: la cuenta da 1 y dice "3 días"', d.alertas_abiertas.cuantas.abiertas_hace_mas_de_24_h===1 && d.alertas_abiertas.problemas.some((x)=>x.abierta_hace==='3 días'), JSON.stringify(d.alertas_abiertas.cuantas)); }
+// páginas: la marca existe en Seguimiento y en el tablero
+for (const [u,pg] of [['ana','/seguimiento'],['ana','/']]) { const h=await (await worker.fetch(new Request('https://x'+pg,{headers:{cookie:ck[u]}}),env,{})).text(); ok('la página '+pg+' trae la marca "Abierta hace"', /Abierta hace/.test(h) && /class=\\?"vieja\\?"|\.vieja/.test(h)); }
 console.log(fallas ? 'FALLAS: '+fallas : 'TODO OK');

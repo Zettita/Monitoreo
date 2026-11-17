@@ -476,6 +476,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
+**Parche 55 (17/11; sin SQL, falta publicar)**
+
+- Asistente: Gemma 4 por defecto en el código, tope de 100 preguntas por día, botones "Derivar" armados por el servidor en "¿Qué está sin asignar y a quién lo derivo?" (hasta 3, a la persona de Soporte con menos problemas abiertos) y pregunta nueva "¿Qué alertas llevan más tiempo abiertas?" (Analista y Administrador).
+- Marca roja "Abierta hace N h/días" en Seguimiento y en el tablero cuando una alerta lleva más de 24 h abierta.
+- Origen: reunión del 12/11 con Hugo (herramienta GPI): un incidente con 231 horas abierto, planilla contra tickets de InvGate que no coinciden, y disponibilidad ponderada por tipo de impacto (0,75 total, 0,50 parcial, 0,25 degradación, por coeficiente de clientes afectados): **eso último queda pendiente de que Hugo confirme** (sección 18).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
+
 **Asistente: cambio de modelo de IA (16/11, parche 54; sin SQL, falta publicar)**
 
 - Cloudflare da de baja el **20/11/2026** el modelo del asistente (`@cf/qwen/qwen3-30b-a3b-fp8`); después responde 410 y el asistente falla. El de fábrica pasa a `@cf/qwen/qwen3.8-27b` (misma familia, el reemplazo "chico" que sugiere Cloudflare; alternativa `@cf/google/gemma-4-26b-a4b-it`).

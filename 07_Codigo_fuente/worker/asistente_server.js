@@ -18,7 +18,7 @@
 // Tabla: asistente_uso (script 11_asistente_d1.txt).
 // =====================================================================
 
-const ASISTENTE_MODELO_FABRICA = '@cf/qwen/qwen3.8-27b';
+const ASISTENTE_MODELO_FABRICA = '@cf/google/gemma-4-26b-a4b-it';   // probado el 17/11: ~60-80 neuronas por pregunta (Qwen3.8 cuesta ~9 veces más que el modelo anterior)
 // Modelos que Cloudflare da de baja el 20/11/2026 (después responden 410): si la variable ASISTENTE_MODELO todavía apunta a uno, se usa el de fábrica
 const ASISTENTE_MODELOS_BAJA = ['@cf/qwen/qwen3-30b-a3b-fp8', '@cf/qwen/qwq-32b', '@cf/meta/llama-3.1-8b-instruct-fp8', '@cf/meta/llama-3.2-1b-instruct', '@cf/meta/llama-3.2-3b-instruct', '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', '@cf/moonshotai/kimi-k2.6', '@cf/zai-org/glm-5.2'];
 function asistNombreModelo(env) { const m = env.ASISTENTE_MODELO; return m && !ASISTENTE_MODELOS_BAJA.includes(m) ? m : ASISTENTE_MODELO_FABRICA; }
@@ -81,6 +81,11 @@ function asistPrioridad(sev, crit) {
 }
 // Agrupa filas de alertas abiertas en problemas (mismo tipo y misma serie), como la interfaz
 const asistMinutos = (n) => n < 60 ? n + ' min' : Math.floor(n / 60) + ' h' + (n % 60 ? ' ' + (n % 60) + ' min' : '');
+// Cuánto hace que apareció el problema (parche 55): solo si pasó de 24 horas, para marcar lo que quedó olvidado
+function asistAbiertaHace(ahoraMs, iso) {
+  const m = isNaN(ahoraMs) || !iso || isNaN(Date.parse(iso)) ? 0 : Math.round((ahoraMs - Date.parse(iso)) / 60000);
+  return m >= 1440 ? (m >= 2880 ? Math.floor(m / 1440) + ' días' : Math.floor(m / 60) + ' horas') : undefined;
+}
 function asistAgrupar(filas, umbrales, reglas, yoId, ahoraIso) {
   const ahoraMs = ahoraIso ? Date.parse(ahoraIso) : NaN;
   const idx = {}, out = [];
@@ -109,6 +114,7 @@ function asistAgrupar(filas, umbrales, reglas, yoId, ahoraIso) {
       asignada_a: a.asignado_nombre || a.equipo_nombre ? [a.asignado_nombre, a.equipo_nombre ? 'equipo ' + a.equipo_nombre : null].filter(Boolean).join(', ') : null,
       es_mia: yoId != null && a.asignado_usuario_id === yoId ? true : undefined,
       lleva_en_este_estado: lleva == null ? undefined : asistMinutos(lleva),
+      abierta_hace: asistAbiertaHace(ahoraMs, g.detectada),
       demorada: lleva != null && lleva > tope ? (g.en_curso ? 'Lleva más de 2 horas en curso' : g.asig ? 'Lleva más de 30 minutos asignada y nadie la tomó' : 'Lleva más de 15 minutos sin asignar') : undefined,
       _orden: p * 1e6 - g.filas.length, _sev: g.sev, _equipo: a.asignado_equipo_id, _usuario: a.asignado_usuario_id,
     };
@@ -177,7 +183,7 @@ const ASIST_HERRAMIENTAS = {
       if (a && a.cliente_id) g = g.filter((x) => x.donde.startsWith(String(a.cliente_id).toUpperCase() + ','));
       const n = (f) => g.filter(f).length;
       return { total: g.length,
-        cuantas: { sin_asignar: n((x) => x.estado === 'Sin asignar'), asignadas_sin_tomar: n((x) => x.estado === 'Asignada sin tomar'), en_curso: n((x) => x.estado.startsWith('En curso')), demoradas: n((x) => x.demorada) },
+        cuantas: { sin_asignar: n((x) => x.estado === 'Sin asignar'), asignadas_sin_tomar: n((x) => x.estado === 'Asignada sin tomar'), en_curso: n((x) => x.estado.startsWith('En curso')), demoradas: n((x) => x.demorada), abiertas_hace_mas_de_24_h: n((x) => x.abierta_hace) },
         problemas: asistLimpiar(g.slice(0, 25)) };
     },
   },
@@ -404,7 +410,7 @@ async function asistValidarAccion(env, yo, a) {
 
 // ---------- Uso y límites ----------
 const asistPorHora = (env) => { const n = Number(env.ASISTENTE_POR_HORA); return Number.isInteger(n) && n > 0 ? n : 20; };
-const asistPorDia = (env) => { const n = Number(env.ASISTENTE_POR_DIA); return Number.isInteger(n) && n > 0 ? n : 150; };
+const asistPorDia = (env) => { const n = Number(env.ASISTENTE_POR_DIA); return Number.isInteger(n) && n > 0 ? n : 100; };
 async function asistUso(env, yo) {
   const h = new Date().toISOString().slice(0, 13);   // hora real (UTC): el cupo de Workers AI es por día real
   const r = await env.DB.batch([
@@ -457,6 +463,21 @@ function asistSchemas(nombres, yo) {
 const asistDisponibles = (yo) => Object.keys(ASIST_HERRAMIENTAS).filter((n) => { const p = ASIST_HERRAMIENTAS[n].permiso; return typeof p === 'function' ? p(yo) : puede(yo, p); });
 
 const ASIST_GUIA_OPERACION = 'Respuesta corta, como mucho 6 renglones: primero lo que pasa ahora, por gravedad, una frase por cliente (por ejemplo "CLI_004: problema leve en Transferencias por API"); si alguno viene empeorando, decilo; nombrá los clientes nuevos sin historia; después la frase de "resto" tal cual (no listes los clientes que están bien). Cerrá con una sola línea de los últimos 7 días: cuántos incidentes, cuántos graves y el tiempo promedio de resolución. No detalles los incidentes por cliente ni por horario.';
+// Botones "Derivar" armados por el servidor para las alertas sin asignar (máx. 3): cada una va a la persona de Soporte con menos problemas abiertos (o, si no hay personas, al equipo con menos)
+function asistProponerDerivar(d) {
+  const sin = ((d.alertas_abiertas || {}).problemas || []).filter((x) => x.estado === 'Sin asignar' && x.alerta_id).slice(0, ASIST_MAX_ACCIONES);
+  const o = d.opciones_derivacion || {};
+  const personas = (o.personas_de_soporte || []).map((x) => ({ id: x.usuario_id, n: x.problemas_abiertos || 0 }));
+  const equipos = (o.equipos || []).map((x) => ({ id: x.equipo_id, n: x.problemas_abiertos || 0 }));
+  const lista = personas.length ? personas : equipos;
+  if (!sin.length || !lista.length) return null;
+  return sin.map((x) => {
+    lista.sort((u, v) => u.n - v.n);
+    const dest = lista[0]; dest.n++;
+    return Object.assign({ tipo: 'derivar', alerta_id: x.alerta_id, motivo: 'Es ' + (personas.length ? 'la persona' : 'el equipo') + ' de Soporte con menos problemas abiertos.' }, personas.length ? { usuario_id: dest.id } : { equipo_id: dest.id });
+  });
+}
+const ASIST_GUIA_VIEJAS = 'Mirá cuantas.abiertas_hace_mas_de_24_h. Si es 0, empezá con "No hay alertas abiertas hace más de un día." y nombrá en una frase la más antigua que haya (cliente, servicio y cuánto lleva en "lleva_en_este_estado" o desde qué hora). Si hay, listá cada una con cliente, servicio, prioridad, cuánto hace que está abierta (abierta_hace) y quién la tiene; después una frase: una alerta que sigue abierta días suele estar olvidada o ser un caso que ya se normalizó, así que conviene revisar si hay que cerrarla. No inventes causas.';
 // Preguntas sugeridas por perfil: se resuelven trayendo los datos directo (sin que el modelo elija), así cuestan una sola llamada
 const ASIST_SUGERENCIAS = {
   SOPORTE: [{ id: 'mis_pendientes', texto: '¿Qué tengo pendiente y por dónde empiezo?', herramientas: ['mis_alertas'],
@@ -466,7 +487,10 @@ const ASIST_SUGERENCIAS = {
     { id: 'resumen_turno', texto: 'Resumen del turno', herramientas: ['alertas_abiertas', 'carga_equipos', 'prealertas'],
       guia: 'Usá estos títulos en negrita, cada uno con una lista corta: **Ahora** (cada problema en una frase, por prioridad; si no hay, "Todo en orden"), **Quién tiene qué** (sin asignar, asignadas sin tomar y en curso, con quién las tiene), **Demoradas** (solo si hay: lo que pasó de 15 min sin asignar, 30 min sin tomar o 2 h en curso), **Viene empeorando** (pre-alertas; si no hay, "Nada"). Cerrá con **Para hacer** solo si hay algo concreto: derivar lo que está sin asignar o recordarle a alguien una demorada. Nunca recomiendes derivar algo que ya está asignado.' },
     { id: 'sin_asignar', texto: '¿Qué está sin asignar y a quién lo derivo?', herramientas: ['alertas_abiertas', 'opciones_derivacion'],
-      guia: 'Mirá cuantas.sin_asignar. Si es 0, empezá con "No hay nada sin asignar." y no propongas derivar; después contá en una o dos frases lo que está asignado sin tomar (quién lo tiene y cuánto lleva) y si alguna está demorada. Si hay sin asignar, para cada una (máximo 3) proponé derivarla con sugerir_accion a la persona o equipo de Soporte con menos problemas abiertos, y explicá por qué en una frase. Una alerta asignada sin tomar no está sin asignar.' },
+      guia: 'Mirá cuantas.sin_asignar. Si es 0, empezá con "No hay nada sin asignar." y no propongas derivar; después contá en una o dos frases lo que está asignado sin tomar (quién lo tiene y cuánto lleva) y si alguna está demorada. Si hay sin asignar, decí a quién conviene derivarlas (la persona o equipo de Soporte con menos problemas abiertos) y por qué en una frase; si te dejamos botones para derivar, decí "Te dejo los botones para derivarlas" y no escribas vos la propuesta. Una alerta asignada sin tomar no está sin asignar.',
+      proponer: asistProponerDerivar },
+    { id: 'mas_viejas', texto: '¿Qué alertas llevan más tiempo abiertas?', herramientas: ['alertas_abiertas'],
+      guia: ASIST_GUIA_VIEJAS },
     { id: 'relacionadas', texto: '¿Hay alertas relacionadas entre sí?', herramientas: ['alertas_abiertas'],
       guia: 'Relacionadas son: varias del mismo cliente al mismo tiempo, el mismo servicio con problemas en varios clientes, o problemas que empezaron con menos de 30 minutos de diferencia. Si hay 0 o 1 problema abierto, decí "Hay una sola alerta abierta (o ninguna): no hay con qué relacionarla." Si hay varias y no se relacionan, decilo y explicá en una frase por qué.' },
     { id: 'prealertas', texto: '¿Qué pre-alertas conviene avisar a Soporte?', herramientas: ['prealertas'],
@@ -481,6 +505,7 @@ const ASIST_SUGERENCIAS = {
     { id: 'ajustes', texto: '¿Qué umbrales conviene revisar?', herramientas: ['ajustes_sugeridos'],
       guia: 'Si no hay candidatos, decilo con la frase de sin_candidatos y explicá el criterio en una frase; no recomiendes cambiar valores de fábrica sin un motivo en los datos (100 % no es "amplio": es la banda del modelo). Si hay candidatos, para cada uno: cliente y servicio, cuántas alertas cortas se normalizaron solas y la sugerencia (por ejemplo, ensanchar esa banda a 120 % o 130 %), y recordá que el cambio se hace en Administración > Umbrales.' },
     { id: 'operacion_hoy', texto: '¿Cómo está la operación ahora?', herramientas: ['estado_clientes', 'incidentes'], guia: ASIST_GUIA_OPERACION },
+    { id: 'mas_viejas', texto: '¿Qué alertas llevan más tiempo abiertas?', herramientas: ['alertas_abiertas'], guia: ASIST_GUIA_VIEJAS },
   ],
 };
 
@@ -638,7 +663,7 @@ async function asistResponder(env, yo, entrada) {
     const datos = {};
     for (const [n, a] of directas) datos[n] = await correrHerramienta(n, a);
     // Propuesta armada por el servidor (por ejemplo, "Tomar" la primera de Soporte): no depende de que el modelo la pida
-    if (entrada.sugerencia && entrada.sugerencia.proponer) { const p = entrada.sugerencia.proponer(datos); if (p) await correrHerramienta('sugerir_accion', p); }
+    if (entrada.sugerencia && entrada.sugerencia.proponer) { const p = entrada.sugerencia.proponer(datos); for (const x of (Array.isArray(p) ? p : p ? [p] : [])) await correrHerramienta('sugerir_accion', x); }
     pregunta += '\n\nDatos de Helios para responder (JSON):\n' + JSON.stringify(datos);
     if (entrada.sugerencia && entrada.sugerencia.guia) pregunta += '\n\nCómo responder: ' + entrada.sugerencia.guia + (acciones.length ? ' (Ya le dejamos a la persona el botón "Hacerlo" para: ' + acciones.map((x) => x.titulo.toLowerCase()).join(', ') + '.)' : '');
   }

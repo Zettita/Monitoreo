@@ -26,6 +26,7 @@
 .nota-seg { max-width: 34ch; font-size: 13px; color: var(--ink-2); }
 .nota-seg q { quotes: "“" "”"; color: var(--ink); }
 .tiempo.demora { color: var(--critica-txt, var(--critica)); font-weight: 600; }
+.vieja { display: inline-block; margin-top: 3px; padding: 0 6px; border-radius: 3px; border: 1px solid var(--critica); background: var(--critica-bg); color: var(--critica-txt, var(--critica)); font-size: 11.5px; font-weight: 700; line-height: 18px; }
 .prio { display: inline-block; min-width: 30px; padding: 0 6px; border-radius: 3px; border: 1px solid; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
 .prio.p1 { background: var(--critica-bg); color: var(--critica-txt, var(--critica)); border-color: var(--critica); }
 .prio.p2 { background: var(--alta-bg); color: var(--alta-txt, var(--alta)); border-color: var(--alta); }
@@ -185,6 +186,9 @@
     return (dia === hoy ? '' : dia === ayer ? 'ayer ' : d.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', timeZone: TZ }) + ' ') + hora(iso);
   }
   function minutosDesde(iso) { return Math.max(0, Math.round((aFecha(datos.ahora) - aFecha(iso)) / 60000)); }
+  // Abierta hace más de 24 h (parche 55): la alerta sigue sin cerrarse; se marca para que no quede olvidada
+  var ABIERTA_LARGA_MIN = 1440;
+  function viejaTxt(m) { return m < ABIERTA_LARGA_MIN ? '' : '<br><span class="vieja" title="Lleva más de 24 horas abierta. Conviene revisar si sigue siendo un problema o si hay que cerrarla.">Abierta hace ' + (m >= 2880 ? Math.floor(m / 1440) + ' días' : Math.floor(m / 60) + ' h') + '</span>'; }
   function dur(m) { return m < 1 ? 'recién' : m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : ''); }
   function servicio(r) { return (SERVICIO[r.servicio_id] || String(r.servicio_id || '').toLowerCase().replace(/_/g, ' ')) + ' por ' + (CANAL[r.canal_id] || r.canal_id); }
   function frase(tipo, r) { if (tipo === 'VOLUMEN_BAJO' && r && r.valor_observado === 0) return 'No está entrando tráfico'; return FRASE[tipo] || tipo; }
@@ -278,7 +282,7 @@
         }
         if (g.eventos.length) acc += '<button class="btn chico enlace" data-acc="historial" data-id="' + g.id + '">Historial</button>';
         return '<tr><td data-t="Prioridad">' + prioChip(g) + '</td>' +
-          '<td><span class="sev ' + esc(g.sev) + '">' + esc(SEV_TXT[g.sev]) + '</span> ' + esc(frase(g.ult.tipo_alerta, g.ult)) + '<br><small>desde las ' + esc(hora(g.desde)) + ' · ' + g.filas.length + (g.filas.length === 1 ? ' ventana' : ' ventanas') + '</small></td>' +
+          '<td><span class="sev ' + esc(g.sev) + '">' + esc(SEV_TXT[g.sev]) + '</span> ' + esc(frase(g.ult.tipo_alerta, g.ult)) + '<br><small>desde las ' + esc(hora(g.desde)) + ' · ' + g.filas.length + (g.filas.length === 1 ? ' ventana' : ' ventanas') + '</small>' + viejaTxt(minutosDesde(g.det || g.desde)) + '</td>' +
           '<td data-t="Cliente">' + esc(g.ult.cliente_id) + '<br><small>' + esc(servicio(g.ult)) + '</small></td>' +
           '<td data-t="Estado"><span class="' + e[0] + '">' + e[1] + '</span>' + (g.estado === 'asig' ? '<br><small>sin tomar</small>' : '') + '</td>' +
           '<td data-t="Quién la tiene">' + quienTxt(g) + '</td>' +

@@ -19,7 +19,7 @@ Opcional, en Settings › Variables and Secrets (tipo Text):
 |---|---|---|
 | `ASISTENTE_MODELO` | Modelo de Workers AI | `@cf/qwen/qwen3.8-27b` |
 | `ASISTENTE_POR_HORA` | Preguntas por persona por hora | 20 |
-| `ASISTENTE_POR_DIA` | Preguntas por día, entre todos | 150 |
+| `ASISTENTE_POR_DIA` | Preguntas por día, entre todos | 100 |
 
 Sin el enlace `AI`, Helios funciona igual y el panel avisa que el asistente todavía no está configurado.
 
