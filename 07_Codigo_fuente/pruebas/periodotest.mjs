@@ -75,9 +75,35 @@ mover(-18);   // 30/09
 ok('movida al 30/09: está en septiembre y no en octubre', await cuenta('?tipo=mes&fecha=2026-09-30')===antes && await cuenta('?tipo=mes')===0);
 ok('…y en su día', await cuenta('?tipo=dia&fecha=2026-09-30')===antes && await cuenta('?tipo=dia&fecha=2026-10-01')===0);
 
+// ---- Período con Desde / Hasta (parche 56) ----
+r=await P(ck.gero,'?desde=2026-10-26&hasta=2026-10-26'); const rd=r.j; const rt=await P(ck.gero,'?tipo=dia&fecha=2026-10-26');
+ok('un solo día con Desde y Hasta da lo mismo que el día', r.s===200 && rd.tipo==='rango' && rd.titulo==='26/10/2026' && rd.dias===1 && rd.incidentes.length===rt.j.incidentes.length && JSON.stringify(rd.disponibilidad)===JSON.stringify(rt.j.disponibilidad), [rd.titulo, rd.dias]);
+ok('trae el día de hoy y hasta cuándo se puede mirar para los campos de fecha', rd.hoy==='2026-10-26' && rd.fecha_minima==='2025-09-21', [rd.hoy, rd.fecha_minima]);
+ok('en un rango no hay flechas (anterior / siguiente vacíos)', rd.anterior===null && rd.siguiente===null);
+r=await P(ck.gero,'?desde=2026-10-01&hasta=2026-10-26'); const rm=await P(ck.gero,'?tipo=mes');
+ok('del 1 al 26/10 mide lo mismo que el mes hasta ahora', r.s===200 && r.j.titulo==='01/10 al 26/10/2026' && r.j.dias===26 && r.j.disponibilidad.global.disponibilidad===rm.j.disponibilidad.global.disponibilidad && r.j.disponibilidad.global.minutos_perdidos===rm.j.disponibilidad.global.minutos_perdidos, [r.j.titulo, r.j.dias]);
+r=await P(ck.gero,'?desde=2026-10-20&hasta=2026-10-26'); const r7=r.j;
+ok('el período anterior de un rango es otro de la misma duración, justo antes', r.s===200 && r7.dias===7 && r7.disponibilidad_anterior && r7.disponibilidad_anterior.titulo==='13/10 al 19/10/2026', r7.disponibilidad_anterior && r7.disponibilidad_anterior.titulo);
+ok('el título cruza de año con el año en las dos puntas', (await P(ck.gero,'?desde=2025-12-30&hasta=2026-01-02')).j.titulo==='30/12/2025 al 02/01/2026');
+r=await P(ck.gero,'?desde=2026-10-20&hasta=2026-10-26&liviano=1');
+ok('liviano: solo la disponibilidad (sin incidentes ni período anterior) y el mismo número', r.s===200 && r.j.incidentes.length===0 && r.j.disponibilidad_anterior===null && r.j.disponibilidad.global.disponibilidad===r7.disponibilidad.global.disponibilidad && Array.isArray(r.j.disponibilidad.global.tendencia.pt));
+r=await P(ck.gero,'?desde=2026-10-26'); ok('falta una de las dos fechas: 400', r.s===400, r.j.error);
+r=await P(ck.gero,'?hasta=2026-10-26'); ok('falta Desde: 400', r.s===400, r.j.error);
+r=await P(ck.gero,'?desde=2026-02-31&hasta=2026-10-26'); ok('fecha imposible en un rango: 400', r.s===400);
+r=await P(ck.gero,'?desde=hola&hasta=2026-10-26'); ok('fecha mal escrita en un rango: 400', r.s===400);
+r=await P(ck.gero,'?desde=2026-10-20&hasta=2026-10-10'); ok('Desde después de Hasta: 400 con mensaje claro', r.s===400 && /anterior o igual/.test(r.j.error), r.j.error);
+r=await P(ck.gero,'?desde=2026-10-01&hasta=2026-12-31'); ok('un Hasta en el futuro se lleva a hoy', r.s===200 && r.j.hasta==='2026-10-26' && r.j.parcial===true, r.j.hasta);
+r=await P(ck.gero,'?desde=2026-10-27&hasta=2026-10-30'); ok('un rango entero en el futuro: 400', r.s===400, r.j.error);
+r=await P(ck.gero,'?desde=2025-09-20&hasta=2025-09-22'); ok('antes del límite de 400 días: 400', r.s===400, r.j.error);
+r=await P(ck.gero,'?desde=2025-10-26&hasta=2026-10-26'); ok('366 días justos entran', r.s===200 && r.j.dias===366, r.j.dias);
+r=await P(ck.gero,'?desde=2025-09-25&hasta=2026-10-26'); ok('más de 366 días: 400 con mensaje claro', r.s===400 && /366/.test(r.j.error), r.j.error);
+r=await P(ck.sol,'?desde=2026-10-20&hasta=2026-10-26'); ok('Soporte tampoco entra con un rango (403)', r.s===403);
+r=await call('','GET','/api/tablero/periodo?desde=2026-10-20&hasta=2026-10-26'); ok('sin sesión no entra con un rango (401)', r.s===401);
+
 // ---- La página ----
 r=await call(ck.gero,'GET','/');
-ok('el tablero trae la sección del período y ya no la de fallas suelta', r.s===200 && r.t.includes('id="b-periodo"') && r.t.includes('data-per-tipo') && !r.t.includes('id="b-fallas"') && r.t.includes('/api/tablero/periodo'));
+ok('el tablero trae la sección del período y ya no la de fallas suelta', r.s===200 && r.t.includes('id="b-periodo"') && r.t.includes('id="per-desde"') && r.t.includes('id="per-hasta"') && r.t.includes('id="btn-comparar"') && !r.t.includes('data-per-tipo') && !r.t.includes('id="b-fallas"') && r.t.includes('/api/tablero/periodo'));
+ok('la página trae la ventana de comparación con sus fechas y atajos', r.t.includes('id="dlg-comparar"') && r.t.includes('id="cmp-desde"') && r.t.includes('data-cmp-atajo="mes"') && r.t.includes('data-cmp-atajo="anio"'));
 ok('la distribución de fallas no muestra Hoy / 7 / 30 días cuando el período viene de afuera', r.t.includes("d.periodo_fijo ? '' : seg(PERIODOS"));
 
 console.log(fallas ? '\nHAY '+fallas+' FALLAS' : '\nTODO OK');

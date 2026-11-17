@@ -200,6 +200,17 @@ const p22=c6x.tendencia.pt; const i1=p22.findIndex(p=>p && p[0]<1);
 ok('…la línea del 22/10 está al 100 % hasta la ventana Grave y baja justo ahí (ventana 40 = 10:00 locales, 41 medidas hasta ese momento)', i1===40 && cerca(p22[i1][0],1-1/41,1e-5) && p22[i1][1]===2, [i1,p22[i1]]);
 ok('la página trae el gráfico de evolución en el desplegable de cada cliente', (await call(ck.gero,'GET','/')).t.includes('Evolución de la disponibilidad'));
 ok('una consulta por servicio por el índice de ventana_inicio, sin recorrer toda la tabla', /USING (COVERING )?INDEX/i.test(JSON.stringify(db.prepare("EXPLAIN QUERY PLAN SELECT o.ventana_inicio FROM core_metricas_observadas o WHERE o.ventana_inicio >= '2026-10-01T03:00:00' AND o.cliente_id='CLI_006' AND o.servicio_id='PAGO_SERVICIOS' ORDER BY o.ventana_inicio LIMIT 1").all())));
+// Rangos con Desde / Hasta (parche 56): el paso de la evolución sale de la duración y de lo medido, y el último punto sigue siendo el número de arriba
+const rg7=await P(ck.gero,'?desde=2026-10-20&hasta=2026-10-26'); coincide(rg7.j,'rango de 7 días');
+ok('un rango de 7 días va de a una hora', rg7.j.disponibilidad.global.tendencia.paso_minutos===60, rg7.j.disponibilidad.global.tendencia.paso_minutos);
+const rg1=await P(ck.gero,'?desde=2026-10-22&hasta=2026-10-22'); coincide(rg1.j,'rango de un día');
+ok('un rango de un día va de a 15 minutos y es igual al día 22/10', rg1.j.disponibilidad.global.tendencia.paso_minutos===15 && JSON.stringify(rg1.j.disponibilidad)===JSON.stringify(sem22.j.disponibilidad));
+db.exec("UPDATE obs_t SET metrica_id='MET-TEND-v10', ventana_inicio='2026-10-10T13:00:00.000Z', ventana_fin='2026-10-10T13:15:00.000Z'"); db.exec("INSERT INTO core_metricas_observadas SELECT * FROM obs_t");
+const rg17=await P(ck.gero,'?desde=2026-10-10&hasta=2026-10-26'); coincide(rg17.j,'rango de 17 días');
+ok('un rango de 17 días con más de una semana de datos va de a un día', rg17.j.disponibilidad.global.tendencia.paso_minutos===1440, rg17.j.disponibilidad.global.tendencia.paso_minutos);
+ok('…y una sola ventana Grave en el 22/10 baja la línea ese día (indice 12 desde el 10/10), no antes', (()=>{ const t=rg17.j.disponibilidad.clientes.find(c=>c.cliente_id==='CLI_006').tendencia; return t.pt[11] && t.pt[11][0]===1 && t.pt[12] && t.pt[12][0]<1; })());
+const rgIz=await P(ck.gero,'?desde=2026-10-10&hasta=2026-10-26&liviano=1');
+ok('liviano trae la misma línea y el mismo número, sin período anterior', JSON.stringify(rgIz.j.disponibilidad)===JSON.stringify(rg17.j.disponibilidad) && rgIz.j.disponibilidad_anterior===null);
 db.exec("DELETE FROM core_metricas_observadas WHERE metrica_id LIKE 'MET-TEND-%'"); db.exec("DELETE FROM alertas_historico WHERE ventana_inicio='2026-10-22T13:00:00Z' AND cliente_id='CLI_006'");
 
 // ---- Sin el script 20 (sin las columnas nuevas) ----

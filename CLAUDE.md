@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py y patch52.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py y patch56.py → w.mjs
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch56.py          período con Desde / Hasta en lugar de Día / Semana / Mes (GET /api/tablero/periodo?desde=&hasta=; hasta 366 días), barras de clientes más altas y letras
+                        más grandes en la sección de disponibilidad, y "Comparar con otro período" (ventana con su propio Desde / Hasta, dos disponibilidades lado a lado,
+                        tabla por cliente y líneas superpuestas; ?liviano=1 trae solo la disponibilidad). Sin SQL. Pruebas: pruebas/periodotest.mjs y disponibilidadtest.mjs
     patch55.py          marca "Abierta hace N h/días" (más de 24 h) en la lista de alertas abiertas del tablero (en Seguimiento va en seguimiento.html). Va con el cambio del
                         asistente (Gemma por defecto, botones Derivar armados por el servidor, tope 100 por día, pregunta "¿Qué alertas llevan más tiempo abiertas?"). Sin SQL.
     patch52.py          la tendencia pasa a ser por ventana y acumulada del período (Día: un punto cada 15 minutos; Semana: cada hora; Mes: cada día; el paso se
@@ -164,7 +167,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch53.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch57.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -193,6 +196,14 @@ Para un cambio nuevo: crear `patch53.py` con una función `aplicar(s)` (como los
 
 ## Cambio de modelo del asistente (16/11, patch54) — para publicar (sin SQL)
 - Cloudflare da de baja el 20/11/2026 `@cf/qwen/qwen3-30b-a3b-fp8`. El de fábrica pasa a `@cf/qwen/qwen3.8-27b`; una variable `ASISTENTE_MODELO` con un modelo dado de baja se ignora. **54b/54c (17/11, publicados):** si el modelo devuelve vacío se reintenta con el triple de tokens y se deja el detalle en el registro (`Asistente: respuesta vacía…` / `sin texto final…`). **Probado en Cloudflare con Gemma 4** (`ASISTENTE_MODELO = @cf/google/gemma-4-26b-a4b-it`, cargada como variable): responde bien (Analista: Resumen del turno, horarios y cliente, sin asignar), unas 60-80 neuronas por pregunta (496 de 10.000 tras la tanda de pruebas). Qwen3.8 cuesta ~9 veces más que el modelo viejo. Pendiente: pasar el default del código a Gemma, que el servidor arme el botón "Derivar" en "¿Qué está sin asignar y a quién lo derivo?" y bajar `ASISTENTE_POR_DIA` a 100. Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
+
+## Período con Desde / Hasta y comparación (17/11, parche 56) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barras de clientes más altas (no se notaba que se podían tocar), letras más grandes, filtros Desde / Hasta en lugar de Día / Semana / Mes, y un botón para comparar con otros días, semanas o meses sin sumar un detalle más abajo. Decidido con Uriel: **solo Desde / Hasta (sin atajos ni flechas ‹ ›)** y comparación **lado a lado con gráfico**.
+- **Período:** dos campos de fecha; se aplica solo al completar las dos. `GET /api/tablero/periodo?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (días de Argentina, los dos incluidos; hasta 366 días y hasta 400 días atrás; un `hasta` futuro se lleva a hoy). Sin fechas sigue valiendo `?tipo=dia|semana|mes&fecha=` (el tablero arranca con el mes en curso, que se muestra del 1.º a hoy). El "período anterior" de un rango es otro de la misma duración, justo antes. El paso de la evolución sale de la duración y de lo medido: hasta 1 día cada 15 minutos, hasta 8 días cada hora, más cada día (siempre manda lo medido). Si el servidor rechaza un rango, los campos vuelven al último período bueno y se explica por qué. El último rango se recuerda mientras la pestaña esté abierta (`sessionStorage`).
+- **Barras y letras:** las barras "Cumplen / No cumplen, pero están cerca / No cumplen y están lejos" miden 24 px, con borde, flecha que gira y "tocá una barra" en el título; las letras de la sección suben entre 1 y 2 puntos.
+- **Comparar con otro período:** botón arriba a la derecha; abre una ventana con el período actual y un segundo Desde / Hasta (arranca con el período anterior de la misma duración; atajos "Período anterior", "Mismo período del mes anterior" y "del año anterior"). Muestra las dos disponibilidades con su semáforo, la diferencia en puntos, un aviso si tienen distinta duración o se superponen, un gráfico con las dos líneas acumuladas alineadas por el tiempo transcurrido (dibujado a la medida del ancho, legible en el celular) y una tabla por cliente ordenada de quien más empeoró a quien más mejoró. Pide el segundo período con `&liviano=1` (sin incidentes ni período anterior: ahorra lecturas); usa la misma regla de "desde cuándo se mide", así que el número es el mismo que se vería eligiendo ese rango arriba.
+- Probado: `periodotest` (rango de un día = día, 1 al 26/10 = mes, período anterior, validaciones, 366 días justos, liviano) y `disponibilidadtest` (paso por duración, último punto = número de arriba, línea de 17 días por día) más la demo igual y toda la batería; pantallas en PC y celular. Las fechas de la demo siguen el reloj de la demostración.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche56/`, ramas `respaldo-antes-parche-56` y `version-parche-56-periodo-desde-hasta`.
 
 ## Parche 55 (17/11) — para publicar (sin SQL)
 - **Asistente:** el modelo por defecto del código pasa a `@cf/google/gemma-4-26b-a4b-it` (la variable `ASISTENTE_MODELO` ya lo tiene en Cloudflare); `ASISTENTE_POR_DIA` por defecto 100; en "¿Qué está sin asignar y a quién lo derivo?" el **servidor** arma hasta 3 botones "Derivar" (cada uno a la persona de Soporte con menos problemas abiertos, repartiendo), sin depender de que el modelo pida la herramienta (`asistProponerDerivar`); pregunta nueva "¿Qué alertas llevan más tiempo abiertas?" (Analista y Administrador; `alertas_abiertas` suma `abierta_hace` y `cuantas.abiertas_hace_mas_de_24_h`).
