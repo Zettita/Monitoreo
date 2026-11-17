@@ -820,7 +820,7 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Dashboard gerencial: Gerente con lista de alertas y detalle en solo lectura, incidentes activos, resumen por Día / Semana / Mes y disponibilidad mensual configurable (16/11, parches 42 a 45; falta publicar con el script 20).
 - [ ] Disponibilidad: con datos reales, revisar si el objetivo de 99,9 % y los pesos (Grave 100 %, Importante 50 %) le sirven a Hugo; evaluar la evolución mes a mes de cada cliente.
 - [ ] War Room en Teams desde una alerta (en pausa; evaluar enlace directo vs. Microsoft Graph).
-- [ ] Avisos por Teams con webhook (etapa 5). Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
+- [ ] **Prioridad 2 (decidido el 17/11): avisos en un canal de Teams con webhook (etapa 5).** Ya hay un parche viejo en las ramas `version-parche-30-avisos-teams` y `avisos-teams-pendiente`: rehacerlo como parche nuevo encima de `main` y revisar antes qué cubre "Comunicar incidente". Además: Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
 - [x] Perfiles: Gerente de lectura con Panorama, Analista deriva y avisa pre-alertas, Soporte solo con sus tickets, Administrador orientado a la configuración (11/11).
 - [x] Criticidad por servicio, objetivo de disponibilidad y umbrales configurables por cliente (11/11).
 - [ ] Definir advertencia vs. alerta (por ejemplo, `MEDIA` y `BAJA` = advertencia).
