@@ -476,7 +476,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
-**Disponibilidad con tarjetas y barras (17/11, parche 61; sin SQL, falta publicar)**
+**Operaciones e Histórico (17/11, parche 62; sin SQL, falta publicar)**
+
+- Operaciones > Alertas abiertas: dona "Alertas por estado" (tocar un estado filtra la lista) y al lado "Problemas activos" por cliente o tipo de falla, divididos por gravedad.
+- Histórico: gravedad en su propia columna, filtros por cliente, gravedad y problema, y "Clientes con más problemas" con el mismo período y filtros del Histórico (sin Desde / Hasta propio).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche62/`, ramas `respaldo-antes-parche-62` y `version-parche-62-operaciones-e-historico`.
+
+**Disponibilidad con tarjetas y barras (17/11, parche 61; sin SQL, publicado el 17/11)**
 
 - La pestaña Disponibilidad arranca con 3 tarjetas (disponibilidad real contra el objetivo y la diferencia en puntos, tiempo sin servicio contra lo permitido, servicios y clientes que cumplen) y abajo, lado a lado, "Cumplimiento del objetivo" en barras verticales y "Disponibilidad general" (línea de evolución). Tocar una barra recalcula las tarjetas y la línea para ese grupo de clientes, con la misma cuenta que el servidor.
 - Distribución de fallas muestra los 3 cortes juntos (cliente, tipo de falla, causa); en causa, solo las causas cargadas al resolver, y lo abierto, lo normalizado solo y lo resuelto sin causa se cuentan en una línea aparte. También en Mis alertas.
