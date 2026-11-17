@@ -476,7 +476,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
-**Textos y detalles (17/11, parche 60; sin SQL, falta publicar)**
+**Disponibilidad con tarjetas y barras (17/11, parche 61; sin SQL, falta publicar)**
+
+- La pestaña Disponibilidad arranca con 3 tarjetas (disponibilidad real contra el objetivo y la diferencia en puntos, tiempo sin servicio contra lo permitido, servicios y clientes que cumplen) y abajo, lado a lado, "Cumplimiento del objetivo" en barras verticales y "Disponibilidad general" (línea de evolución). Tocar una barra recalcula las tarjetas y la línea para ese grupo de clientes, con la misma cuenta que el servidor.
+- Distribución de fallas muestra los 3 cortes juntos (cliente, tipo de falla, causa); en causa, solo las causas cargadas al resolver, y lo abierto, lo normalizado solo y lo resuelto sin causa se cuentan en una línea aparte. También en Mis alertas.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche61/`, ramas `respaldo-antes-parche-61` y `version-parche-61-disponibilidad-tarjetas`.
+
+**Textos y detalles (17/11, parche 60; sin SQL, publicado el 17/11)**
 
 - Primera tanda de ajustes de Ale: sin los textos explicativos del tablero, Administración, Mis alertas, asistente y Resolver; "Operación ahora" pasa a "Operaciones" y "De mis equipos" a "Equipos"; pre-alertas con frases profesionales y su resumen de 48 h en tarjetas; el botón del asistente dice "Derivar" (o la acción que sea); para el Analista, Disponibilidad es la última pestaña y el tablero arranca en Operaciones; "Mis alertas" en el menú de Comunicados y del detalle; "Fecha y hora" de la auditoría en un renglón.
 - **Cambio de permisos:** Soporte (incluido el responsable de un equipo) ya no reasigna alertas: derivar y reasignar quedan para el Analista.

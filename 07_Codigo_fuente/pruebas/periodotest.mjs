@@ -104,7 +104,8 @@ r=await call('','GET','/api/tablero/periodo?desde=2026-10-20&hasta=2026-10-26');
 r=await call(ck.gero,'GET','/');
 ok('el tablero trae la sección del período y ya no la de fallas suelta', r.s===200 && r.t.includes('id="b-periodo"') && r.t.includes('id="per-desde"') && r.t.includes('id="per-hasta"') && r.t.includes('id="btn-comparar"') && !r.t.includes('data-per-tipo') && !r.t.includes('id="b-fallas"') && r.t.includes('/api/tablero/periodo'));
 ok('la página trae la ventana de comparación con sus fechas y atajos', r.t.includes('id="dlg-comparar"') && r.t.includes('id="cmp-desde"') && r.t.includes('data-cmp-atajo="mes"') && r.t.includes('data-cmp-atajo="anio"'));
-ok('la distribución de fallas no muestra Hoy / 7 / 30 días cuando el período viene de afuera', r.t.includes("d.periodo_fijo ? '' : seg(PERIODOS"));
+ok('la distribución de fallas no muestra Hoy / 7 / 30 días cuando el período viene de afuera', r.t.includes("(d.periodo_fijo ? '' : '<div class=") && r.t.includes("seg(PERIODOS, st.periodo, 'periodo', 'Período')"));
+ok('parche 61: fallas en 3 columnas y causas sin "Todavía abierto"', r.t.includes("col('Por cliente'") && r.t.includes("col('Por causa'") && r.t.includes("'Sin causa: '"));
 
 console.log(fallas ? '\nHAY '+fallas+' FALLAS' : '\nTODO OK');
 process.exit(fallas?1:0);
