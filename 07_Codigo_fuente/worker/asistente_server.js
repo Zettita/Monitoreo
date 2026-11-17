@@ -570,7 +570,12 @@ async function asistModelo(env, mensajes, herramientas, nombres) {
     pedido.messages = asistSinMensajesDeHerramienta(mensajes);
     r = await env.AI.run(modelo, pedido);
   }
-  const n = asistNormalizar(r);
+  let n = asistNormalizar(r);
+  // Respuesta vacía (un modelo que "piensa" puede gastar todos los tokens antes de escribir): se deja el detalle en el registro y se reintenta una vez con más margen
+  if (!n.texto && !n.llamadas.length && r) {
+    try { console.error('Asistente: respuesta vacía de ' + modelo + ': ' + JSON.stringify(r).slice(0, 700)); } catch (e) { /* sin detalle */ }
+    try { n = asistNormalizar(await env.AI.run(modelo, Object.assign({}, pedido, { max_tokens: ASIST_TOKENS_RESPUESTA * 3 }))); } catch (e) { /* queda vacía */ }
+  }
   // Formato Hermes/Qwen: la llamada viene como texto entre <tool_call> … </tool_call>
   if (!n.llamadas.length && nombres && /<tool_call>/.test(n.texto)) {
     const lista = [];
