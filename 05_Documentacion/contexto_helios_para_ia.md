@@ -476,6 +476,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
+**Asistente: respuesta vacía con Gemma 4 (17/11, parche 59; sin SQL, falta publicar)**
+
+- Con Gemma 4, "¿Qué está sin asignar y a quién lo derivo?" (Analista) daba "No pude armar una respuesta": el modelo gastaba todo el margen en su razonamiento interno (`reasoning_content`) y devolvía `content` vacío, también en el reintento.
+- Ahora a Gemma 4 se le apaga el razonamiento (`chat_template_kwargs: { enable_thinking: false }`); si Workers AI rechazara el parámetro, se repite el pedido sin él. Si igual vuelve vacía, las preguntas sugeridas "sin asignar" y "más tiempo abiertas" las contesta el servidor con los datos (lista de alertas y los botones Derivar, o el aviso de que faltan personas o equipos de Soporte).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche59/`, ramas `respaldo-antes-parche-59` y `version-parche-59-asistente-sin-razonamiento`.
+
 **Un solo tema y un solo campo de fecha (17/11, parche 58; sin SQL, falta publicar)**
 
 - Un único campo de fecha (`dd/mm/aaaa`, con calendario, que solo aplica con la fecha completa y válida) en el tablero (Disponibilidad, Comparar, Histórico, Clientes con más problemas) y en Administración (auditoría, feriados, eventos comerciales). Tema unificado en todas las páginas: esquinas de 4 px en cajas y 3 px en campos y etiquetas, selectores y campos de 40 px, títulos con el mismo grosor y etiquetas de estado como lozenge. Solo páginas.

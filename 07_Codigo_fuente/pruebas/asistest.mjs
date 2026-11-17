@@ -257,4 +257,29 @@ await call(ck.ana,'POST','/api/asistente',{sugerencia:'mas_viejas'});
   ok('con una alerta abierta hace 3 días: la cuenta da 1 y dice "3 días"', d.alertas_abiertas.cuantas.abiertas_hace_mas_de_24_h===1 && d.alertas_abiertas.problemas.some((x)=>x.abierta_hace==='3 días'), JSON.stringify(d.alertas_abiertas.cuantas)); }
 // páginas: la marca existe en Seguimiento y en el tablero
 for (const [u,pg] of [['ana','/seguimiento'],['ana','/']]) { const h=await (await worker.fetch(new Request('https://x'+pg,{headers:{cookie:ck[u]}}),env,{})).text(); ok('la página '+pg+' trae la marca "Abierta hace"', /Abierta hace/.test(h) && /class=\\?"vieja\\?"|\.vieja/.test(h)); }
+// 17/11 (parche 59): Gemma 4 gastaba todo en "pensar" y devolvía content vacío
+db.exec('DELETE FROM asistente_uso'); env={DB,AI,ASISTENTE_POR_HORA:'100',ASISTENTE_POR_DIA:'1000'};
+const vacia = () => ({ choices: [{ message: { content: '', reasoning_content: '* User: Analista1. Goal: identify unassigned alerts…' } }] });
+pedidos.length=0; guion=[()=>texto('ok')];
+await call(ck.ana,'POST','/api/asistente',{pregunta:'¿todo bien?'});
+ok('a Gemma 4 se le apaga el razonamiento (enable_thinking = false)', pedidos[0].modelo.includes('gemma-4') && pedidos[0].p.chat_template_kwargs && pedidos[0].p.chat_template_kwargs.enable_thinking===false, pedidos[0].p.chat_template_kwargs);
+pedidos.length=0; guion=[vacia, vacia, vacia, vacia];
+r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'});
+ok('Gemma vacía en "sin asignar": responde el servidor con la lista y los botones', r.s===200 && /alertas? sin asignar:|No hay nada sin asignar/.test(r.j.respuesta) && !/No pude armar/.test(r.j.respuesta) && (!/sin asignar:/.test(r.j.respuesta) || /botones para derivarlas/.test(r.j.respuesta)), r.j.respuesta);
+ok('…con un reintento con más margen (2 llamadas, no más)', pedidos.length===2 && pedidos[1].p.max_tokens>pedidos[0].p.max_tokens, pedidos.map((x)=>x.p.max_tokens));
+pedidos.length=0; guion=[vacia, vacia];
+r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'mas_viejas'});
+ok('Gemma vacía en "más tiempo abiertas": responde el servidor con la de 3 días', /abierta hace 3 días/.test(r.j.respuesta), r.s+' '+JSON.stringify(r.j));
+pedidos.length=0; guion=[vacia, vacia];
+r=await call(ck.ana,'POST','/api/asistente',{pregunta:'contame algo'});
+ok('pregunta libre vacía: sigue el mensaje de siempre', /No pude armar/.test(r.j.respuesta), r.j.respuesta);
+// si Workers AI no aceptara el parámetro, se repite sin él
+pedidos.length=0; guion=[(p)=>{ if (p.chat_template_kwargs) throw new Error('unknown field chat_template_kwargs'); return texto('ok'); }, ()=>texto('Respuesta sin el parámetro.')];
+r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿todo bien?'});
+ok('si el modelo rechaza enable_thinking, repite el pedido sin él', r.j.respuesta==='Respuesta sin el parámetro.' && pedidos.length===2 && !pedidos[1].p.chat_template_kwargs, r.j.respuesta);
+env={DB,AI,ASISTENTE_POR_HORA:'100',ASISTENTE_POR_DIA:'1000',ASISTENTE_MODELO:'@cf/meta/llama-3.3-70b-instruct-fp8-fast'};
+pedidos.length=0; guion=[()=>texto('ok')];
+await call(ck.ana,'POST','/api/asistente',{pregunta:'¿todo bien?'});
+ok('otros modelos no reciben el parámetro', !pedidos[0].p.chat_template_kwargs);
+env={DB,AI};
 console.log(fallas ? 'FALLAS: '+fallas : 'TODO OK');

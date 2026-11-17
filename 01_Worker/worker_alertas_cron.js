@@ -4103,6 +4103,7 @@ const ASIST_MAX_HISTORIA = 6;           // mensajes anteriores que se mandan al 
 const ASIST_MAX_VUELTAS = 3;            // llamadas al modelo por pregunta
 const ASIST_MAX_HERRAMIENTAS = 5;       // herramientas de datos por pregunta
 const ASIST_MAX_ACCIONES = 3;
+const asistPiensa = (modelo) => /gemma-4/i.test(modelo);   // modelos con razonamiento que se apaga con chat_template_kwargs
 const ASIST_TOKENS_RESPUESTA = 900;
 
 const ASIST_FRASE = {
@@ -4553,6 +4554,27 @@ function asistProponerDerivar(d) {
     return Object.assign({ tipo: 'derivar', alerta_id: x.alerta_id, motivo: 'Es ' + (personas.length ? 'la persona' : 'el equipo') + ' de Soporte con menos problemas abiertos.' }, personas.length ? { usuario_id: dest.id } : { equipo_id: dest.id });
   });
 }
+// Si el modelo no escribe nada, estas preguntas sugeridas se contestan igual con los datos (sin el modelo)
+const asistLineaProblema = (x) => '- ' + x.prioridad + ' · ' + x.problema + ' en ' + x.donde + (x.lleva_en_este_estado ? ' (lleva ' + x.lleva_en_este_estado + ')' : '');
+function asistRespaldoSinAsignar(d, acciones) {
+  const a = d.alertas_abiertas || {}, c = a.cuantas || {}, ps = a.problemas || [];
+  if (!c.sin_asignar) {
+    const asig = ps.filter((x) => x.estado === 'Asignada sin tomar');
+    return 'No hay nada sin asignar.' + (asig.length ? '\n\nAsignadas sin tomar:\n' + asig.slice(0, 6).map((x) => asistLineaProblema(x) + (x.asignada_a ? ', la tiene ' + x.asignada_a : '')).join('\n') : '');
+  }
+  const sin = ps.filter((x) => x.estado === 'Sin asignar');
+  return 'Hay ' + c.sin_asignar + (c.sin_asignar === 1 ? ' alerta sin asignar:' : ' alertas sin asignar:') + '\n' + sin.slice(0, 6).map(asistLineaProblema).join('\n') +
+    (acciones.some((x) => x.tipo === 'derivar') ? '\n\nTe dejo los botones para derivarlas a quien tiene menos problemas abiertos.'
+      : '\n\nNo hay personas ni equipos de Soporte para derivar: se cargan en Administración > Usuarios y Equipos.');
+}
+function asistRespaldoViejas(d) {
+  const ps = (d.alertas_abiertas || {}).problemas || [];
+  if (!ps.length) return 'No hay alertas abiertas.';
+  const viejas = ps.filter((x) => x.abierta_hace);
+  if (!viejas.length) return 'No hay alertas abiertas hace más de un día.';
+  return 'Alertas abiertas hace más de un día:\n' + viejas.slice(0, 8).map((x) => '- ' + x.prioridad + ' · ' + x.problema + ' en ' + x.donde + ': abierta hace ' + x.abierta_hace + (x.asignada_a ? ', la tiene ' + x.asignada_a : ', sin asignar')).join('\n') +
+    '\n\nUna alerta que sigue abierta días suele estar olvidada o ya normalizada: conviene revisar si hay que cerrarla.';
+}
 const ASIST_GUIA_VIEJAS = 'Mirá cuantas.abiertas_hace_mas_de_24_h. Si es 0, empezá con "No hay alertas abiertas hace más de un día." y nombrá en una frase la más antigua que haya (cliente, servicio y cuánto lleva en "lleva_en_este_estado" o desde qué hora). Si hay, listá cada una con cliente, servicio, prioridad, cuánto hace que está abierta (abierta_hace) y quién la tiene; después una frase: una alerta que sigue abierta días suele estar olvidada o ser un caso que ya se normalizó, así que conviene revisar si hay que cerrarla. No inventes causas.';
 // Gerente y Administrador (parche 42): lo activo, con su estado y quién lo tiene (lo que un gerente necesita cuando le preguntan)
 const ASIST_GUIA_ACTIVAS = 'Respuesta corta. Primero cuántos incidentes hay activos y cuántos son graves (si no hay ninguno, decí "No hay incidentes activos." y nada más). Después, para cada uno (máximo 5, por prioridad), una frase: cliente, qué pasa, desde cuándo y su estado (sin asignar, asignada a alguien sin tomar o en curso con quién). Si hay alguno sin asignar o demorado, decilo primero: es lo que más importa. No propongas acciones: este perfil solo mira.';
@@ -4566,9 +4588,9 @@ const ASIST_SUGERENCIAS = {
       guia: 'Usá estos títulos en negrita, cada uno con una lista corta: **Ahora** (cada problema en una frase, por prioridad; si no hay, "Todo en orden"), **Quién tiene qué** (sin asignar, asignadas sin tomar y en curso, con quién las tiene), **Demoradas** (solo si hay: lo que pasó de 15 min sin asignar, 30 min sin tomar o 2 h en curso), **Viene empeorando** (pre-alertas; si no hay, "Nada"). Cerrá con **Para hacer** solo si hay algo concreto: derivar lo que está sin asignar o recordarle a alguien una demorada. Nunca recomiendes derivar algo que ya está asignado.' },
     { id: 'sin_asignar', texto: '¿Qué está sin asignar y a quién lo derivo?', herramientas: ['alertas_abiertas', 'opciones_derivacion'],
       guia: 'Mirá cuantas.sin_asignar. Si es 0, empezá con "No hay nada sin asignar." y no propongas derivar; después contá en una o dos frases lo que está asignado sin tomar (quién lo tiene y cuánto lleva) y si alguna está demorada. Si hay sin asignar, decí a quién conviene derivarlas (la persona o equipo de Soporte con menos problemas abiertos) y por qué en una frase; si te dejamos botones para derivar, decí "Te dejo los botones para derivarlas" y no escribas vos la propuesta. Una alerta asignada sin tomar no está sin asignar.',
-      proponer: asistProponerDerivar },
+      proponer: asistProponerDerivar, respaldo: asistRespaldoSinAsignar },
     { id: 'mas_viejas', texto: '¿Qué alertas llevan más tiempo abiertas?', herramientas: ['alertas_abiertas'],
-      guia: ASIST_GUIA_VIEJAS },
+      guia: ASIST_GUIA_VIEJAS, respaldo: asistRespaldoViejas },
     { id: 'relacionadas', texto: '¿Hay alertas relacionadas entre sí?', herramientas: ['alertas_abiertas'],
       guia: 'Relacionadas son: varias del mismo cliente al mismo tiempo, el mismo servicio con problemas en varios clientes, o problemas que empezaron con menos de 30 minutos de diferencia. Si hay 0 o 1 problema abierto, decí "Hay una sola alerta abierta (o ninguna): no hay con qué relacionarla." Si hay varias y no se relacionan, decilo y explicá en una frase por qué.' },
     { id: 'prealertas', texto: '¿Qué pre-alertas conviene avisar a Soporte?', herramientas: ['prealertas'],
@@ -4585,7 +4607,7 @@ const ASIST_SUGERENCIAS = {
     { id: 'ajustes', texto: '¿Qué umbrales conviene revisar?', herramientas: ['ajustes_sugeridos'],
       guia: 'Si no hay candidatos, decilo con la frase de sin_candidatos y explicá el criterio en una frase; no recomiendes cambiar valores de fábrica sin un motivo en los datos (100 % no es "amplio": es la banda del modelo). Si hay candidatos, para cada uno: cliente y servicio, cuántas alertas cortas se normalizaron solas y la sugerencia (por ejemplo, ensanchar esa banda a 120 % o 130 %), y recordá que el cambio se hace en Administración > Umbrales.' },
     { id: 'operacion_hoy', texto: '¿Cómo está la operación ahora?', herramientas: ['estado_clientes', 'incidentes'], guia: ASIST_GUIA_OPERACION },
-    { id: 'mas_viejas', texto: '¿Qué alertas llevan más tiempo abiertas?', herramientas: ['alertas_abiertas'], guia: ASIST_GUIA_VIEJAS },
+    { id: 'mas_viejas', texto: '¿Qué alertas llevan más tiempo abiertas?', herramientas: ['alertas_abiertas'], guia: ASIST_GUIA_VIEJAS, respaldo: asistRespaldoViejas },
   ],
 };
 
@@ -4669,18 +4691,31 @@ async function asistModelo(env, mensajes, herramientas, nombres) {
   const modelo = asistNombreModelo(env);
   const pedido = { messages: mensajes, max_tokens: ASIST_TOKENS_RESPUESTA, temperature: 0.2 };
   if (herramientas && herramientas.length) pedido.tools = herramientas;
+  // Gemma 4 "piensa" antes de responder y puede gastar todos los tokens en eso (respuesta vacía, 17/11): se le apaga el
+  // razonamiento. Si Workers AI no aceptara el parámetro, se repite el mismo pedido sin él.
+  const correr = async (p) => {
+    if (asistPiensa(modelo)) {
+      try { return await env.AI.run(modelo, Object.assign({}, p, { chat_template_kwargs: { enable_thinking: false } })); }
+      catch (e) {
+        // Solo si el error es por el formato del pedido (el parámetro); otro error (modelo caído) sigue como siempre
+        if (!/chat_template|enable_thinking|template|schema|oneOf|additional|invalid input|5006/i.test(e.message || '')) throw e;
+        console.error('Asistente: ' + modelo + ' no aceptó enable_thinking = false: ' + e.message);
+      }
+    }
+    return env.AI.run(modelo, p);
+  };
   let r;
-  try { r = await env.AI.run(modelo, pedido); }
+  try { r = await correr(pedido); }
   catch (e) {
     if (!mensajes.some((m) => m.role === 'tool')) throw e;
     pedido.messages = asistSinMensajesDeHerramienta(mensajes);
-    r = await env.AI.run(modelo, pedido);
+    r = await correr(pedido);
   }
   let n = asistNormalizar(r);
   // Respuesta vacía (un modelo que "piensa" puede gastar todos los tokens antes de escribir): se deja el detalle en el registro y se reintenta una vez con más margen
   if (!n.texto && !n.llamadas.length && r) {
     try { console.error('Asistente: respuesta vacía de ' + modelo + ': ' + JSON.stringify(r).slice(0, 700)); } catch (e) { /* sin detalle */ }
-    try { n = asistNormalizar(await env.AI.run(modelo, Object.assign({}, pedido, { max_tokens: ASIST_TOKENS_RESPUESTA * 3 }))); } catch (e) { /* queda vacía */ }
+    try { n = asistNormalizar(await correr(Object.assign({}, pedido, { max_tokens: ASIST_TOKENS_RESPUESTA * 3 }))); } catch (e) { /* queda vacía */ }
   }
   // Formato Hermes/Qwen: la llamada viene como texto entre <tool_call> … </tool_call>
   if (!n.llamadas.length && nombres && /<tool_call>/.test(n.texto)) {
@@ -4737,12 +4772,14 @@ async function asistResponder(env, yo, entrada) {
   let pregunta = entrada.pregunta;
   // Pregunta sugerida o "¿Qué está pasando?" de una alerta: los datos se traen directo (una sola llamada al modelo)
   const directas = [];
+  let datosDirectos = null;
   if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);
   if (entrada.sugerencia) for (const n of entrada.sugerencia.herramientas) directas.push([n, (entrada.sugerencia.args || {})[n] || {}]);
   if (!directas.length) for (const n of asistElegir(entrada.pregunta, yo.perfil, disponibles)) directas.push([n, ASIST_ARGS[n] ? ASIST_ARGS[n](entrada.pregunta) : {}]);
   if (directas.length) {
     const datos = {};
     for (const [n, a] of directas) datos[n] = await correrHerramienta(n, a);
+    datosDirectos = datos;
     // Propuesta armada por el servidor (por ejemplo, "Tomar" la primera de Soporte): no depende de que el modelo la pida
     if (entrada.sugerencia && entrada.sugerencia.proponer) { const p = entrada.sugerencia.proponer(datos); for (const x of (Array.isArray(p) ? p : p ? [p] : [])) await correrHerramienta('sugerir_accion', x); }
     pregunta += '\n\nDatos de Helios para responder (JSON):\n' + JSON.stringify(datos);
@@ -4776,6 +4813,7 @@ async function asistResponder(env, yo, entrada) {
   if (Object.keys(enlaces).length) texto = asistEnlaces(texto, enlaces);
   if (asistEsEco(texto)) texto = '';
   if (!texto) { try { console.error('Asistente: sin texto final con ' + asistNombreModelo(env) + '; última salida del modelo: ' + JSON.stringify(crudo).slice(0, 600)); } catch (e) { /* sin detalle */ } }
+  if (!texto && datosDirectos && entrada.sugerencia && entrada.sugerencia.respaldo) texto = entrada.sugerencia.respaldo(datosDirectos, acciones);
   if (!texto) texto = acciones.length ? 'Te dejo una propuesta para que la revises.' : 'No pude armar una respuesta. Probá preguntarlo de otra forma.';
   return { respuesta: texto.slice(0, 4000), acciones, herramientas: usadas };
 }
