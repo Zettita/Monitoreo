@@ -483,7 +483,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - **Probado en Cloudflare (17/11, Ale, Analista):** la respuesta la escribió Gemma (no el respaldo del servidor), con las 3 alertas sin asignar y los 3 botones Derivar a Soporte1. O sea, Cloudflare acepta `enable_thinking = false`.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche59/`, ramas `respaldo-antes-parche-59` y `version-parche-59-asistente-sin-razonamiento`.
 
-**Un solo tema y un solo campo de fecha (17/11, parche 58; sin SQL, falta publicar)**
+**Un solo tema y un solo campo de fecha (17/11, parche 58; sin SQL, publicado el 17/11 con el 59)**
 
 - Un único campo de fecha (`dd/mm/aaaa`, con calendario, que solo aplica con la fecha completa y válida) en el tablero (Disponibilidad, Comparar, Histórico, Clientes con más problemas) y en Administración (auditoría, feriados, eventos comerciales). Tema unificado en todas las páginas: esquinas de 4 px en cajas y 3 px en campos y etiquetas, selectores y campos de 40 px, títulos con el mismo grosor y etiquetas de estado como lozenge. Solo páginas.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche58/`, ramas `respaldo-antes-parche-58` y `version-parche-58-tema-y-fechas`.
@@ -499,7 +499,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 - **"Comparar con otro período"**: ventana con las dos disponibilidades lado a lado, la diferencia, las dos líneas de evolución superpuestas y una tabla por cliente (quién mejoró y quién empeoró). El segundo período se pide con `&liviano=1` (sin incidentes ni período anterior).
 - Respaldo: `99_Archivo_viejo/worker_antes_parche56/`, ramas `respaldo-antes-parche-56` y `version-parche-56-periodo-desde-hasta`.
 
-**Parche 55 (17/11; sin SQL, falta publicar)**
+**Parche 55 (17/11; sin SQL, publicado el 17/11 con el 59)**
 
 - Asistente: Gemma 4 por defecto en el código, tope de 100 preguntas por día, botones "Derivar" armados por el servidor en "¿Qué está sin asignar y a quién lo derivo?" (hasta 3, a la persona de Soporte con menos problemas abiertos) y pregunta nueva "¿Qué alertas llevan más tiempo abiertas?" (Analista y Administrador).
 - Marca roja "Abierta hace N h/días" en Seguimiento y en el tablero cuando una alerta lleva más de 24 h abierta.

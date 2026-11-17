@@ -212,7 +212,7 @@ Ale probó como Analista "¿Qué está sin asignar y a quién lo derivo?" con el
 - **Probado en Cloudflare (17/11, Ale, Analista):** la respuesta la escribió Gemma (no el respaldo del servidor), con las 3 alertas sin asignar y los 3 botones Derivar a Soporte1. O sea, Cloudflare acepta `enable_thinking = false`.
 - **Al publicar, revisar en Observability** si aparece `no aceptó enable_thinking`: si aparece, Gemma sigue pensando y conviene probar otro modelo con la variable `ASISTENTE_MODELO`.
 
-## Un solo tema y un solo campo de fecha (17/11, parche 58) — hecho en código, falta publicar (sin SQL)
+## Un solo tema y un solo campo de fecha (17/11, parche 58) — publicado el 17/11 junto con el 59 (sin SQL)
 Pedido de Uriel: dejar todo con el mismo tema (estilo Atlassian con acento verde azulado, también lo nuevo), un solo tipo de campo de fecha (el de Disponibilidad) y corregir otros detalles distintos entre pantallas.
 - **Campo de fecha único** (`fecha_ui.py`): texto `dd/mm/aaaa` que se formatea al escribir ("5102026" da 05/10/2026), solo se aplica con la fecha completa y válida, avisa si no existe o está fuera de rango, vuelve a la última buena al salir a medias y tiene un ícono que abre el calendario del navegador. Estaba en 4 versiones (Disponibilidad, Histórico y Clientes con campos chicos de 25 px, Administración con 34 px); ahora es el mismo en el tablero (Disponibilidad, Comparar, Histórico, Clientes con más problemas) y en Administración (auditoría, feriado, evento comercial; "Hasta" del evento sigue vacío = un día).
 - **Tema:** se midió en el navegador qué se salía del estilo y se unificó con un bloque de CSS al final de cada página (`NORMA_CSS`): cajas de 4 px de esquina con la sombra de siempre, campos y etiquetas de 3 px, selectores de filtros y formularios de 40 px de alto como el campo de fecha (antes 34 a 36; en Administración los filtros de auditoría tenían alturas distintas), botones de filtros de la misma altura, títulos de sección 20/600 (Seguimiento los tenía en 700), títulos de panel de la alerta 16/600, rótulos de campos en 14 px, etiquetas de estado de Disponibilidad como lozenge (mayúsculas, 3 px) y "Ver detalle" sin partirse en dos líneas. Lo nuevo (pestañas, barras, tarjetas y comparación) usa lo mismo: 4 px, sombra suave, nada de píldoras.
@@ -236,7 +236,7 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - Probado: `periodotest` (rango de un día = día, 1 al 26/10 = mes, período anterior, validaciones, 366 días justos, liviano) y `disponibilidadtest` (paso por duración, último punto = número de arriba, línea de 17 días por día) más la demo igual y toda la batería; pantallas en PC y celular. Las fechas de la demo siguen el reloj de la demostración.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche56/`, ramas `respaldo-antes-parche-56` y `version-parche-56-periodo-desde-hasta`.
 
-## Parche 55 (17/11) — para publicar (sin SQL)
+## Parche 55 (17/11) — publicado el 17/11 junto con el 59 (sin SQL)
 - **Asistente:** el modelo por defecto del código pasa a `@cf/google/gemma-4-26b-a4b-it` (la variable `ASISTENTE_MODELO` ya lo tiene en Cloudflare); `ASISTENTE_POR_DIA` por defecto 100; en "¿Qué está sin asignar y a quién lo derivo?" el **servidor** arma hasta 3 botones "Derivar" (cada uno a la persona de Soporte con menos problemas abiertos, repartiendo), sin depender de que el modelo pida la herramienta (`asistProponerDerivar`); pregunta nueva "¿Qué alertas llevan más tiempo abiertas?" (Analista y Administrador; `alertas_abiertas` suma `abierta_hace` y `cuantas.abiertas_hace_mas_de_24_h`).
 - **Marca "Abierta hace N h/días"** en rojo cuando una alerta lleva más de 24 h abierta, en Seguimiento y en el tablero (surgió del incidente de 231 horas abierto de la reunión con Hugo del 12/11). Solo página. En la demo no se ve salvo con datos de más de un día.
 - Probado: demo igual al Worker anterior, 19 pruebas por módulo, `asistest` con casos nuevos (botones Derivar con 4 sin asignar, reparto, alerta de 3 días); los scripts de las páginas se revisaron con `node --check` (no se pudo mirar en un navegador real desde acá). Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
@@ -293,7 +293,7 @@ Pedido de Ale: quedan guardados en este orden, sin empezar.
 
 ## En curso (16/11): correo y War Room desde una alerta — de a un punto por vez
 1. **Template correo alerta — hecho (parches 39 y 40), Worker publicado el 16/11.** Ver la sección siguiente.
-2. **Plantillas de correo — hecho (parche 40), Worker publicado el 16/11; falta correr el script 18 (Ale).**
+2. **Plantillas de correo — hecho (parche 40), Worker publicado el 16/11; script 18 corrido por Ale.**
 3. **War Room en Teams** desde la alerta: primero evaluar opciones (enlace directo vs. Microsoft Graph) y después decidir.
 
 ## Evolución por ventana (16/11, parche 52) — publicado el 17/11 (sin SQL)
@@ -342,11 +342,11 @@ Flujo pedido por Ale: veo un evento → lo gestiono → mando un push "Tenemos e
 el único punto a completar es `tickets_integracion.js` (ver `05_Documentacion/integracion_tickets.md`). Decidido con Ale: la herramienta se elige en
 cada alerta; generan tickets y comunican Analista y Soporte (lo suyo o de su equipo); las audiencias del push son **listas de difusión** con un rol por
 persona (informado / técnico / líder).
-1. **Tickets a demanda — hecho (parche 41), Worker publicado el 16/11; falta correr el script 19 (Ale).** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
+1. **Tickets a demanda — hecho (parche 41), Worker publicado el 16/11; script 19 corrido por Ale.** "Generar ticket" (InvGate o Jira, resumen y descripción armados) y
    casilla en el correo; el número va al asunto (`[INV-1001] …`), al texto (`{ticket}` o una línea "Ticket: …"), a "Datos de la alerta" y a la conversación.
    **Jira (parche 53)** crea el issue en el proyecto KAN cuando `TICKETS_JIRA = real` y están `JIRA_USUARIO` y `JIRA_TOKEN`. Sin eso, simulado (`HEL-101`).
    **InvGate** sigue simulado (`INV-1001`). "Preparar demo" borra los tickets de Helios.
-2. **Comunicar incidente (push a demanda) — hecho (parche 46), Worker publicado el 16/11; falta correr el script 21 (Ale).** Decidido con Ale: perfil nuevo **"Solo comunicados"**
+2. **Comunicar incidente (push a demanda) — hecho (parche 46), Worker publicado el 16/11; script 21 corrido por Ale.** Decidido con Ale: perfil nuevo **"Solo comunicados"**
    para quien solo se tiene que enterar; listas **generales o de un cliente**, las arma el **Administrador**. "Comunicar incidente" en el detalle (Analista;
    Soporte en lo suyo): listas (primero las del cliente), mensaje armado con el ticket (o casilla para generarlo). Informados solo leen; técnicos dan
    "Recibido" (desde el aviso, sin abrir Helios) y responden; líderes responden sumando información. Respuestas y resumen ("Recibido: 2 de 3 técnicos")
