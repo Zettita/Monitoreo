@@ -476,10 +476,11 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
-**Asistente: respuesta vacía con Gemma 4 (17/11, parche 59; sin SQL, falta publicar)**
+**Asistente: respuesta vacía con Gemma 4 (17/11, parche 59; sin SQL, publicado y probado el 17/11)**
 
 - Con Gemma 4, "¿Qué está sin asignar y a quién lo derivo?" (Analista) daba "No pude armar una respuesta": el modelo gastaba todo el margen en su razonamiento interno (`reasoning_content`) y devolvía `content` vacío, también en el reintento.
 - Ahora a Gemma 4 se le apaga el razonamiento (`chat_template_kwargs: { enable_thinking: false }`); si Workers AI rechazara el parámetro, se repite el pedido sin él. Si igual vuelve vacía, las preguntas sugeridas "sin asignar" y "más tiempo abiertas" las contesta el servidor con los datos (lista de alertas y los botones Derivar, o el aviso de que faltan personas o equipos de Soporte).
+- **Probado en Cloudflare (17/11, Ale, Analista):** la respuesta la escribió Gemma (no el respaldo del servidor), con las 3 alertas sin asignar y los 3 botones Derivar a Soporte1. O sea, Cloudflare acepta `enable_thinking = false`.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche59/`, ramas `respaldo-antes-parche-59` y `version-parche-59-asistente-sin-razonamiento`.
 
 **Un solo tema y un solo campo de fecha (17/11, parche 58; sin SQL, falta publicar)**
