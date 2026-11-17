@@ -11,6 +11,8 @@
 #   Sin SQL.
 import json
 
+import fecha_ui
+
 
 def _rep(s, a, b, n=1):
     assert s.count(a) == n, (s.count(a), a[:130])
@@ -89,19 +91,9 @@ def servidor(s):
 CSS = """/* Período con Desde / Hasta, barras más altas, letras más grandes y comparación (parche 56) */
 .per-barra { gap: 10px 16px; align-items: flex-end; }
 .per-campo { display: grid; gap: 4px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.per-campo label { font: inherit; }
-.fecha-wrap { position: relative; display: inline-flex; align-items: center; }
-.fecha-txt { font: inherit; font-size: 15px; font-weight: 400; color: var(--ink); background: var(--input-bg); border: 1px solid var(--line-input); border-radius: 6px; padding: 6px 40px 6px 12px; min-height: 40px; width: 170px; font-variant-numeric: tabular-nums; }
-.fecha-txt::placeholder { color: var(--ink-3); }
-.fecha-txt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.fecha-txt.mal { border-color: var(--critica); }
-.fecha-cal { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); display: inline-flex; border: 0; background: transparent; color: var(--ink-2); padding: 5px; border-radius: 5px; cursor: pointer; }
-.fecha-cal:hover { background: var(--track); color: var(--accent); }
-.fecha-cal:focus-visible { outline: 2px solid var(--accent); }
-.fecha-nat { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
 .per-comparar { margin-left: auto; min-height: 38px; font-size: 14.5px; }
 .per-parcial { font-size: 14px; flex-basis: 100%; }
-.per-error { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: var(--critica-bg); color: var(--critica-txt); font-size: 14px; font-weight: 600; }
+.per-error { margin: 0 0 10px; }
 #b-periodo .bajada { font-size: 15px; }
 .dd-global .dd-grande b { font-size: 44px; }
 .dd-global .dd-grande span { font-size: 14.5px; }
@@ -137,8 +129,6 @@ CSS = """/* Período con Desde / Hasta, barras más altas, letras más grandes y
   .dd-rbarra { grid-template-columns: minmax(0, 1fr) auto; }
   .dd-rbarra .dd-rpista { grid-column: 1 / -1; grid-row: 2; }
   .per-campo { flex: 1 1 140px; }
-  .fecha-txt { width: 100%; }
-  .fecha-wrap { display: flex; }
   .per-comparar { margin-left: 0; width: 100%; }
 }
 /* Ventana de comparación */
@@ -192,16 +182,7 @@ dialog.dlg-cmp { width: min(1320px, calc(100vw - 48px)); max-height: calc(100vh 
 #cmp-resultado[aria-busy="true"] { opacity: .55; }
 """
 
-ICONO_CAL = ('<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-             '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>')
-
-
-def campo_fecha(id_, rotulo):
-    # Campo de texto dd/mm/aaaa (se escribe con comodidad y recién aplica con la fecha completa) + calendario del navegador al tocar el ícono
-    return ('<div class="per-campo"><label for="%s">%s</label><span class="fecha-wrap">'
-            '<input type="text" class="fecha-txt" id="%s" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" maxlength="10">'
-            '<button type="button" class="fecha-cal" data-cal="%s" aria-label="Elegir la fecha %s en el calendario" title="Elegir en el calendario">%s</button>'
-            '<input type="date" class="fecha-nat" id="%s-cal" tabindex="-1" aria-hidden="true"></span></div>') % (id_, rotulo, id_, id_, rotulo.lower(), ICONO_CAL, id_)
+from fecha_ui import campo_fecha   # el campo de fecha es el mismo en todo Helios
 
 
 BARRA = ('    <div class="per-barra" id="per-barra">\n'
@@ -210,7 +191,7 @@ BARRA = ('    <div class="per-barra" id="per-barra">\n'
          '      <button type="button" class="btn primario per-comparar" id="btn-comparar" disabled>Comparar con otro período</button>\n'
          '      <span class="per-parcial" id="per-nota" aria-live="polite"></span>\n'
          '    </div>\n'
-         '    <p class="per-error" id="per-error" role="alert" hidden></p>\n')
+         '    <p class="error-form per-error" id="per-error" role="alert" hidden></p>\n')
 
 DIALOGO = r"""<dialog class="dlg dlg-cmp" id="dlg-comparar" aria-labelledby="cmp-titulo">
   <div class="cmp-cab"><h2 id="cmp-titulo">Comparar períodos</h2><button type="button" class="btn chico" data-cerrar>Cerrar</button></div>
@@ -222,65 +203,13 @@ DIALOGO = r"""<dialog class="dlg dlg-cmp" id="dlg-comparar" aria-labelledby="cmp
       <div class="cmp-atajos" role="group" aria-label="Atajos para comparar"><button type="button" class="btn chico" data-cmp-atajo="anterior">Período anterior</button><button type="button" class="btn chico" data-cmp-atajo="mes">Mismo período del mes anterior</button><button type="button" class="btn chico" data-cmp-atajo="anio">Mismo período del año anterior</button></div>
     </div>
   </div>
-  <p class="per-error" id="cmp-aviso" role="alert" hidden></p>
+  <p class="error-form per-error" id="cmp-aviso" role="alert" hidden></p>
   <div id="cmp-resultado" aria-live="polite"></div>
 </dialog>
 """
 
 JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
-  // ---- Campos de fecha dd/mm/aaaa: se escriben con comodidad y recién se aplican con la fecha completa y válida (parche 56) ----
-  var FECHA_LIM = {};
-  function fTxt(iso) { return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
-  function fFormato(raw) {
-    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
-    if (m) raw = m[3] + m[2] + m[1];                                        // pegaron una fecha en formato aaaa-mm-dd
-    raw = raw.replace(/(^|\D)(\d)(?=\D)/g, '$10$2');                         // "5/" pasa a "05/"
-    var ds = raw.replace(/\D/g, ''), i = 0, dia = '', mes = '', anio = '';
-    if (ds.length) { if (ds.charAt(0) > '3') { dia = '0' + ds.charAt(0); i = 1; } else { dia = ds.slice(0, 2); i = dia.length; } }   // "5" es el día 05
-    if (dia.length === 2 && ds.length > i) { if (ds.charAt(i) > '1') { mes = '0' + ds.charAt(i); i += 1; } else { mes = ds.slice(i, i + 2); i += mes.length; } }   // "7" es el mes 07
-    if (mes.length === 2) anio = ds.slice(i, i + 4);
-    return dia + (mes ? '/' + mes : '') + (anio ? '/' + anio : '');
-  }
-  function fEstado(id) {
-    var el = $(id), D = el.value.replace(/\D/g, ''), lim = FECHA_LIM[id] || {};
-    if (!D.length) return { estado: 'vacia' };
-    if (D.length < 8) return { estado: 'incompleta' };
-    var dd = +D.slice(0, 2), mm = +D.slice(2, 4), aa = +D.slice(4, 8), iso = D.slice(4, 8) + '-' + D.slice(2, 4) + '-' + D.slice(0, 2), f = new Date(Date.UTC(aa, mm - 1, dd, 12));
-    if (!(aa >= 1900) || f.getUTCFullYear() !== aa || f.getUTCMonth() !== mm - 1 || f.getUTCDate() !== dd) return { estado: 'invalida', msg: 'Esa fecha no existe. Escribila como día/mes/año, por ejemplo ' + fTxt(lim.max || '2026-01-31') + '.' };
-    if (lim.min && iso < lim.min) return { estado: 'fuera', msg: 'Se puede mirar desde el ' + fTxt(lim.min) + ' en adelante.' };
-    if (lim.max && iso > lim.max) return { estado: 'fuera', msg: 'La fecha no puede ser posterior a hoy (' + fTxt(lim.max) + ').' };
-    return { estado: 'ok', iso: iso };
-  }
-  function fPoner(id, iso) {
-    var el = $(id), n = $(id + '-cal');
-    el.value = fTxt(iso); el.classList.remove('mal'); el.removeAttribute('aria-invalid'); el.setAttribute('data-ok', iso || '');
-    if (n) n.value = iso || '';
-  }
-  function fLimites(id, min, max) { FECHA_LIM[id] = { min: min, max: max }; var n = $(id + '-cal'); if (n) { n.min = min; n.max = max; } }
-  function fEnganchar(id, alCompletar, mostrar) {
-    var el = $(id), n = $(id + '-cal');
-    function listo(iso) { el.classList.remove('mal'); el.removeAttribute('aria-invalid'); el.setAttribute('data-ok', iso); if (n) n.value = iso; mostrar(''); alCompletar(); }
-    el.addEventListener('input', function () {
-      var t = fFormato(el.value); if (t !== el.value) el.value = t;
-      var e = fEstado(id), mal = e.estado === 'invalida' || e.estado === 'fuera';
-      el.classList.toggle('mal', mal); if (mal) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
-      if (e.estado === 'ok') listo(e.iso); else mostrar(mal ? e.msg : '');
-    });
-    el.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); } });
-    el.addEventListener('blur', function () {      // si quedó a medias, vuelve a la última fecha buena y lo avisa
-      var e = fEstado(id); if (e.estado === 'ok') return;
-      var ok = el.getAttribute('data-ok');
-      if (el.value) mostrar(e.msg || 'Escribí la fecha completa como día/mes/año, por ejemplo ' + fTxt((FECHA_LIM[id] || {}).max || '2026-01-31') + '.');
-      fPoner(id, ok);
-    });
-    if (n) n.addEventListener('change', function () { if (n.value) { el.value = fTxt(n.value); listo(n.value); } });
-  }
-  document.addEventListener('click', function (ev) {
-    var b = ev.target.closest && ev.target.closest('[data-cal]'); if (!b) return;
-    var n = $(b.getAttribute('data-cal') + '-cal'); if (!n) return;
-    try { n.showPicker(); } catch (e) { n.focus(); n.click(); }
-  });
-  function consultaPeriodo(p) { return p.desde && p.hasta ? '?desde=' + p.desde + '&hasta=' + p.hasta : '?tipo=mes'; }
+@@FECHA_JS@@  function consultaPeriodo(p) { return p.desde && p.hasta ? '?desde=' + p.desde + '&hasta=' + p.hasta : '?tipo=mes'; }
   function pintarBarraPeriodo(r) {
     fLimites('per-desde', r.fecha_minima, r.hoy); fLimites('per-hasta', r.fecha_minima, r.hoy);
     if (document.activeElement !== $('per-desde')) fPoner('per-desde', r.desde);
@@ -452,7 +381,7 @@ JS = r"""  // ---- Período con Desde / Hasta y comparación (parche 56) ----
 
 
 def tablero(h):
-    i = h.index('</style>'); h = h[:i] + CSS + h[i:]
+    i = h.index('</style>'); h = h[:i] + fecha_ui.CSS + CSS + h[i:]
     # sección: texto, y los campos de fecha en lugar de Día / Semana / Mes
     h = _rep(h, "Elegí un día, una semana o un mes: todo lo de esta sección corresponde a ese período.",
              "Elegí desde qué día y hasta qué día mirar: todo lo de esta sección corresponde a ese período.")
@@ -479,7 +408,7 @@ def tablero(h):
     # los botones Día / Semana / Mes y las flechas se van; entran los campos y la comparación
     i = h.index("  document.addEventListener('click', function (ev) {\n    var t = ev.target.closest && ev.target.closest('[data-per-tipo]')")
     j = h.index("    pedirPeriodo(true);\n  });\n", i) + len("    pedirPeriodo(true);\n  });\n")
-    h = h[:i] + JS + h[j:]
+    h = h[:i] + JS.replace('@@FECHA_JS@@', fecha_ui.JS) + h[j:]
     # gráfico de evolución de cada cliente: ocupa todo el ancho (se dibuja a la medida del espacio; las letras no se agrandan ni se achican)
     h = _rep(h, "    var W = 420, H = 170, L = 54, R = 12, T = 14, B = 26, pw = W - L - R, ph = H - T - B, obj = c.objetivo, lo = obj, i;",
              "    var cont = $('per-dispo'), W = Math.round(Math.max(300, Math.min(1400, ((cont && cont.clientWidth) || 800) - 32))), ancha = W >= 640;\n"

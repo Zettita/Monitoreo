@@ -157,6 +157,14 @@ ok('la disponibilidad va primero, después las tarjetas de Estado por cliente y 
   ok('Disponibilidad lleva su período, Operación ahora las tarjetas, las 24 horas y las alertas, e Histórico lo demás', pd<p('id="b-periodo"') && p('id="b-periodo"')<po && po<p('id="bloque-panorama"') && p('id="bloque-panorama"')<i24 && i24<p('id="bloque-alertas"') && p('id="bloque-alertas"')<ph && ph<p('Histórico de Alertas') && p('Histórico de Alertas')<p('Clientes con más problemas'));
   ok('el resumen de arriba queda fijo sobre las pestañas', p('id="portada"')>0 && p('id="portada"')<p('id="pestanas"'));
   ok('Operación ahora muestra el número de alertas abiertas', t.includes('id="tab-n-op"') && t.includes('actualizarPestanas(casos)')); }
+{ const t=r.t, campos=['per-desde','per-hasta','cmp-desde','cmp-hasta','hist-desde','hist-hasta','cli-desde','cli-hasta'];
+  ok('el tablero usa el mismo campo de fecha (con calendario) en Disponibilidad, Comparar, Histórico y Clientes', campos.every(id=>t.includes('id="'+id+'"') && t.includes('data-cal="'+id+'"') && t.includes('id="'+id+'-cal"')), campos.filter(id=>!t.includes('data-cal="'+id+'"')));
+  ok('ya no están los campos de fecha viejos del histórico (chicos, sin calendario)', !t.includes('data-lado') && !t.includes('.filtro-fechas input {') && t.includes('function aplicarLado(k, lado)'));
+  ok('la capa de tema común está al final de la página', t.includes('Un solo tema (parche 58)') && t.includes('.filtros select, .filtros-seg select'));
+  const ad=(await call(A,'GET','/admin')).t, camposAd=['a-desde','a-hasta','fer-fecha','ev-desde','ev-hasta'];
+  ok('Administración usa el mismo campo: auditoría, feriados y eventos con calendario y formato dd/mm/aaaa', camposAd.every(id=>ad.includes('id="'+id+'"') && ad.includes('data-cal="'+id+'"')) && ad.includes('function fFormato(raw)') && !ad.includes('placeholder="DD/MM/AAAA"'), camposAd.filter(id=>!ad.includes('data-cal="'+id+'"')));
+  const sg=(await call(A,'GET','/seguimiento')).t, co=(await call(ck.gero,'GET','/comunicados')).t;
+  ok('las otras páginas con tema traen la capa común (Seguimiento, Comunicados y Administración)', sg.includes('Un solo tema (parche 58)') && co.includes('Un solo tema (parche 58)') && ad.includes('Un solo tema (parche 58)')); }
 ok('ya no están los recuadros del período, y sí el resumen por estado y el filtro de estado', !r.t.includes('id="per-kpis"') && r.t.includes('data-dd-grupo') && r.t.includes('data-act-estado') && r.t.includes('Asignada sin tomar'));
 
 // ---- La página del tablero ----

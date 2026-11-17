@@ -476,7 +476,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
-**Pestañas del tablero y nuevo orden (17/11, parche 57; sin SQL, falta publicar)**
+**Un solo tema y un solo campo de fecha (17/11, parche 58; sin SQL, falta publicar)**
+
+- Un único campo de fecha (`dd/mm/aaaa`, con calendario, que solo aplica con la fecha completa y válida) en el tablero (Disponibilidad, Comparar, Histórico, Clientes con más problemas) y en Administración (auditoría, feriados, eventos comerciales). Tema unificado en todas las páginas: esquinas de 4 px en cajas y 3 px en campos y etiquetas, selectores y campos de 40 px, títulos con el mismo grosor y etiquetas de estado como lozenge. Solo páginas.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche58/`, ramas `respaldo-antes-parche-58` y `version-parche-58-tema-y-fechas`.
+
+**Pestañas del tablero y nuevo orden (17/11, parche 57; sin SQL, publicado el 17/11)**
 
 - El tablero se agrupa en tres pestañas con el resumen de arriba fijo: **Disponibilidad** (con la Distribución de fallas), **Operación ahora** (Estado por cliente, Últimas 24 horas, Alertas abiertas y Pre-alertas, con el número de abiertas) e **Histórico** (Histórico de alertas, Tiempo de resolución y Clientes con más problemas). Nuevo orden pedido: Disponibilidad, tarjetas de Estado por cliente, Últimas 24 horas. Solo página.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche57/`, ramas `respaldo-antes-parche-57` y `version-parche-57-pestanas-tablero`.

@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py y patch57.py → w.mjs
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py y patch58.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch58.py          un solo campo de fecha (el de Disponibilidad: se escribe dd/mm/aaaa, tiene calendario) en el Histórico, Clientes con más problemas y Administración
+                        (auditoría, feriados, eventos), y un bloque de CSS al final de todas las páginas que unifica el tema (esquinas de 4 px en cajas y 3 px en campos y
+                        etiquetas, títulos de 20/600, selectores y campos de 40 px). fecha_ui.py tiene el campo (CSS, JS y marcado). Solo páginas. Sin SQL.
     patch57.py          el tablero se agrupa en tres pestañas (Disponibilidad · Operación ahora · Histórico) con el resumen de arriba fijo, y cambia el orden:
                         primero Disponibilidad, después las tarjetas de Estado por cliente y después Últimas 24 horas. Solo página. Prueba: pruebas/disponibilidadtest.mjs
     patch56.py          período con Desde / Hasta en lugar de Día / Semana / Mes (GET /api/tablero/periodo?desde=&hasta=; hasta 366 días), barras de clientes más altas y letras
@@ -169,7 +172,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch58.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch59.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -199,7 +202,14 @@ Para un cambio nuevo: crear `patch58.py` con una función `aplicar(s)` (como los
 ## Cambio de modelo del asistente (16/11, patch54) — para publicar (sin SQL)
 - Cloudflare da de baja el 20/11/2026 `@cf/qwen/qwen3-30b-a3b-fp8`. El de fábrica pasa a `@cf/qwen/qwen3.8-27b`; una variable `ASISTENTE_MODELO` con un modelo dado de baja se ignora. **54b/54c (17/11, publicados):** si el modelo devuelve vacío se reintenta con el triple de tokens y se deja el detalle en el registro (`Asistente: respuesta vacía…` / `sin texto final…`). **Probado en Cloudflare con Gemma 4** (`ASISTENTE_MODELO = @cf/google/gemma-4-26b-a4b-it`, cargada como variable): responde bien (Analista: Resumen del turno, horarios y cliente, sin asignar), unas 60-80 neuronas por pregunta (496 de 10.000 tras la tanda de pruebas). Qwen3.8 cuesta ~9 veces más que el modelo viejo. Pendiente: pasar el default del código a Gemma, que el servidor arme el botón "Derivar" en "¿Qué está sin asignar y a quién lo derivo?" y bajar `ASISTENTE_POR_DIA` a 100. Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
 
-## Pestañas del tablero y nuevo orden (17/11, parche 57) — hecho en código, falta publicar (sin SQL)
+## Un solo tema y un solo campo de fecha (17/11, parche 58) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel: dejar todo con el mismo tema (estilo Atlassian con acento verde azulado, también lo nuevo), un solo tipo de campo de fecha (el de Disponibilidad) y corregir otros detalles distintos entre pantallas.
+- **Campo de fecha único** (`fecha_ui.py`): texto `dd/mm/aaaa` que se formatea al escribir ("5102026" da 05/10/2026), solo se aplica con la fecha completa y válida, avisa si no existe o está fuera de rango, vuelve a la última buena al salir a medias y tiene un ícono que abre el calendario del navegador. Estaba en 4 versiones (Disponibilidad, Histórico y Clientes con campos chicos de 25 px, Administración con 34 px); ahora es el mismo en el tablero (Disponibilidad, Comparar, Histórico, Clientes con más problemas) y en Administración (auditoría, feriado, evento comercial; "Hasta" del evento sigue vacío = un día).
+- **Tema:** se midió en el navegador qué se salía del estilo y se unificó con un bloque de CSS al final de cada página (`NORMA_CSS`): cajas de 4 px de esquina con la sombra de siempre, campos y etiquetas de 3 px, selectores de filtros y formularios de 40 px de alto como el campo de fecha (antes 34 a 36; en Administración los filtros de auditoría tenían alturas distintas), botones de filtros de la misma altura, títulos de sección 20/600 (Seguimiento los tenía en 700), títulos de panel de la alerta 16/600, rótulos de campos en 14 px, etiquetas de estado de Disponibilidad como lozenge (mayúsculas, 3 px) y "Ver detalle" sin partirse en dos líneas. Lo nuevo (pestañas, barras, tarjetas y comparación) usa lo mismo: 4 px, sombra suave, nada de píldoras.
+- **A propósito sin tocar:** el logo del caballo (6 px, elegido aparte), los contadores redondos (campanita, "1" de la pestaña), los interruptores y el botón y panel del asistente.
+- Probado: batería completa, demo igual; pantallas en PC y celular del tablero (Disponibilidad, Histórico y Comparar), Administración (auditoría, evento) y Seguimiento. Respaldo: `99_Archivo_viejo/worker_antes_parche58/`, ramas `respaldo-antes-parche-58` y `version-parche-58-tema-y-fechas`.
+
+## Pestañas del tablero y nuevo orden (17/11, parche 57) — publicado el 17/11 (sin SQL)
 Pedido de Uriel: poner primero Disponibilidad, después las tarjetas de Estado por cliente y después Últimas 24 horas (lo demás igual), y agrupar para reducir el scroll. Elegido con Uriel: **3 pestañas** y el **resumen de arriba siempre fijo** sobre ellas.
 - **Disponibilidad:** "Disponibilidad y resumen del período" con la Distribución de fallas (depende del mismo período). **Operación ahora:** Estado por cliente, Últimas 24 horas, Alertas abiertas y Pre-alertas (la pestaña muestra cuántas alertas abiertas hay). **Histórico:** Histórico de alertas, Tiempo de resolución por tipo y Clientes con más problemas. Arranca en Disponibilidad y recuerda la pestaña elegida mientras la del navegador siga abierta (`sessionStorage`).
 - Accesible: `role=tablist`, flechas / Inicio / Fin para moverse; en el celular las tres se reparten el ancho. Solo cambia la página: nada de datos ni de rutas. Los gráficos se dibujan igual aunque su pestaña esté oculta (usan un ancho de reserva y se escalan).
