@@ -432,6 +432,8 @@ Opciones de modelo: una API externa (mejor calidad; los datos salen de la empres
 
 Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo local) aprueba la empresa, si los datos de clientes pueden salir a un proveedor externo, cuántas series tendrá producción.
 
+**Comparación de modelos (18/11, solo documentos, sin código):** `Helios_modelos_IA_propuesta_cliente.docx` (4 opciones, sin jerga) y `Helios_modelos_IA_analisis_tecnico.docx` (6 opciones con precios verificados el 18/11/2026). Los generan `07_Codigo_fuente/word/modelos_ia_datos.js` (precios y supuestos: 6.000 tokens de entrada y 1.000 de salida por consulta; 150, 1.000 y 5.000 consultas por día), `modelos_ia_build.js` (`node modelos_ia_build.js <carpeta> cliente|tecnico`) e `indice_word.py` (índice con Word en vez de LibreOffice). Recomendación a validar: seguir con Workers AI y Qwen3 30B-A3B mientras Helios esté en Cloudflare; con el servidor propio, modelo local de la misma familia (Qwen3.6-35B-A3B con vLLM, GPU de 32 GB como mínimo) y API externa solo como respaldo si el cliente lo aprueba. Un modelo local en la LAN no lo alcanza un Worker en Cloudflare sin túnel: tiene sentido cuando Helios también corre en el servidor propio. Pendiente: prueba comparativa con ~40 casos de la demo y que el cliente defina si los datos pueden salir, presupuesto de GPU, uso esperado y fecha del servidor. Nada de esto está decidido.
+
 ---
 
 ## 15. Reglas que no se deben romper

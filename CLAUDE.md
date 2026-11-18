@@ -151,7 +151,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
     gen.py              generador original de la base de la demo (series, curva horaria, escenas)
   modelo_v2/            modelo nuevo: generar_historico.py, perfil_comportamiento_postgres.sql, correr_perfil_pglite.mjs,
                         armar_d1.py, feriados.csv
-  word/                 helper de Word con el estilo de la compañera e índice real (helios_docx.js, indice.py)
+  word/                 helper de Word con el estilo de la compañera e índice real (helios_docx.js, indice.py; indice_word.py hace lo mismo con Word instalado, sin LibreOffice).
+                        Documentos de modelos de IA (18/11): modelos_ia_datos.js (precios, supuestos y cuentas) y modelos_ia_build.js → 05_Documentacion/Helios_modelos_IA_*.docx
+                        (hace falta `npm install docx --no-save` en esa carpeta)
 ```
 
 ### Construir y probar (Python 3.11+ y Node 22.5+, que trae `node:sqlite`)
