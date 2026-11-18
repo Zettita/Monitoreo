@@ -5,6 +5,8 @@
 #   - Abajo, lado a lado como en la principal: "Cumplimiento del objetivo" en barras verticales (cumplen / cerca / lejos) con una barra por período
 #     (el actual sólido y el comparado rayado) y "Disponibilidad general" con las dos líneas superpuestas. Sigue el aviso de la diferencia y la
 #     tabla por cliente.
+#   Sin textos explicativos en la ventana (pedido de Uriel): ni "Elegí con qué período…", ni los avisos de distinta duración o de períodos superpuestos,
+#   ni "Ordenado de quien más empeoró…".
 #   Solo página; sin SQL.
 import json
 
@@ -81,16 +83,14 @@ JS = r"""  // ---- Comparación con el estilo de la pantalla principal (parche 6
 
 JS_PINTAR = r"""  function pintarComparacion() {
     var a = resumen, b = comp.b, el = $('cmp-resultado'); if (!a || !b) { el.innerHTML = ''; return; }
-    var xa = resumenComp(a), xb = resumenComp(b), na = diasEntre(a.desde, a.hasta), nb = diasEntre(b.desde, b.hasta), notas = [];
-    if (na !== nb) notas.push('Los períodos tienen distinta duración (' + na + (na === 1 ? ' día' : ' días') + ' y ' + nb + (nb === 1 ? ' día' : ' días') + '). La disponibilidad es un porcentaje y se puede comparar, pero un período corto se mueve más con un solo problema.');
-    if (b.desde <= a.hasta && b.hasta >= a.desde) notas.push('Los períodos se superponen: algunos días cuentan en los dos.');
+    var xa = resumenComp(a), xb = resumenComp(b);
     var dif = '';
     if (xa && xb) {
       var d = Math.round((xa.g.disponibilidad - xb.g.disponibilidad) * 10000) / 100;
       dif = '<div class="cmp-dif ' + (d > 0 ? 'mejor' : d < 0 ? 'peor' : '') + '">' + (d === 0 ? 'La disponibilidad es igual en los dos períodos.' : (d > 0 ? '▲ El período actual mejoró ' : '▼ El período actual empeoró ') + fmtPuntos(d) + ' respecto del comparado.') + '</div>';
     } else dif = '<div class="cmp-dif">No hay datos medidos en alguno de los períodos para comparar.</div>';
     var titA = rangoTxt(a.desde, a.hasta) + (a.parcial ? ' (hasta ahora)' : ''), titB = rangoTxt(b.desde, b.hasta) + (b.parcial ? ' (hasta ahora)' : '');
-    el.innerHTML = notas.map(function (t) { return '<p class="cmp-nota">' + esc(t) + '</p>'; }).join('') + dif +
+    el.innerHTML = dif +
       '<h3 class="cmp-sec">Período actual · ' + esc(titA) + '</h3>' + kpisComp(a, b) +
       '<h3 class="cmp-sec">Comparado · ' + esc(titB) + '</h3>' + kpisComp(b, null) +
       '<div class="dv-fila"><div class="dv-panel"><h3>Cumplimiento del objetivo</h3>' +
@@ -107,6 +107,9 @@ def tablero(h):
     h = _entre(h, "  function pintarComparacion() {", "  $('btn-comparar').addEventListener('click', abrirComparar);", JS_PINTAR)
     h = _r(h, "  function fmtPuntos(v) {", JS + "  function fmtPuntos(v) {")
     h = _r(h, "Math.round(Math.max(300, Math.min(1200, $('cmp-resultado').clientWidth || 760)))", "anchoGrafComp()")
+    # sin textos explicativos en la ventana (pedido de Uriel)
+    h = _r(h, '<p class="sub-dlg">Elegí con qué período querés comparar el que estás viendo.</p>\n', '')
+    h = _r(h, '<p class="dd-ayuda">Ordenado de quien más empeoró a quien más mejoró.</p>', '')
     return h
 
 

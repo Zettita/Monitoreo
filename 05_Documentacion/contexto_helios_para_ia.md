@@ -486,6 +486,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 **Comparar con el estilo de Disponibilidad (18/11, parche 66; sin SQL, falta publicar)**
 
 - La ventana "Comparar con otro período" usa el mismo estilo que la pestaña Disponibilidad: las tres tarjetas por período (Disponibilidad real, Tiempo sin servicio, Servicios que cumplen), barras verticales con una barra por período (actual sólido, comparado rayado) y la línea de Disponibilidad general con las dos curvas. Solo página.
+- Sin textos explicativos en la ventana (ajuste del 18/11): no dice "Elegí con qué período…", ni avisa de distinta duración o de períodos superpuestos, ni "Ordenado de quien más empeoró…".
 - Respaldo: `99_Archivo_viejo/worker_antes_parche66/`, ramas `respaldo-antes-parche-66` y `version-parche-66-comparar-estilo-disponibilidad`.
 
 **Gráficos de Operaciones y de fallas (17/11, parche 65; sin SQL, falta publicar junto con el 64)**
