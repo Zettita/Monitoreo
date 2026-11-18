@@ -69,7 +69,7 @@ await call('','POST','/api/setup',{usuario:'uriel',nombre:'Uriel Solnik',clave:'
 const A=await login('uriel','ClaveSegura123');
 const ck={};
 for (const [u,n,p] of [['ana','Ana Lista','ANALISTA'],['sol','Sol Porte','SOPORTE'],['pedro','Pedro Pagos','SOPORTE'],['gero','Gero Rente','GERENTE']]) {
-  const x=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p}); const c=await login(u,x.j.clave_temporal);
+  const x=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p,correo:u+'@helios.test'}); const c=await login(u,x.j.clave_temporal);
   await call(c,'POST','/api/cambiar-clave',{actual:x.j.clave_temporal,nueva:'Clave'+u+'123456'}); ck[u]=c;
 }
 const id=(u)=>db.prepare('select id from usuarios where usuario=?').get(u).id;

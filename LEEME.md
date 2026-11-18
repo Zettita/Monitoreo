@@ -4,7 +4,7 @@
 - `worker_alertas_cron.js` — Worker principal (`worker-alertas-cron`): tablero, Mis alertas, Seguimiento, Administración, login, cron que evalúa alertas y trae feriados. **Es siempre la última versión**; se publica con "Edit code".
 
 ## 02_Base_de_datos_D1 — scripts para la Console de D1 (en el orden en que se corren)
-Del 1 al 22 ya están aplicados: sirven para reconstruir la base desde cero o como referencia.
+Del 1 al 22 ya están aplicados (el 23 es nuevo: falta correrlo): sirven para reconstruir la base desde cero o como referencia.
 1. `01_acceso_d1_tablas.txt` — usuarios, perfiles y sesiones (login).
 2. `02_admin_d1_tablas.txt` — reglas personalizadas y auditoría (pantalla de Administración).
 3. `03_asignacion_d1_tablas.txt` — tomar / derivar / resolver alertas y equipos.
@@ -31,6 +31,8 @@ Del 1 al 22 ya están aplicados: sirven para reconstruir la base desde cero o co
 21. `21_comunicados_d1.txt` — **ya corrido (parche 46).** Perfil "Solo comunicados" (`usuarios.solo_comunicados`), listas de difusión (`alerta_parametros.listas_difusion`) y tablas `comunicados_incidente` y `comunicado_destinatarios` para "Comunicar incidente". Quedan 26 tablas. Se corre antes de publicar el Worker.
 
 22. `22_equipos_y_comunicados_d1.txt` — **ya corrido (parche 63).** Equipos y listas de difusión en uno: rol de cada persona en los comunicados (`equipo_miembros.rol_comunicado`) y para qué alertas sirve el equipo (`equipos.alcance_cliente_id`); pasa las listas que había a equipos. Siguen 26 tablas. Se corre antes de publicar el Worker.
+
+23. `23_correo_usuarios_d1.txt` — **nuevo (parche 68), falta correrlo.** Una columna, `usuarios.correo`: el correo de cada persona, para elegir destinatarios al enviar correos desde una alerta. Siguen 26 tablas. Se corre antes de publicar el Worker; sin él todo anda como antes.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
@@ -61,7 +63,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58 y 60 a 67 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58 y 60 a 68 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
 - `word/` — helper para armar los Word con el estilo de la compañera.

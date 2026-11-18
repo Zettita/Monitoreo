@@ -12,7 +12,7 @@ const ok=(t,cond,extra)=>{console.log((cond?'OK  ':'FALLA ')+t+(extra!==undefine
 const login=async(u,c)=>(await call('', 'POST','/api/login',{usuario:u,clave:c})).ck;
 await call('', 'POST','/api/setup',{usuario:'uriel',nombre:'Uriel Solnik',clave:'ClaveSegura123'});
 const A=await login('uriel','ClaveSegura123');
-let r=await call(A,'POST','/api/admin/usuarios',{usuario:'analista',nombre:'Ana Lista',perfil:'ANALISTA'});
+let r=await call(A,'POST','/api/admin/usuarios',{usuario:'analista',nombre:'Ana Lista',perfil:'ANALISTA',correo:'analista@helios.test'});
 let an=await login('analista',r.j.clave_temporal); await call(an,'POST','/api/cambiar-clave',{actual:r.j.clave_temporal,nueva:'NuevaAnalista123'}); an=await login('analista','NuevaAnalista123');
 
 // --- Permisos ---

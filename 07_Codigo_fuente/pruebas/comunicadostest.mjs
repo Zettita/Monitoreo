@@ -26,7 +26,7 @@ await call('','POST','/api/setup',{usuario:'uriel',nombre:'Uriel Solnik',clave:'
 const A=await login('uriel','ClaveSegura123');
 const ck={};
 for (const [u,n,p] of [['ana','Ana Lista','ANALISTA'],['sol','Sol Porte','SOPORTE'],['carla','Carla Lider','SOPORTE'],['pedro','Pedro Pagos','SOPORTE'],['gero','Gero Rente','GERENTE'],['laura','Laura Atencion','COMUNICADOS'],['juan','Juan Negocio','COMUNICADOS']]) {
-  const r=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p}); const c=await login(u,r.j.clave_temporal);
+  const r=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p,correo:u+'@helios.test'}); const c=await login(u,r.j.clave_temporal);
   await call(c,'POST','/api/cambiar-clave',{actual:r.j.clave_temporal,nueva:'Clave'+u+'123456'}); ck[u]=c;
 }
 const id=(u)=>db.prepare('select id from usuarios where usuario=?').get(u).id;
@@ -126,8 +126,8 @@ await call(A,'POST','/api/demo/preparar'); ok('Preparar demo borra los comunicad
 db.exec('DROP TABLE comunicado_destinatarios; DROP TABLE comunicados_incidente; ALTER TABLE usuarios DROP COLUMN solo_comunicados; ALTER TABLE alerta_parametros DROP COLUMN listas_difusion; ALTER TABLE equipos DROP COLUMN alcance_cliente_id; ALTER TABLE equipo_miembros DROP COLUMN rol_comunicado');
 r=await call(ck.ana,'GET','/api/yo'); ok('sin el script 21 el ingreso sigue andando', r.s===200 && r.j.usuario.perfil==='ANALISTA');
 r=await call(A,'GET','/api/admin/usuarios'); ok('y la lista de usuarios', r.s===200 && r.j.usuarios.length>5);
-r=await call(A,'POST','/api/admin/usuarios',{usuario:'nuevo',nombre:'Nuevo Comunicado',perfil:'COMUNICADOS'}); ok('crear "Solo comunicados" avisa que falta el script (503)', r.s===503 && /21_comunicados_d1/.test(r.j.error), r.j.error);
-r=await call(A,'POST','/api/admin/usuarios',{usuario:'nuevo2',nombre:'Nuevo Soporte',perfil:'SOPORTE'}); ok('los demás perfiles se crean igual', r.s===200);
+r=await call(A,'POST','/api/admin/usuarios',{usuario:'nuevo',nombre:'Nuevo Comunicado',perfil:'COMUNICADOS',correo:'nuevo@helios.test'}); ok('crear "Solo comunicados" avisa que falta el script (503)', r.s===503 && /21_comunicados_d1/.test(r.j.error), r.j.error);
+r=await call(A,'POST','/api/admin/usuarios',{usuario:'nuevo2',nombre:'Nuevo Soporte',perfil:'SOPORTE',correo:'nuevo2@helios.test'}); ok('los demás perfiles se crean igual', r.s===200);
 r=await call(A,'GET','/api/admin/equipos'); ok('equipos sin los scripts 21 y 22: se ven y avisa que falta el 22', r.s===200 && r.j.falta_script_22===true && r.j.equipos.length>=4);
 r=await call(A,'POST','/api/admin/equipos',{nombre:'Sin script',cliente_id:'CLI_004',miembros:[]}); ok('elegir cliente sin el script 22 = 503', r.s===503 && /22_equipos/.test(r.j.error));
 r=await call(A,'POST','/api/admin/equipos',{nombre:'Sin script',miembros:[id('pedro')]}); ok('un equipo común se crea igual', r.s===200);

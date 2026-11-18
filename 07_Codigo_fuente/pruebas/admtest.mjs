@@ -19,7 +19,7 @@ r=await call(A,'POST','/api/admin/equipos',{nombre:'mesa de AYUDA'}); ok('equipo
 r=await call(A,'POST','/api/admin/equipos',{nombre:'X'}); ok('equipo nombre corto = 400', r.s===400, r.j.error);
 const temps={};
 for (const [u,n,p,eq] of [['gerente','Gerente Demo','GERENTE',[]],['analista','Ana Lista','ANALISTA',[]],['soporte','Sol Porte','SOPORTE',[1]],['admin2','Segundo Admin','ADMIN',[]]]) {
-  r=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p,equipos:eq}); temps[u]=r.j.clave_temporal;
+  r=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p,equipos:eq,correo:u+'@helios.test'}); temps[u]=r.j.clave_temporal;
   ok('alta '+p, r.s===200 && /^[A-Za-z2-9]{12}$/.test(r.j.clave_temporal||''), r.j.usuario);
 }
 r=await call(A,'POST','/api/admin/usuarios',{usuario:'gerente',nombre:'Otro',perfil:'GERENTE'}); ok('usuario duplicado = 409', r.s===409, r.j.error);

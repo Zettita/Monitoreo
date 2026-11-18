@@ -1,0 +1,15 @@
+CORREO DE CADA USUARIO (para la Console de D1: helios-monitoring-dev) — parche 68
+
+Qué hace:
+- usuarios.correo: la casilla de correo de cada persona. Se carga al crear el usuario (obligatorio) o al editarlo, en Administración > Usuarios.
+  Con esos correos, "Template correo alerta" deja elegir los destinatarios de una lista (personas y equipos) sin copiar ni pegar a mano.
+- Los usuarios que ya existían quedan sin correo hasta que el Administrador lo cargue (no aparecen en la lista de destinatarios mientras tanto).
+Siguen 26 tablas.
+
+Orden: 1) correr este bloque; 2) publicar 01_Worker/worker_alertas_cron.js.
+Sin este script el Worker funciona igual: crear usuarios no pide correo, Administración avisa que falta el script y el correo de la alerta
+sigue con los destinatarios escritos a mano.
+El bloque se corre UNA sola vez: si se repite da "duplicate column name" y no pasa nada. No hace falta /bookmark.
+
+--- 1. Correo de cada usuario (una columna en usuarios) ---
+ALTER TABLE usuarios ADD COLUMN correo TEXT;

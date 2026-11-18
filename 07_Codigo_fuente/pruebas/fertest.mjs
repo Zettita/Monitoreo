@@ -12,7 +12,7 @@ const ok=(t,cond,extra)=>{console.log((cond?'OK  ':'FALLA ')+t+(extra!==undefine
 const login=async(u,c)=>(await call('', 'POST','/api/login',{usuario:u,clave:c})).ck;
 await call('', 'POST','/api/setup',{usuario:'uriel',nombre:'Uriel Solnik',clave:'ClaveSegura123'});
 const A=await login('uriel','ClaveSegura123');
-let r=await call(A,'POST','/api/admin/usuarios',{usuario:'analista',nombre:'Ana Lista',perfil:'ANALISTA'});
+let r=await call(A,'POST','/api/admin/usuarios',{usuario:'analista',nombre:'Ana Lista',perfil:'ANALISTA',correo:'analista@helios.test'});
 let an=await login('analista',r.j.clave_temporal); await call(an,'POST','/api/cambiar-clave',{actual:r.j.clave_temporal,nueva:'NuevaAnalista123'}); an=await login('analista','NuevaAnalista123');
 r=await call(an,'GET','/api/admin/feriados'); ok('analista sin feriados (403)', r.s===403);
 r=await call(A,'GET','/api/admin/feriados?anio=2026'); ok('lista 2026', r.s===200 && r.j.feriados.length===19 && r.j.anios.includes(2025), {n:r.j.feriados.length, anios:r.j.anios});

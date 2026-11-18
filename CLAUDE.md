@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py y patch67.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py y patch68.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -167,7 +167,7 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest comunicadostest jiratest textostest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest comunicadostest jiratest textostest correousuariostest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done
 # etapa 3b: migración a mitad de camino (esquema viejo -> scripts 16 y 17 -> Worker nuevo); necesita w_anterior.mjs
@@ -176,7 +176,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch68.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch69.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -205,6 +205,14 @@ Para un cambio nuevo: crear `patch68.py` con una función `aplicar(s)` (como los
 
 ## Cambio de modelo del asistente (16/11, patch54) — para publicar (sin SQL)
 - Cloudflare da de baja el 20/11/2026 `@cf/qwen/qwen3-30b-a3b-fp8`. El de fábrica pasa a `@cf/qwen/qwen3.8-27b`; una variable `ASISTENTE_MODELO` con un modelo dado de baja se ignora. **54b/54c (17/11, publicados):** si el modelo devuelve vacío se reintenta con el triple de tokens y se deja el detalle en el registro (`Asistente: respuesta vacía…` / `sin texto final…`). **Probado en Cloudflare con Gemma 4** (`ASISTENTE_MODELO = @cf/google/gemma-4-26b-a4b-it`, cargada como variable): responde bien (Analista: Resumen del turno, horarios y cliente, sin asignar), unas 60-80 neuronas por pregunta (496 de 10.000 tras la tanda de pruebas). Qwen3.8 cuesta ~9 veces más que el modelo viejo. Pendiente: pasar el default del código a Gemma, que el servidor arme el botón "Derivar" en "¿Qué está sin asignar y a quién lo derivo?" y bajar `ASISTENTE_POR_DIA` a 100. Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
+
+## Correo de cada usuario y elegir destinatarios (18/11, parche 68) — hecho en código, falta publicar (script 23)
+Pedido de Uriel: que cada usuario lleve su casilla de correo, para tener el listado a mano al enviar notificaciones por Outlook y no escribir, copiar ni pegar a mano. Elegido con Uriel: **correo obligatorio al crear** y selector de **personas y equipos con escritura libre**.
+- **Script 23** (`23_correo_usuarios_d1.txt`, `correo_usuarios_d1.sql`): una columna, `usuarios.correo`. Siguen 26 tablas. Primero el SQL, después el Worker. Sin el script todo anda como antes (crear usuarios no pide correo, Administración avisa y el correo sigue escribiéndose a mano); `hayCorreoUsuarios` lo detecta y vuelve a mirar una vez por minuto.
+- **Administración > Usuarios:** campo "Correo" al crear (obligatorio) y al editar; se ve en la tabla ("Sin correo cargado" para los de antes). Se guarda en minúsculas y sin espacios, con el mismo formato que valida el correo de la alerta (máx. 120), **no se repite entre usuarios** (409 con el nombre de quien lo tiene) y, una vez cargado, no se puede dejar vacío (400). Los usuarios que ya existían quedan sin correo hasta que el Administrador lo cargue; el primer administrador (`/api/setup`) también. Auditoría: el alta lleva el correo y la edición dice "correo".
+- **`GET /api/alertas/<id>/correo/contactos`** (solo quien trabaja la alerta, como "Preparar correo"): `{personas:[{id,nombre,correo}], equipos:[{id,nombre,correos[]}], sin_correo}` de personas y equipos **activos**; el equipo solo trae los correos de sus miembros que tienen correo y no aparece si ninguno lo tiene. No devuelve usuario, perfil ni nada de acceso. Con el script sin correr devuelve `falta_script: true` y listas vacías. 3 consultas por pedido, solo al abrir el diálogo.
+- **Detalle de la alerta:** "Elegir de la lista" debajo de Para y CC del correo y de los destinatarios de "Confirmar envío": buscador por nombre, equipo o correo, equipos (tocar uno suma o saca los correos de todos sus miembros; marca parcial si solo están algunos) y personas. Los campos de texto siguen siendo la fuente: lo elegido y lo escrito a mano (clientes, proveedores) conviven. Solo página (`patch68.py`); el servidor del correo (`correo_server.js`) no cambió.
+- Probado: `correousuariostest.mjs` nueva (51 controles con el script y 8 sin él: obligatorio, formato, repetido, vaciar, usuarios de antes, permisos, desactivados, equipos sin correos, que no filtre datos de acceso) y las demás pruebas ajustadas para crear usuarios con correo; demo igual y toda la batería; pantallas en el navegador (correo y confirmación como Analista, Usuarios como Administrador). Respaldo: `99_Archivo_viejo/worker_antes_parche68/`, ramas `respaldo-antes-parche-68` y `version-parche-68-correo-usuarios`.
 
 ## Campos unificados después de los parches 59 a 65 (18/11, parche 67) — hecho en código, falta publicar (sin SQL)
 Uriel preguntó si todo lo de Ale del 17/11 (parches 59 a 65) estaba contemplado. Se revisó: el build es idéntico a lo publicado, la batería pasa y no hay errores de JavaScript; las pestañas del 57 envuelven sin problema lo nuevo (Operaciones con dona y gráficos, pre-alertas, Histórico con filtros), el Histórico usa el campo de fecha común y la ventana de comparar ya se había alineado con el 66. Se midieron de nuevo los estilos y quedaban campos sin el tamaño común.
@@ -448,6 +456,7 @@ persona (informado / técnico / líder).
 - Más adelante (si IT lo aprueba): Microsoft Graph para crear el borrador directo en el buzón, con formato y adjuntos.
 - **Decidido con Ale (16/11): los destinatarios del correo se escriben siempre a mano** (Para y CC libres, cualquier dirección). Sin destinatarios
   sugeridos en las plantillas ni agenda de contactos. Las listas de difusión son solo para el push de "Comunicar incidente", no para el correo.
+  **Reemplazado el 18/11 (parche 68, pedido de Uriel):** cada usuario tiene su correo y el correo de la alerta deja elegir destinatarios de una lista (personas y equipos); sigue pudiendo escribirse a mano (clientes, proveedores). Las plantillas siguen sin destinatarios.
 
 ## Pendiente: mejoras de Hugo (ITIL / ITSM / SRE) — no empezar sin sus definiciones
 Tipo de impacto (degradación / parcial / caída), servicios de acceso y correlación, coeficientes, segmentos, registro de incidentes y problemas con causa, SLAs por prioridad con escalamiento, SLO y ventanas de mantenimiento. **Nada implementado.** Falta que Hugo mande: lista de servicios con los de acceso marcados, ejemplo de coeficientes reales, cómo distingue degradación / parcial / caída, SLAs y escalamiento por prioridad, lista de causas, la foto del incidente de login y el documento que prometió. Detalle en la sección 18 de `contexto_helios_para_ia.md`. Si alguien pide implementar algo de esto, primero preguntar si ya llegaron esas definiciones.

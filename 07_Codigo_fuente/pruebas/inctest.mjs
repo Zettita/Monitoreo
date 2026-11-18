@@ -26,7 +26,7 @@ let fallas = 0; const ok = (t, c, x) => { console.log((c ? 'OK  ' : 'FALLA ') + 
 async function usuarios(E) {
   await E.call('', 'POST', '/api/setup', { usuario: 'uriel', nombre: 'Uriel Solnik', clave: 'ClaveSegura123' });
   const adm = (await E.call('', 'POST', '/api/login', { usuario: 'uriel', clave: 'ClaveSegura123' })).ck;
-  const r = await E.call(adm, 'POST', '/api/admin/usuarios', { usuario: 'ana', nombre: 'Ana Lista', perfil: 'ANALISTA' });
+  const r = await E.call(adm, 'POST', '/api/admin/usuarios', { usuario: 'ana', nombre: 'Ana Lista', perfil: 'ANALISTA', correo: 'ana@helios.test' });
   const c = (await E.call('', 'POST', '/api/login', { usuario: 'ana', clave: r.j.clave_temporal })).ck;
   await E.call(c, 'POST', '/api/cambiar-clave', { actual: r.j.clave_temporal, nueva: 'Claveana123456' });
   return { adm, ana: (await E.call('', 'POST', '/api/login', { usuario: 'ana', clave: 'Claveana123456' })).ck };

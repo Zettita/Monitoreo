@@ -20,7 +20,7 @@ await call('','POST','/api/setup',{usuario:'uriel',nombre:'Uriel Solnik',clave:'
 const A=await login('uriel','ClaveSegura123');
 const ck={};
 for (const [u,n,p] of [['ana','Ana Lista','ANALISTA'],['sol','Sol Porte','SOPORTE'],['gero','Gero Rente','GERENTE']]) {
-  const r=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p}); const c=await login(u,r.j.clave_temporal);
+  const r=await call(A,'POST','/api/admin/usuarios',{usuario:u,nombre:n,perfil:p,correo:u+'@helios.test'}); const c=await login(u,r.j.clave_temporal);
   await call(c,'POST','/api/cambiar-clave',{actual:r.j.clave_temporal,nueva:'Clave'+u+'123456'}); ck[u]=c;
 }
 await call(A,'POST','/api/demo/preparar');
