@@ -478,6 +478,11 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
+**Campos unificados después de los parches 59 a 65 (18/11, parche 67; sin SQL, falta publicar)**
+
+- Todos los selectores y campos de texto de las páginas (menos el login) tienen el mismo tamaño: 40 px de alto, letra de 15 px y esquinas de 3 px (Umbrales, feriados, Reglas de alerta y los filtros nuevos del Histórico estaban distintos). Los títulos de tarjeta de Operaciones pasan a 16 px. Solo páginas.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche67/`, ramas `respaldo-antes-parche-67` y `version-parche-67-campos-unificados`.
+
 **Comparar con el estilo de Disponibilidad (18/11, parche 66; sin SQL, falta publicar)**
 
 - La ventana "Comparar con otro período" usa el mismo estilo que la pestaña Disponibilidad: las tres tarjetas por período (Disponibilidad real, Tiempo sin servicio, Servicios que cumplen), barras verticales con una barra por período (actual sólido, comparado rayado) y la línea de Disponibilidad general con las dos curvas. Solo página.
