@@ -1,0 +1,121 @@
+# Arma los archivos finales a partir de la grabación (pantalla.webm + tiempos.json):
+#   - voz en off (wav y mp3), con cada frase en el segundo en que se dijo
+#   - subtítulos (.srt) y una franja de subtítulos dibujada abajo del video
+#   - video con subtítulos y voz, con subtítulos sin voz, y sin subtítulos ni voz
+# Uso: python armar.py <carpeta_de_la_grabacion> <carpeta_de_salida>
+import json, os, subprocess, sys, wave
+from PIL import Image, ImageDraw, ImageFont
+import imageio_ffmpeg
+
+FF = imageio_ffmpeg.get_ffmpeg_exe()
+ANCHO, ALTO_PANTALLA, ALTO_FRANJA = 1920, 990, 90
+COLOR_FRANJA = (9, 30, 66)
+carpeta, salida = sys.argv[1], sys.argv[2]
+os.makedirs(salida, exist_ok=True)
+T = json.load(open(os.path.join(carpeta, 'tiempos.json'), encoding='utf-8'))
+duracion = T['duracion']
+
+
+def correr(cmd):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode: raise SystemExit('ffmpeg falló:\n' + ' '.join(cmd) + '\n' + r.stderr[-2500:])
+
+
+# ---------- voz en off ----------
+def armar_audio(ruta):
+    ini = T['frases'][0]
+    with wave.open(ini[2]) as w: tasa, anchos, canales = w.getframerate(), w.getsampwidth(), w.getnchannels()
+    total = int((duracion + 1.0) * tasa) * anchos * canales
+    pista = bytearray(total)
+    for seg, _texto, wav, _dur in T['frases']:
+        with wave.open(wav) as w: datos = w.readframes(w.getnframes())
+        i = int(seg * tasa) * anchos * canales
+        pista[i:i + len(datos)] = datos[:max(0, total - i)]
+    with wave.open(ruta, 'wb') as o:
+        o.setnchannels(canales); o.setsampwidth(anchos); o.setframerate(tasa); o.writeframes(bytes(pista))
+
+
+# ---------- subtítulos ----------
+def trozos(texto, maximo=150):
+    """Parte la frase en trozos que entran en dos líneas; corta en puntos y, si hace falta, en comas."""
+    partes = [p.strip() for p in texto.replace('. ', '.|').split('|') if p.strip()]
+    out = []
+    for p in partes:
+        if len(p) <= maximo: out.append(p); continue
+        sub, actual = [], ''
+        for frag in p.replace(', ', ',|').split('|'):
+            if actual and len(actual) + len(frag) + 1 > maximo: sub.append(actual.strip()); actual = ''
+            actual += frag + ' '
+        if actual.strip(): sub.append(actual.strip())
+        out += sub
+    # une trozos muy cortos con el siguiente
+    fin = []
+    for p in out:
+        if fin and len(fin[-1]) < 45 and len(fin[-1]) + len(p) + 1 <= maximo: fin[-1] += ' ' + p
+        else: fin.append(p)
+    return fin
+
+
+FUENTE = ImageFont.truetype('C:/Windows/Fonts/seguisb.ttf', 30)
+
+
+def dibujar(texto, ruta):
+    im = Image.new('RGB', (ANCHO, ALTO_FRANJA), COLOR_FRANJA); d = ImageDraw.Draw(im)
+    lineas, actual = [], ''
+    for pal in texto.split(' '):
+        prueba = (actual + ' ' + pal).strip()
+        if d.textlength(prueba, font=FUENTE) > ANCHO - 200 and actual: lineas.append(actual); actual = pal
+        else: actual = prueba
+    lineas.append(actual)
+    assert len(lineas) <= 2, ('subtítulo de más de dos líneas', texto)
+    alto = len(lineas) * 38; y = (ALTO_FRANJA - alto) // 2 - 2
+    for l in lineas:
+        w = d.textlength(l, font=FUENTE); d.text(((ANCHO - w) / 2, y), l, font=FUENTE, fill=(255, 255, 255)); y += 38
+    im.save(ruta)
+
+
+def srt_tiempo(s):
+    ms = int(round(s * 1000)); return '%02d:%02d:%02d,%03d' % (ms // 3600000, ms // 60000 % 60, ms // 1000 % 60, ms % 1000)
+
+
+def armar_subtitulos():
+    carp = os.path.join(carpeta, 'subs'); os.makedirs(carp, exist_ok=True)
+    blanco = os.path.join(carp, 'vacio.png'); Image.new('RGB', (ANCHO, ALTO_FRANJA), COLOR_FRANJA).save(blanco)
+    eventos = []   # (inicio, fin, texto)
+    for seg, texto, _wav, dur in T['frases']:
+        ts = trozos(texto); pesos = [len(t) for t in ts]; tot = sum(pesos); t0 = seg
+        for t, p in zip(ts, pesos):
+            d = dur * p / tot; eventos.append((t0, t0 + d, t)); t0 += d
+    lista, cursor, n = [], 0.0, 0
+    for ini, fin, texto in eventos:
+        if ini > cursor + 0.01: lista.append((blanco, ini - cursor)); cursor = ini
+        png = os.path.join(carp, 's%03d.png' % n); dibujar(texto, png); n += 1
+        lista.append((png, fin - cursor + 0.15)); cursor = fin + 0.15
+    if cursor < duracion: lista.append((blanco, duracion - cursor + 1))
+    with open(os.path.join(carp, 'lista.txt'), 'w', encoding='utf-8') as f:
+        for png, d in lista: f.write("file '%s'\nduration %.3f\n" % (png.replace('\\', '/'), d))
+        f.write("file '%s'\n" % lista[-1][0].replace('\\', '/'))
+    with open(os.path.join(salida, 'Helios_demo_subtitulos.srt'), 'w', encoding='utf-8') as f:
+        for k, (ini, fin, texto) in enumerate(eventos, 1): f.write('%d\n%s --> %s\n%s\n\n' % (k, srt_tiempo(ini), srt_tiempo(fin), texto))
+    return os.path.join(carp, 'lista.txt'), blanco
+
+
+# ---------- ejecución ----------
+wav = os.path.join(salida, 'Helios_demo_voz_en_off.wav')
+armar_audio(wav)
+correr([FF, '-y', '-loglevel', 'error', '-i', wav, '-codec:a', 'libmp3lame', '-b:a', '160k', os.path.join(salida, 'Helios_demo_voz_en_off.mp3')])
+lista, blanco = armar_subtitulos()
+pantalla = os.path.join(carpeta, 'pantalla.webm')
+x264 = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', '30', '-movflags', '+faststart']
+
+# con subtítulos, sin voz
+sin_audio = os.path.join(salida, 'Helios_demo_con_subtitulos_sin_audio.mp4')
+correr([FF, '-y', '-loglevel', 'error', '-i', pantalla, '-f', 'concat', '-safe', '0', '-i', lista, '-filter_complex',
+        '[1:v]fps=30,setpts=PTS-STARTPTS[s];[0:v]fps=30[v];[v][s]vstack=inputs=2:shortest=1[o]', '-map', '[o]', '-t', '%.3f' % duracion, *x264, '-an', sin_audio])
+# con subtítulos y voz
+correr([FF, '-y', '-loglevel', 'error', '-i', sin_audio, '-i', wav, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest',
+        os.path.join(salida, 'Helios_demo_completo_con_voz_y_subtitulos.mp4')])
+# sin subtítulos ni voz (la franja de abajo queda vacía)
+correr([FF, '-y', '-loglevel', 'error', '-i', pantalla, '-f', 'lavfi', '-i', 'color=c=0x091E42:s=%dx%d:r=30' % (ANCHO, ALTO_FRANJA), '-filter_complex',
+        '[0:v]fps=30[v];[v][1:v]vstack=inputs=2:shortest=1[o]', '-map', '[o]', '-t', '%.3f' % duracion, *x264, '-an', os.path.join(salida, 'Helios_demo_sin_subtitulos_ni_audio.mp4')])
+print('Listo:', os.listdir(salida))

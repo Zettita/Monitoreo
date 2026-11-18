@@ -178,6 +178,9 @@ node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warn
 ```
 Para un cambio nuevo: crear `patch69.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
+## Video de demostración (18/11) — carpeta `08_Video_demo/`
+Pedido de Uriel (para la dueña del proyecto, a partir del mensaje al cliente con los 6 puntos del desarrollo): un video de la app usada de punta a punta, con subtítulos y voz en off **separada del video** (para poder usarlo mudo). Se arma solo, con el Worker de siempre sobre una base SQLite local: `python grabar.py` (≈ 9 min) y `python armar.py` (ver `08_Video_demo/LEEME.md`). Simulados, y dicho en el LEEME: el push en el celular (dibujo con los textos reales del Worker), Outlook, el asistente de IA (`ia_guion.mjs`, redacta con los datos reales), el ticket de Jira (modo simulado), el contexto externo (proveedores y noticias de ejemplo) y el historial de días anteriores. No cambia el Worker ni la base: no lleva parche ni script. Si cambia la pantalla de la app, revisar `capitulos.py`; si cambian los textos, `guion.py`.
+
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
 - Analista: tablero completo, Seguimiento, deriva, resuelve, "Avisar a Soporte" en pre-alertas, reglas de derivación. Sin reglas de alerta.
