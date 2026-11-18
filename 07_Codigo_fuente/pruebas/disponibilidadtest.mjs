@@ -165,7 +165,8 @@ ok('parche 62: Clientes con más problemas ya no tiene su propio Desde / Hasta (
   const ad=(await call(A,'GET','/admin')).t, camposAd=['a-desde','a-hasta','fer-fecha','ev-desde','ev-hasta'];
   ok('Administración usa el mismo campo: auditoría, feriados y eventos con calendario y formato dd/mm/aaaa', camposAd.every(id=>ad.includes('id="'+id+'"') && ad.includes('data-cal="'+id+'"')) && ad.includes('function fFormato(raw)') && !ad.includes('placeholder="DD/MM/AAAA"'), camposAd.filter(id=>!ad.includes('data-cal="'+id+'"')));
   const sg=(await call(A,'GET','/seguimiento')).t, co=(await call(ck.gero,'GET','/comunicados')).t;
-  ok('las otras páginas con tema traen la capa común (Seguimiento, Comunicados y Administración)', sg.includes('Un solo tema (parche 58)') && co.includes('Un solo tema (parche 58)') && ad.includes('Un solo tema (parche 58)')); }
+  ok('las otras páginas con tema traen la capa común (Seguimiento, Comunicados y Administración)', sg.includes('Un solo tema (parche 58)') && co.includes('Un solo tema (parche 58)') && ad.includes('Un solo tema (parche 58)'));
+  ok('la ventana de comparar usa el estilo de Disponibilidad: tarjetas por período y barras de los dos períodos (parche 66)', t.includes('function kpisComp(') && t.includes('function barrasComp(') && t.includes('function resumenComp(') && !t.includes('function tarjetaComp(') && t.includes('cmp-barras')); }
 ok('ya no están los recuadros del período, y sí el resumen por estado y el filtro de estado', !r.t.includes('id="per-kpis"') && r.t.includes('data-dd-grupo') && r.t.includes('data-act-estado') && r.t.includes('Asignada sin tomar'));
 
 // ---- La página del tablero ----

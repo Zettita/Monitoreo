@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py y patch65.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py y patch66.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -176,7 +176,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch66.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch67.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
@@ -205,6 +205,12 @@ Para un cambio nuevo: crear `patch66.py` con una función `aplicar(s)` (como los
 
 ## Cambio de modelo del asistente (16/11, patch54) — para publicar (sin SQL)
 - Cloudflare da de baja el 20/11/2026 `@cf/qwen/qwen3-30b-a3b-fp8`. El de fábrica pasa a `@cf/qwen/qwen3.8-27b`; una variable `ASISTENTE_MODELO` con un modelo dado de baja se ignora. **54b/54c (17/11, publicados):** si el modelo devuelve vacío se reintenta con el triple de tokens y se deja el detalle en el registro (`Asistente: respuesta vacía…` / `sin texto final…`). **Probado en Cloudflare con Gemma 4** (`ASISTENTE_MODELO = @cf/google/gemma-4-26b-a4b-it`, cargada como variable): responde bien (Analista: Resumen del turno, horarios y cliente, sin asignar), unas 60-80 neuronas por pregunta (496 de 10.000 tras la tanda de pruebas). Qwen3.8 cuesta ~9 veces más que el modelo viejo. Pendiente: pasar el default del código a Gemma, que el servidor arme el botón "Derivar" en "¿Qué está sin asignar y a quién lo derivo?" y bajar `ASISTENTE_POR_DIA` a 100. Respaldo: `99_Archivo_viejo/worker_antes_parche54/`, ramas `respaldo-antes-parche-54` y `version-parche-54-modelo-asistente`.
+
+## Comparar con el estilo de Disponibilidad (18/11, parche 66) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel: la ventana "Comparar con otro período" quedó con el estilo viejo (tarjeta grande con barra de gasto del margen) después de que Ale rehizo la pestaña Disponibilidad (parche 61).
+- Para el período actual y para el comparado, las mismas tres tarjetas de la pantalla principal: Disponibilidad real (con el desvío contra el objetivo; la del actual suma la diferencia contra el comparado), Tiempo sin servicio y Servicios que cumplen el objetivo (con los clientes que cumplen).
+- Abajo, lado a lado como en la principal: "Cumplimiento del objetivo" en barras verticales (Cumplen / En riesgo / No cumplen) con **una barra por período** (el actual sólido y el comparado rayado, para que se distingan sin depender del color) y "Disponibilidad general" con las dos líneas superpuestas. Sigue el aviso de la diferencia y la tabla por cliente. Todo con las clases de la principal (`dk`, `dv-fila`, `dv-panel`).
+- Código: `patch66.py` reemplaza `tarjetaComp` y `pintarComparacion` del parche 56 (`resumenComp`, `kpisComp`, `barrasComp`). Probado: batería completa y `textostest`, demo igual; pantallas en PC y celular. Respaldo: `99_Archivo_viejo/worker_antes_parche66/`, ramas `respaldo-antes-parche-66` y `version-parche-66-comparar-estilo-disponibilidad`.
 
 ## Gráficos de Operaciones y de fallas (17/11, parche 65) — hecho en código, falta publicar (sin SQL; trae también el 64)
 Sexta tanda de ajustes de Ale.

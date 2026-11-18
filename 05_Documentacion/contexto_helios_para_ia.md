@@ -478,6 +478,11 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
 
+**Comparar con el estilo de Disponibilidad (18/11, parche 66; sin SQL, falta publicar)**
+
+- La ventana "Comparar con otro período" usa el mismo estilo que la pestaña Disponibilidad: las tres tarjetas por período (Disponibilidad real, Tiempo sin servicio, Servicios que cumplen), barras verticales con una barra por período (actual sólido, comparado rayado) y la línea de Disponibilidad general con las dos curvas. Solo página.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche66/`, ramas `respaldo-antes-parche-66` y `version-parche-66-comparar-estilo-disponibilidad`.
+
 **Gráficos de Operaciones y de fallas (17/11, parche 65; sin SQL, falta publicar junto con el 64)**
 
 - Operaciones > Alertas abiertas: tres gráficos en una línea (Alertas por estado, Problemas por cliente, Problemas por tipo de falla), sin selector; tocar una barra de cualquiera filtra la lista.
