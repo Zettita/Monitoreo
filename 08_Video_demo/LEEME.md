@@ -30,6 +30,9 @@ python armar.py .\salida\trabajo .\salida\video      # arma los mp4, la voz y lo
 python grabar.py --seco                              # pasada de prueba rápida, sin video
 ```
 
+## Guion para que una persona ponga su voz (19/11)
+`node guion_voz_en_off.js salida/video` arma `Helios_guion_voz_en_off.docx` (tabla con tiempo, qué se ve en pantalla y texto) y un `.txt` corrido, para locutar sobre `Helios_demo_sin_subtitulos_ni_audio.mp4`. Lleva la frase pedida: «los campos del producto y sus funcionalidades son variables modificables según necesidad del cliente» (minuto 2:01). Los tiempos son los de la grabación actual: si se vuelve a grabar y cambian, hay que ajustarlos. Hace falta `npm install docx --no-save` en `07_Codigo_fuente/word`.
+
 ## Archivos que genera `armar.py`
 - `Helios_demo_completo_con_voz_y_subtitulos.mp4`
 - `Helios_demo_con_subtitulos_sin_audio.mp4`
