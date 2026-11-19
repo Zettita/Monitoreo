@@ -2,16 +2,17 @@
 
 Graba la app de punta a punta (como lo haría una persona usándola) y arma el video con subtítulos y voz en off. Todo corre en la PC, sin Cloudflare: usa el mismo Worker de siempre (`07_Codigo_fuente/worker/w.mjs`) sobre una base SQLite, igual que `servidor_local.mjs`.
 
-## Qué muestra (≈ 7 min 40 s)
+## Qué muestra (≈ 7 min 55 s)
 1. Presentación.
 2. **Pre-alertas anticipadas** (aviso hasta 30 minutos antes, "Avisar a Soporte", efectividad de los avisos).
 3. **Alertas priorizadas y derivadas** (P1 a P4, derivar a mano, regla automática, Seguimiento).
 4. **Soporte** toma la alerta, comenta y adjunta evidencia, genera el ticket de Jira, **comunica el incidente por push**, arma el **correo** (con destinatarios elegidos de la lista) y resuelve con causa.
 5. **Gerencia**: abre el comunicado y mira el tablero (Operaciones, Disponibilidad con distribución de fallas, Histórico).
-6. **Asistente de inteligencia artificial** (sin asignar y derivación con un clic, carga de equipos, explicación de una alerta con casos parecidos, contexto externo).
+6. **Asistente de inteligencia artificial** (sin asignar y derivación con un clic, carga de equipos, explicación de una alerta con casos parecidos, contexto externo), y al final dos tarjetas con **AICIM** (Asistente Inteligente de Coordinación de Incidentes Mayores) integrado con Microsoft Teams.
 7. Cierre.
 
 ## Lo que es simulación (y no es la app)
+- **AICIM y la integración con Teams:** todavía no existen. En el video se presentan como "próxima capacidad" en dos tarjetas con la voz en off; no se muestra una pantalla.
 - **Aviso push en el celular (Android y iPhone):** es un dibujo de teléfono (`overlays.js`). El texto y los botones son los reales que arma el Worker para cada rol (se leen de `/api/avisos`); tocar "Recibido" registra el "Recibido" de verdad. Lleva el rótulo "simulación".
 - **Outlook:** Helios abre el borrador en Outlook; en el video se muestra un Outlook de mentira con los datos reales del correo (lleva una nota que lo aclara).
 - **Asistente de IA:** `ia_guion.mjs` reemplaza a Workers AI. No inventa datos: redacta con plantillas lo que Helios le pasaría al modelo real (alertas abiertas, carga, casos parecidos, contexto externo). Con el modelo real las palabras pueden variar.

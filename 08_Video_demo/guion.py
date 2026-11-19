@@ -34,11 +34,14 @@ TEXTOS = {
     'disp': 'La pestaña Disponibilidad muestra cada cliente frente a su objetivo: cuántos cumplen, cuántos están en riesgo y cuánto tiempo estuvieron sin servicio. Abajo, la distribución de fallas por cliente, por tipo y por causa.',
     'hist': 'El histórico muestra los tiempos de resolución por tipo de falla y los clientes más afectados. Se puede filtrar por cliente, servicio, gravedad y problema, y elegir el período que se quiere analizar.',
 
-    'asis1': 'Por último, el asistente de inteligencia artificial. Responde solo con lo que cada perfil puede ver. Le preguntamos qué está sin asignar y a quién derivarlo.',
+    'asis1': 'Ahora, el asistente de inteligencia artificial. Responde solo con lo que cada perfil puede ver. Le preguntamos qué está sin asignar y a quién derivarlo.',
     'asis2': 'Muestra lo pendiente y propone la derivación. Nada se ejecuta solo: con un clic de confirmación, el analista la hace.',
     'asis3': 'También muestra la carga de cada persona y equipo, para repartir mejor el trabajo. Se puede preguntar en lenguaje natural, como a un compañero.',
     'asis4': 'Sobre una alerta, explica qué está pasando y usa casos parecidos ya resueltos para orientar la solución.',
     'asis5': 'Y suma contexto externo: feriados, incidentes de proveedores y noticias que puedan afectar la operación. Así el equipo entiende si un pico o una caída tiene una causa de afuera.',
+
+    'aicim1': 'Y la próxima capacidad: el Asistente Inteligente de Coordinación de Incidentes Mayores. Es un agente que dirige y coordina la resolución de los incidentes mayores. Con conocimiento de la infraestructura, sus dependencias y sus antecedentes operativos, conduce la sala de crisis, asigna tareas a los especialistas, indica qué componentes revisar y orienta el diagnóstico.',
+    'aicim2': 'La sala de crisis se integra con Microsoft Teams. Desde ahí el asistente determina los escalamientos necesarios y supervisa los avances, los tiempos de respuesta, las comunicaciones y el seguimiento de las acciones hasta el restablecimiento del servicio. Transforma la información técnica en acciones concretas, siempre bajo supervisión humana.',
 
     'fin': 'Helios: pre-alertas anticipadas, alertas priorizadas, comunicación sin carga manual, información para la gerencia y un asistente que ayuda a decidir. Enterate antes que tus clientes.',
 }

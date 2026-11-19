@@ -274,6 +274,21 @@ def cap6(g):
         preguntar(g, '¿Hay algo de afuera que pueda afectar hoy o mañana?')
         leer_respuesta(g, 6)
     g.clic(g.L('#asis-cerrar'), pausa=0.8)
+    # Próxima capacidad (no está construida: se presenta como lo que viene)
+    g.tarjeta('AICIM', 'Asistente Inteligente de Coordinación de Incidentes Mayores · próxima capacidad', items=[
+        'Dirige y coordina la resolución de incidentes mayores',
+        'Conoce la infraestructura, sus dependencias y antecedentes operativos',
+        'Conduce la sala de crisis y asigna tareas a los especialistas',
+        'Indica qué componentes revisar y orienta el diagnóstico'])
+    with g.decir(T['aicim1']):
+        g.esperar(0.3)
+    g.tarjeta('Integrado con Microsoft Teams', 'La sala de crisis, coordinada desde donde ya trabaja el equipo', items=[
+        'Determina los escalamientos necesarios',
+        'Supervisa avances, tiempos de respuesta y comunicaciones',
+        'Sigue las acciones hasta el restablecimiento del servicio',
+        'Siempre bajo supervisión humana'])
+    with g.decir(T['aicim2']):
+        g.esperar(0.3)
 
 
 def cap7(g):
