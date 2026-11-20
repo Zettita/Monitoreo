@@ -32,7 +32,7 @@ Las respuestas se probaron con un modelo simulado. Falta hacerlo con Workers AI.
 - [ ] **¿Cómo vamos con este incidente?** Estado y desde cuándo, qué se sabe por las tareas hechas, qué falta y quién lo tiene. No inventa causas.
 - [ ] **¿Qué reviso primero?** Empieza por el componente del antecedente parecido (IM-1, certificado vencido del gateway) y deja hasta 2 botones **Asignar tarea**. Tocar uno crea la tarea con la marca "Asistente".
 - [ ] **¿Qué está demorado?** Si no hay nada, lo dice en una frase.
-- [ ] Una pregunta libre, por ejemplo "¿Escalo esto al proveedor?". Si propone **Escalar** o **Comunicar**, el botón tiene que funcionar. Comunicar abre "Comunicar incidente" de la alerta con el mensaje armado.
+- [ ] Una pregunta libre, por ejemplo "¿Escalo esto al proveedor?". Tiene que responder con los datos (no "dejame consultar…") y, salvo que diga que no hace falta, dejar el botón **Escalar** (desde el parche 71). Si propone **Escalar** o **Comunicar**, el botón tiene que funcionar. Comunicar abre "Comunicar incidente" de la alerta con el mensaje armado.
 
 Después, como **Gerente**: las mismas preguntas responden, pero sin botones. Como **Soporte** con una tarea en la sala: responde, sin botones.
 

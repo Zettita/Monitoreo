@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py, patch69.py y patch70.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py, patch69.py, patch70.py y patch71.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,9 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch71.py          asistente dentro de la sala, pregunta libre: estado + tareas siempre, guía si habla de escalar / revisar / causas, contexto_externo si
+                        habla de proveedores (salaElegir) y una guía corta; "¿Escalo…?" deja el botón Escalar armado por el servidor (salaProponerEscalar);
+                        en todo el asistente, si el modelo anuncia "dejame consultar…" sin pedir la herramienta, se le insiste una vez (ASIST_PROMESA). Sin SQL
     patch70.py          sala de crisis en Teams (etapa 2 del AICIM, partes A y B): teams_sala_server.js. A: las novedades de la línea de tiempo de cada sala
                         (menos notas y "empezó la tarea") van a un canal de Teams como tarjeta, con el secreto TEAMS_WEBHOOK (flujo de Workflows; solo
                         direcciones de Microsoft); Administración > Equipos "Avisos en Teams" con aviso de prueba (/api/admin/teams). B: botón "Chat en Teams"
@@ -185,7 +188,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch71.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch72.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Video de demostración (18/11) — carpeta `08_Video_demo/`
 Pedido de Uriel (para la dueña del proyecto, a partir del mensaje al cliente con los 6 puntos del desarrollo): un video de la app usada de punta a punta, con subtítulos y voz en off **separada del video** (para poder usarlo mudo). Se arma solo, con el Worker de siempre sobre una base SQLite local: `python grabar.py` (≈ 9 min) y `python armar.py` (ver `08_Video_demo/LEEME.md`). Simulados, y dicho en el LEEME: el push en el celular (dibujo con los textos reales del Worker), Outlook, el asistente de IA (`ia_guion.mjs`, redacta con los datos reales), el ticket de Jira (modo simulado), el contexto externo (proveedores y noticias de ejemplo) y el historial de días anteriores. No cambia el Worker ni la base: no lleva parche ni script. Si cambia la pantalla de la app, revisar `capitulos.py`; si cambian los textos, `guion.py`.
@@ -324,6 +327,13 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - **Asistente:** el modelo por defecto del código pasa a `@cf/google/gemma-4-26b-a4b-it` (la variable `ASISTENTE_MODELO` ya lo tiene en Cloudflare); `ASISTENTE_POR_DIA` por defecto 100; en "¿Qué está sin asignar y a quién lo derivo?" el **servidor** arma hasta 3 botones "Derivar" (cada uno a la persona de Soporte con menos problemas abiertos, repartiendo), sin depender de que el modelo pida la herramienta (`asistProponerDerivar`); pregunta nueva "¿Qué alertas llevan más tiempo abiertas?" (Analista y Administrador; `alertas_abiertas` suma `abierta_hace` y `cuantas.abiertas_hace_mas_de_24_h`).
 - **Marca "Abierta hace N h/días"** en rojo cuando una alerta lleva más de 24 h abierta, en Seguimiento y en el tablero (surgió del incidente de 231 horas abierto de la reunión con Hugo del 12/11). Solo página. En la demo no se ve salvo con datos de más de un día.
 - Probado: demo igual al Worker anterior, 19 pruebas por módulo, `asistest` con casos nuevos (botones Derivar con 4 sin asignar, reparto, alerta de 3 días); los scripts de las páginas se revisaron con `node --check` (no se pudo mirar en un navegador real desde acá). Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
+
+## Asistente en la sala: preguntas libres (20/11, parche 71) — hecho en código, falta publicar (sin SQL)
+Ale probó con Gemma, en la sala IM-4 como Analista, "¿Escalo esto al proveedor?": respondió "dejame consultar la herramienta de contexto externo…" sin consultar nada y sin botón.
+- La pregunta libre dentro de la sala lleva estado y tareas siempre, la guía de diagnóstico si habla de escalar, revisar, causas o componentes, y el contexto externo si habla de proveedores o de afuera (máximo 4), con una guía corta ("no digas que vas a consultar").
+- "¿Escalo…?": si el modelo no dejó la propuesta ni dijo que no hace falta, el servidor deja el botón **Escalar** a la persona de Soporte con menos tareas abiertas en salas, con el motivo armado.
+- En todo el asistente: si el modelo anuncia una consulta ("dejame consultar…") sin pedir la herramienta, se le pide una vez más que la use o responda.
+- Probado: `salacrisistest` con 4 controles nuevos (modelo simulado que repite lo de Gemma), demo igual y toda la batería. Respaldo: `99_Archivo_viejo/worker_antes_parche71/`, ramas `respaldo-antes-parche-71` y `version-parche-71-asistente-sala-preguntas-libres`.
 
 ## Sala de crisis en Teams (20/11, parche 70) — hecho en código, falta publicar (sin SQL)
 Pedido de Ale: la sala en Teams. Elegido con Ale: **A + B ahora y C después** (C necesita a IT).
