@@ -6,7 +6,7 @@ Plan, decisiones y detalle técnico: `plan_sala_crisis_etapa1.md`.
 
 ## 1. Publicar (en este orden)
 
-1. **Si todavía no se corrió el script 23** (correo de cada usuario, parche 68): `02_Base_de_datos_D1/23_correo_usuarios_d1.txt` en la consola de D1. Es un solo bloque. Si da "duplicate column name", ya estaba corrido.
+1. **Script 23** (correo de cada usuario, parche 68): ya se corrió el 20/11. Si alguna vez hay que rearmar la base, va antes del 24.
 2. **Script 24:** `02_Base_de_datos_D1/24_sala_crisis_d1.txt` en la consola de D1, los 30 bloques en orden (cada uno es una línea). Se pueden repetir sin duplicar nada.
 3. **Comprobar** con la consulta que está al principio del script 24 (solo lee). Tiene que dar **6, 9, 18 y 3** (tablas nuevas, componentes, dependencias y antecedentes).
 4. **Worker:** pegar `01_Worker/worker_alertas_cron.js` en "Edit code" del Worker `worker-alertas-cron` y Deploy. Trae también los parches 64 a 68, si todavía no estaban publicados.

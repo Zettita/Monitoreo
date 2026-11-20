@@ -4,7 +4,7 @@
 - `worker_alertas_cron.js` — Worker principal (`worker-alertas-cron`): tablero, Mis alertas, Seguimiento, Administración, login, cron que evalúa alertas y trae feriados. **Es siempre la última versión**; se publica con "Edit code".
 
 ## 02_Base_de_datos_D1 — scripts para la Console de D1 (en el orden en que se corren)
-Del 1 al 22 ya están aplicados (el 23 es nuevo: falta correrlo): sirven para reconstruir la base desde cero o como referencia.
+Del 1 al 23 ya están aplicados (el 24 es nuevo: falta correrlo): sirven para reconstruir la base desde cero o como referencia.
 1. `01_acceso_d1_tablas.txt` — usuarios, perfiles y sesiones (login).
 2. `02_admin_d1_tablas.txt` — reglas personalizadas y auditoría (pantalla de Administración).
 3. `03_asignacion_d1_tablas.txt` — tomar / derivar / resolver alertas y equipos.
@@ -34,7 +34,7 @@ Del 1 al 22 ya están aplicados (el 23 es nuevo: falta correrlo): sirven para re
 
 24. `24_sala_crisis_d1.txt` — **nuevo (parche 69), falta correrlo.** Sala de crisis: 6 tablas para los incidentes mayores (tareas, línea de tiempo, componentes y dependencias), un catálogo de ejemplo y 3 antecedentes. Pasa de 26 a 32 tablas. Se corre antes de publicar el Worker del parche 69.
 
-23. `23_correo_usuarios_d1.txt` — **nuevo (parche 68), falta correrlo.** Una columna, `usuarios.correo`: el correo de cada persona, para elegir destinatarios al enviar correos desde una alerta. Siguen 26 tablas. Se corre antes de publicar el Worker; sin él todo anda como antes.
+23. `23_correo_usuarios_d1.txt` — **ya corrido (20/11).** Una columna, `usuarios.correo`: el correo de cada persona, para elegir destinatarios al enviar correos desde una alerta. Siguen 26 tablas. Se corre antes de publicar el Worker; sin él todo anda como antes.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
