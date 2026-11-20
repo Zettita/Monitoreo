@@ -54,6 +54,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 - `contexto_helios_para_ia.md` — contexto completo del proyecto para pasarle a otra IA.
 - `novedades_comunicados.md` — comunicar incidente por push (parche 46; desde el 63 con equipos en lugar de listas de difusión): perfil "Solo comunicados", equipos con rol por persona, Recibido y respuestas; cómo ponerlo en marcha y límites.
 - `Helios_gold_set_asistente.docx` — gold set del asistente (20/11): 20 preguntas con la respuesta esperada (15 de la sala de crisis), cómo correrlo, cómo puntuar y planilla.
+- `Helios_guia_prueba_sala_de_crisis_y_teams.docx` — guía de prueba (20/11): paso a paso con lo que tiene que pasar en cada uno (sala de crisis, quitar alertas, asistente, avisos al canal de Teams y Chat en Teams), con planilla de resultados. La arma `07_Codigo_fuente/word/guia_prueba_sala_build.js`.
 - `novedades_sala_teams.md` — la sala de crisis en Teams (parche 70): conectar el canal con Workflows (secreto `TEAMS_WEBHOOK`), botón "Chat en Teams" y qué pedirle a IT para el bot.
 - `novedades_sala_crisis.md` — sala de crisis (parche 69): cómo publicarla, recorrer las escenas 20 a 22, probar el asistente con el modelo real, permisos y problemas comunes.
 - `plan_sala_crisis_etapa1.md` — plan de la sala de crisis (etapa 1 del AICIM, parche 69): qué incluye, decisiones, tablas, permisos, pasos, cómo quedó y pruebas.
