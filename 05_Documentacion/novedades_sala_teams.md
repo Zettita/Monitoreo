@@ -4,7 +4,7 @@ Etapa 2 del AICIM, partes **A** y **B**. La sala sigue viviendo en Helios (tarea
 
 - **A · Avisos en un canal de Teams.** Cada novedad de una sala llega al canal como tarjeta, con el botón **"Abrir sala en Helios"**: se abrió la sala, se sumó una alerta, tarea nueva, tarea hecha (con lo que se encontró), escalamiento, cambio de estado, comunicado y cierre. Las notas y "empezó la tarea" no se mandan, para no llenar el canal. Una sala grave abierta va en rojo.
 - **B · "Chat en Teams"** en la sala: abre un chat grupal de Teams con quienes están en la sala (quien la abrió, quien la dirige, los responsables de las tareas y la gente de Soporte de los equipos con tareas), con el título del incidente y el enlace a la sala. Usa el correo de cada usuario (script 23). Si alguien no tiene correo cargado, el botón lo dice al pasar el mouse.
-- **C · Bot de Helios en Teams** (preguntarle al asistente desde el chat de la sala): programado (parche 76), funciona cuando IT registra el bot. Ver la sección 5.
+- **C · Bot «Gemma» en Teams** (preguntarle al asistente desde el chat de la sala; se lo nombra con @Gemma): programado (parche 76), funciona cuando IT registra el bot. Ver la sección 5.
 
 No hay SQL nuevo. Sin configurar nada, B ya funciona y A no hace nada.
 
@@ -45,7 +45,7 @@ Si un aviso no llega: en Cloudflare → **Observability**, buscar `Teams:` (el m
 
 ## 4. Para la parte C (bot): qué pedirle a IT
 
-1. **Registrar el bot**: en el Developer Portal de Teams (Herramientas → Administración de bots), que no pide suscripción de Azure, o como recurso *Azure Bot* (plan F0, gratis; Teams es un canal sin costo). Necesitamos:
+1. **Registrar el bot con el nombre «Gemma»** (así se lo nombra en Teams: @Gemma): en el Developer Portal de Teams (Herramientas → Administración de bots), que no pide suscripción de Azure, o como recurso *Azure Bot* (plan F0, gratis; Teams es un canal sin costo). Necesitamos:
    - **ID de la aplicación** (Microsoft App ID),
    - un **secreto de cliente** (lo cargan ellos directo como secreto en Cloudflare; no por chat ni mail),
    - el **ID del tenant**,

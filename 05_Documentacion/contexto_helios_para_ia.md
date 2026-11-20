@@ -531,7 +531,7 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 
 - **A:** las novedades de cada sala (apertura, alertas sumadas, tareas nuevas y hechas, escalamientos, estado, comunicados y cierre; no las notas) llegan a un canal de Teams como tarjeta con "Abrir sala en Helios". Se conecta con un flujo de Workflows de Teams y su dirección en el secreto `TEAMS_WEBHOOK`; sin él no hace nada. Administración > Equipos: "Avisos en Teams" con aviso de prueba (solo Administrador; rutas `GET /api/admin/teams` y `POST /api/admin/teams/probar`, auditoría `TEAMS_PRUEBA`).
 - **B:** botón "Chat en Teams" en la sala: abre un chat grupal de Teams con quienes están en la sala, por su correo (`teams_chat` en `GET /api/incidentes/<id>`).
-- **C (bot de Helios en Teams):** pendiente de IT; qué pedir en `05_Documentacion/novedades_sala_teams.md`.
+- **C (bot «Gemma» en Teams, se nombra con @Gemma):** pendiente de IT; qué pedir en `05_Documentacion/novedades_sala_teams.md`.
 - Respaldo: `99_Archivo_viejo/worker_antes_parche70/`, ramas `respaldo-antes-parche-70` y `version-parche-70-sala-en-teams`.
 
 **Sala de crisis, etapa 1 del AICIM (20/11, parche 69; script 24; lista para publicar)**
