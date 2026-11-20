@@ -316,6 +316,13 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - **Marca "Abierta hace N h/días"** en rojo cuando una alerta lleva más de 24 h abierta, en Seguimiento y en el tablero (surgió del incidente de 231 horas abierto de la reunión con Hugo del 12/11). Solo página. En la demo no se ve salvo con datos de más de un día.
 - Probado: demo igual al Worker anterior, 19 pruebas por módulo, `asistest` con casos nuevos (botones Derivar con 4 sin asignar, reparto, alerta de 3 días); los scripts de las páginas se revisaron con `node --check` (no se pudo mirar en un navegador real desde acá). Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
 
+## En curso (20/11): sala de crisis, etapa 1 del AICIM (parche 69, script 24) — plan escrito, sin programar
+- Plan completo y decisiones: `05_Documentacion/plan_sala_crisis_etapa1.md` (leerlo antes de tocar algo de esto).
+- Es la **sala de crisis dentro de Helios**: incidentes mayores que agrupan alertas, tareas, línea de tiempo y guía de diagnóstico (componentes, dependencias y antecedentes), con el asistente que lee y **propone** asignar tarea, comunicar o escalar (no ejecuta). **Teams queda para la etapa 2.**
+- Tablas nuevas (script `24_sala_crisis_d1.txt`, de 26 a 32): `incidentes_mayores`, `incidente_alertas`, `incidente_tareas`, `incidente_linea_tiempo`, `componentes_infraestructura`, `componente_dependencias`. No toca tablas existentes.
+- Propuesto: el Analista abre y dirige; Soporte actualiza sus tareas; Gerente y Administrador leen. Datos de ejemplo con `CLI_001` a `CLI_008`. Escenas nuevas 20 a 22; las 19 actuales tienen que dar lo mismo. **Falta que Ale confirme las decisiones de la sección 2 del plan antes de programar.**
+- Rama de trabajo `version-parche-69-sala-de-crisis`; respaldo `respaldo-antes-parche-69` (creado el 20/11, con la batería en verde).
+
 ## Pendiente, prioridad 2: avisos en un canal de Teams (decidido el 17/11)
 - Quedó sin publicar. Está hecho como parche 30 viejo (ramas `version-parche-30-avisos-teams` y `avisos-teams-pendiente`, guía `novedades_avisos_teams.md` en esas ramas) pero el número 30 lo ocupó la ticketera de Uriel: hay que rehacerlo como parche nuevo (>= 55) encima de `main`, con el respaldo de siempre. Antes, revisar qué cubre ya "Comunicar incidente" (push con listas de difusión) para no duplicar.
 

@@ -478,6 +478,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Sala de crisis, etapa 1 del AICIM (20/11, parche 69; en diseño, sin programar)**
+
+- Plan en `05_Documentacion/plan_sala_crisis_etapa1.md`: incidentes mayores que agrupan alertas, con tareas, línea de tiempo y guía de diagnóstico dentro de Helios; el asistente propone asignar tareas, comunicar o escalar. Seis tablas nuevas (script 24). Microsoft Teams queda para la etapa 2. Falta confirmar las decisiones del plan.
+
 
 **Correo de cada usuario y elegir destinatarios (18/11, parche 68; script 23, falta publicar)**
 
