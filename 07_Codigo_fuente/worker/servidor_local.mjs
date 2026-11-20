@@ -87,6 +87,7 @@ const env = {
   EVIDENCIA: process.env.CON_R2 ? R2_LOCAL : undefined,
   AI: process.env.ASISTENTE_LOCAL === 'simulado' ? AI_SIMULADO : undefined,
   TEAMS_WEBHOOK: process.env.TEAMS_WEBHOOK,   // parche 70: dirección del flujo de Workflows de Teams (opcional)
+  TEAMS_BOT_APP_ID: process.env.TEAMS_BOT_APP_ID, TEAMS_BOT_SECRET: process.env.TEAMS_BOT_SECRET, TEAMS_BOT_TENANT: process.env.TEAMS_BOT_TENANT,   // parche 76: bot de Teams (opcional)
   VAPID_JWK: process.env.VAPID_JWK || fs.readFileSync(archivoClave, 'utf8').trim(),
   DB: {
     prepare: preparar,

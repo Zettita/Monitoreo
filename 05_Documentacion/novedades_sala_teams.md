@@ -4,7 +4,7 @@ Etapa 2 del AICIM, partes **A** y **B**. La sala sigue viviendo en Helios (tarea
 
 - **A · Avisos en un canal de Teams.** Cada novedad de una sala llega al canal como tarjeta, con el botón **"Abrir sala en Helios"**: se abrió la sala, se sumó una alerta, tarea nueva, tarea hecha (con lo que se encontró), escalamiento, cambio de estado, comunicado y cierre. Las notas y "empezó la tarea" no se mandan, para no llenar el canal. Una sala grave abierta va en rojo.
 - **B · "Chat en Teams"** en la sala: abre un chat grupal de Teams con quienes están en la sala (quien la abrió, quien la dirige, los responsables de las tareas y la gente de Soporte de los equipos con tareas), con el título del incidente y el enlace a la sala. Usa el correo de cada usuario (script 23). Si alguien no tiene correo cargado, el botón lo dice al pasar el mouse.
-- **C · Bot de Helios en Teams** (trabajar la sala y preguntarle al asistente desde Teams): todavía no. Necesita lo de la sección 4.
+- **C · Bot de Helios en Teams** (preguntarle al asistente desde el chat de la sala): programado (parche 76), funciona cuando IT registra el bot. Ver la sección 5.
 
 No hay SQL nuevo. Sin configurar nada, B ya funciona y A no hace nada.
 
@@ -58,7 +58,26 @@ Si un aviso no llega: en Cloudflare → **Observability**, buscar `Teams:` (el m
 
 La primera versión no necesita permisos de Microsoft Graph. Si más adelante el bot tiene que crear reuniones o chats solo, eso sí lleva un permiso aparte.
 
-## 5. Problemas comunes
+## 5. El bot de Helios en Teams (parche 76)
+
+Se le escribe al asistente dentro de Teams: en el chat de la sala (mencionándolo, `@Helios IM-4 ¿qué reviso primero?`) o en un chat de a dos. Responde con lo que la persona puede ver en Helios y **no ejecuta nada**: si propone una acción, manda el enlace para confirmarla en Helios.
+
+**Puesta en marcha (en este orden):**
+1. IT registra el bot en el Developer Portal de Teams (o en Azure Bot): pasos en `Helios_pasos_para_IT_bot_de_Teams.docx`. Entregan el Bot ID, el ID del tenant y el secreto.
+2. En Cloudflare (Worker > Settings > Variables and Secrets) se cargan como secretos: `TEAMS_BOT_APP_ID`, `TEAMS_BOT_SECRET` y, si el bot es de un solo tenant, `TEAMS_BOT_TENANT`. Se publica el Worker.
+3. En Helios, Administración > Equipos > **Bot de Helios en Teams**: tiene que decir «Secretos cargados» y **Probar conexión con Microsoft** tiene que dar «Microsoft aceptó el App ID y el secreto».
+4. Armar el paquete de la app: `python 07_Codigo_fuente/teams_app/armar_paquete.py <BOT_ID>` (deja `salida/Helios_bot_teams.zip`) y pasárselo a IT para publicarlo en Teams.
+5. Cargar el correo de cada persona en Administración > Usuarios (es el mismo que usa en Teams).
+
+**Probarlo:**
+1. Abrí una sala y tocá **Chat en Teams**: el borrador del mensaje explica cómo sumar al asistente. Sumá la app Helios al chat (Aplicaciones del chat) la primera vez: el bot saluda.
+2. Escribí `@Helios IM-4 ¿qué reviso primero?` (con el número de tu sala): responde con la guía de diagnóstico y, si propone algo, dice «Propuestas (no se hizo nada)» con el enlace a la sala.
+3. Con Soporte sin tareas en esa sala: contesta que la sala no tiene tareas para su usuario ni equipo (misma regla que en Helios). Con el Gerente: responde sin propuestas. Con alguien sin usuario o sin correo en Helios: «No encontré tu usuario de Helios…».
+4. `@Helios hola` no gasta una pregunta. Las preguntas cuentan en el mismo límite que el panel (por hora y por día) y quedan en la auditoría.
+
+**Limitaciones:** cada mensaje es independiente (no recuerda lo anterior); en chats grupales y canales solo contesta si se lo menciona; el bot lo agrega al chat una persona (el enlace del chat no puede sumarlo). Si no responde: Observability, buscar `Bot de Teams:` (por ejemplo «pedido rechazado (…)» cuando la firma no coincide: revisar `TEAMS_BOT_APP_ID` y `TEAMS_BOT_TENANT`).
+
+## 6. Problemas comunes
 
 - **"La dirección cargada en TEAMS_WEBHOOK no es de un flujo de Workflows de Teams"**: solo se aceptan direcciones de Microsoft (Workflows, Power Automate, Logic Apps). Las de los "Incoming Webhook" viejos de Office 365 también se aceptan, pero Microsoft los está dando de baja: usar Workflows.
 - **Llega la prueba pero no las novedades**: los avisos salen solo de las acciones de la sala hechas en Helios (y de "Comunicar" desde una alerta que está en una sala). Las salas importadas (IM-1 a IM-3) no mandan nada.

@@ -85,7 +85,8 @@ ok('hay otra alerta abierta para sumar', !!OTRA);
   r=await call(ck.ana,'GET',`/api/incidentes/${IM}`); ok('la sala ya no la muestra', r.j.alertas.length===2 && !r.j.alertas.some(a=>a.alerta_id===OTRA.alerta_id), r.j.alertas.length);
   ok('la alerta sigue abierta (solo salió de la sala)', q1('select estado from alertas_historico where alerta_id=?',OTRA.alerta_id).estado!=='RESUELTA');
   r=await call(ck.ana,'GET',`/alerta/${A1}`); ok('la página de la alerta sigue andando', r.s===200);
-  r=await call(ck.ana,'GET','/api/incidentes/candidatas'); ok('vuelve a figurar como candidata, fuera de toda sala', r.j.alertas.some(a=>a.alerta_id===OTRA.alerta_id && !a.en_sala), r.j.alertas.length);
+  r=await call(ck.ana,'GET','/api/incidentes/candidatas'); { const g=q1('select tipo_alerta, cliente_id from alertas_historico where alerta_id=?',OTRA.alerta_id);   // la lista trae una alerta por grupo (no siempre la misma): se compara por grupo
+    ok('vuelve a figurar como candidata, fuera de toda sala', r.j.alertas.some(a=>a.tipo_alerta===g.tipo_alerta && a.cliente_id===g.cliente_id && !a.en_sala), r.j.alertas.length); }
   r=await quitar(ck.ana,OTRA.alerta_id); ok('quitarla otra vez = 404', r.s===404);
   r=await call(ck.ana,'POST',`/api/incidentes/${IM}/alertas`,{alertas:[OTRA.alerta_id]}); ok('se puede volver a sumar', r.s===200 && enSala()===3, r.j);
   // la sala conserva al menos una alerta

@@ -24,9 +24,9 @@ h.push(H.P('Según Microsoft, el Developer Portal **no está disponible en las n
 
 h.push(H.titulo(1, '2. Qué necesitamos que nos entreguen'));
 h.push(...H.tabla(['Dato', 'Dónde se obtiene', 'Cómo se entrega'], cols(2, 5, 4), [
-  ['**Bot ID** (es el App ID del bot)', 'Developer Portal > Tools > Bot management > el bot', 'Se puede enviar por correo'],
-  ['**ID del tenant**', 'Microsoft Entra admin center > Overview (Tenant ID)', 'Se puede enviar por correo'],
-  ['**Secreto de cliente**', 'Developer Portal > Bot management > el bot > Client secrets', '**No** por chat ni por correo. Lo carga IT directamente en Cloudflare, o lo pasan por el gestor de secretos que usen'],
+  ['**Bot ID** (es el App ID del bot)', 'Developer Portal > Tools > Bot management > el bot', 'Se puede enviar por correo. Helios lo carga como `TEAMS_BOT_APP_ID`'],
+  ['**ID del tenant**', 'Microsoft Entra admin center > Overview (Tenant ID)', 'Se puede enviar por correo. Helios lo carga como `TEAMS_BOT_TENANT`'],
+  ['**Secreto de cliente**', 'Developer Portal > Bot management > el bot > Client secrets', '**No** por chat ni por correo. Lo carga IT directamente en Cloudflare como `TEAMS_BOT_SECRET`, o lo pasan por el gestor de secretos que usen'],
   ['**Fecha de vencimiento del secreto** (si el portal la muestra)', 'La que figure al crearlo', 'Por correo. Hay que renovarlo antes de que venza'],
 ], true));
 

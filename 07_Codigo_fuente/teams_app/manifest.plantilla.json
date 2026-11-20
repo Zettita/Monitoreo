@@ -1,0 +1,39 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "{{BOT_ID}}",
+  "developer": {
+    "name": "Helios",
+    "websiteUrl": "{{URL}}",
+    "privacyUrl": "{{URL}}",
+    "termsOfUseUrl": "{{URL}}"
+  },
+  "name": { "short": "Helios", "full": "Helios · Asistente de monitoreo" },
+  "description": {
+    "short": "Consultá a Helios sobre incidentes y alertas sin salir de Teams.",
+    "full": "El asistente de inteligencia artificial de Helios, la plataforma de monitoreo de servicios que procesan transacciones. Mencionalo en el chat de una sala de crisis o escribile de a dos para preguntar qué está pasando, qué revisar primero, qué tareas hay o si hubo algo parecido antes. Responde solo con lo que tu perfil puede ver en Helios. Solo lee y propone: las acciones se confirman en Helios."
+  },
+  "icons": { "outline": "outline.png", "color": "color.png" },
+  "accentColor": "#0F766E",
+  "bots": [
+    {
+      "botId": "{{BOT_ID}}",
+      "scopes": ["personal", "team", "groupChat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": ["personal", "team", "groupChat"],
+          "commands": [
+            { "title": "IM-4 ¿Cómo vamos con este incidente?", "description": "Estado de una sala de crisis: alertas, tareas y qué falta" },
+            { "title": "IM-4 ¿Qué reviso primero?", "description": "Qué componentes revisar, con la guía de diagnóstico y casos parecidos" },
+            { "title": "¿Qué está sin asignar?", "description": "Alertas abiertas sin responsable" }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["{{DOMINIO}}"]
+}
