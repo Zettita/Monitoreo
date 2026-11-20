@@ -120,6 +120,7 @@ Hoy pesa unos 7 MB (13 series con historia, unos 9 días). Casi todo son métric
 | `eventos_comerciales` | **Eventos comerciales (parche 29, script 12).** Días con tráfico distinto al habitual (Black Friday, CyberMonday, Hot Sale, promos de un cliente). Los carga el Administrador en Umbrales; hoy solo los usa el asistente | `id`, `nombre`, `fecha_desde`, `fecha_hasta` (`AAAA-MM-DD`, hasta 31 días), `cliente_id` y `servicio_id` (NULL = todos), `efecto_esperado` (`MAS_TRAFICO` / `MENOS_TRAFICO`), `nota`, `creado_por`, `creado`. Índice `ix_eventos_comerciales_fechas` |
 | `tickets_alerta` | **Tickets a demanda (parche 41, script 19).** Un ticket de InvGate o Jira generado desde una alerta (o simulado) | `id`, `alerta_id`, `sistema` (`INVGATE`/`JIRA`), `clave` (única por herramienta), `url`, `estado`, `simulado`, `resumen`, `descripcion`, `creado_por`, `creado`, `actualizado`. Índice `ix_tickets_alerta_alerta` |
 | `comunicados_incidente` · `comunicado_destinatarios` | **Comunicar incidente (parche 46, script 21).** Cada comunicado de un incidente y a quién le llegó | `comunicados_incidente`: `id`, `alerta_id`, `mensaje`, `listas`, `enviado_por`, `enviado` · `comunicado_destinatarios`: PK (`comunicado_id`, `usuario_id`), `rol` (`INFORMADO`/`TECNICO`/`LIDER`), `visto`, `recibido` |
+| `teams_bot_memoria` | **Memoria del bot de Teams (parche 77, script 25).** Los últimos mensajes de cada persona en cada chat y la sala de la que venía hablando. `WITHOUT ROWID` | PK (`conversacion_id`, `usuario_id`), `mensajes` (JSON, hasta 6), `sala_id`, `actualizado` (UTC). Índice `ix_teams_bot_memoria_actualizado` |
 | `meta_diccionario_datos` | Diccionario de datos: `capa`, `tipo_objeto`, `objeto_nombre`, `campo_nombre`, `descripcion` | Del equipo; vacía: hay que completarla |
 
 ### Sin vistas (desde el 11/11)
@@ -480,6 +481,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**El bot de Teams recuerda la conversación y se lo menciona como @Gemma (20/11, parche 77; script 25, falta publicar y que IT registre el bot)**
+
+- Tabla nueva `teams_bot_memoria` (script `25_teams_bot_memoria_d1.txt`; pasa a 33 tablas): una fila por persona y chat con los últimos 6 mensajes y la sala de la que venía hablando; se usa hasta 2 horas después del último mensaje, lo de más de 7 días se borra solo, es por persona (lo contestado a alguien no se usa con otro) y «empezar de nuevo» la borra. Sin el script, el bot anda sin memoria. Al eliminar un usuario se borra también su memoria.
+- El nombre para mencionarlo es el de la app en Teams (por defecto **Gemma**; `armar_paquete.py --nombre`, secreto opcional `TEAMS_BOT_NOMBRE`). En chats grupales Teams solo entrega los mensajes con mención real.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche77/`, ramas `respaldo-antes-parche-77` y `version-parche-77-bot-memoria-y-nombre`.
 
 **Bot de Helios en Teams (20/11, parche 76; sin SQL, falta que IT registre el bot)**
 

@@ -13,6 +13,7 @@
 //   TEAMS_BOT_APP_ID   el Bot ID / Microsoft App ID (un GUID)
 //   TEAMS_BOT_SECRET   el secreto de cliente
 //   TEAMS_BOT_TENANT   el ID del tenant (obligatorio si el bot es de un solo tenant; si es multi-tenant se deja vacío)
+//   TEAMS_BOT_NOMBRE   (opcional) el nombre con el que se lo menciona en Teams; por defecto Gemma (el que figure como nombre de la app)
 // Sin App ID y secreto el bot no hace nada (responde 503 a Microsoft) y el resto de Helios anda igual.
 //
 // Seguridad:
@@ -23,6 +24,7 @@
 //     La pregunta pasa por la misma ruta del asistente de siempre (/api/asistente): mismos permisos por perfil, mismos límites
 //     de preguntas por hora y por día, misma auditoría, y las mismas reglas de la sala (Soporte solo ve salas donde tiene una tarea).
 //   - Los saludos y agradecimientos sueltos no llaman al modelo (parche 74).
+//   - Recuerda la conversación (parche 77, script 25): últimos 6 mensajes de cada persona en cada chat y la sala de la que venía hablando; «empezar de nuevo» la borra.
 //   - El pedido se contesta enseguida (200) y la respuesta se manda después, por la API de Microsoft: la IA puede tardar unos segundos.
 // =====================================================================
 const BOT_RUTA = '/api/teams/bot';
@@ -32,7 +34,18 @@ const BOT_JWKS_BF = 'https://login.botframework.com/v1/.well-known/keys';
 const BOT_TOPE_MS = 8000;
 const BOT_MAX_CUERPO = 100000;
 const BOT_MAX_RESPUESTA = 3800;
-const BOT_SALUDO = 'Hola, soy el asistente de Helios. Mencioname y preguntame por la operación; por ejemplo: **@Helios IM-4 ¿qué reviso primero?** o **¿hubo algo parecido antes?** '
+// El nombre con el que se lo menciona en Teams (@Gemma) es el de la app: lo manda Teams en cada mensaje (act.recipient.name) y, si no, TEAMS_BOT_NOMBRE
+const BOT_NOMBRE_FABRICA = 'Gemma';
+function botNombre(env, act) {
+  const n = String((act && act.recipient && act.recipient.name) || (env && env.TEAMS_BOT_NOMBRE) || BOT_NOMBRE_FABRICA).replace(/[<>@]/g, '').trim().slice(0, 30);
+  return n || BOT_NOMBRE_FABRICA;
+}
+function botSinNombre(texto, nombre) {   // «gemma, ¿qué reviso?» → «¿qué reviso?»
+  const t = String(texto).replace(/^@/, ''), n = nombre.toLowerCase();
+  if (t.toLowerCase().startsWith(n) && !/[\p{L}\p{N}_]/u.test(t.charAt(n.length) || ' ')) return t.slice(n.length).replace(/^[\s,:;-]+/, '').trim();
+  return texto;
+}
+const botSaludo = (nombre) => 'Hola, soy ' + nombre + ', el asistente de Helios. Mencioname y preguntame por la operación; por ejemplo: **@' + nombre + ' IM-4 ¿qué reviso primero?** o **¿hubo algo parecido antes?** '
   + 'Respondo con lo que tu perfil puede ver en Helios. No hago cambios: si propongo algo, lo confirmás en Helios.';
 let BOT_JWKS = {};          // dirección de las claves -> { t, claves }
 let BOT_TOKEN = null;       // { valor, vence }
@@ -147,11 +160,45 @@ async function botUsuario(env, correos) {
     () => env.DB.prepare('SELECT id, usuario, nombre, perfil, debe_cambiar FROM usuarios WHERE activo = 1 AND lower(correo) IN (?1, ?2) ORDER BY id LIMIT 1').bind(a, b).first());
 }
 
+// ---------- Memoria de la conversación (parche 77, script 25) ----------
+// Una fila por persona y por chat con sus últimos mensajes (hasta 6) y la sala de la que venía hablando. Es por persona: lo que el bot le
+// contestó a alguien nunca se usa para contestarle a otro (cada uno ve solo lo de su perfil). Se usa hasta 2 horas después del último
+// mensaje y lo viejo (más de 7 días) se borra solo. Sin la tabla, cada mensaje es independiente, como antes.
+const BOT_MEMORIA_MENSAJES = 6;
+const BOT_MEMORIA_HORAS = 2;
+const BOT_OLVIDAR = /^(empezar de nuevo|empecemos de nuevo|nueva consulta|nueva conversaci[oó]n|olvid[aá](te)?( todo| lo anterior)?|reiniciar|borr[aá] (la )?(memoria|conversaci[oó]n))[.!? ]*$/i;
+async function botMemoria(env, act, yo) {
+  try {
+    const f = await env.DB.prepare('SELECT mensajes, sala_id, actualizado FROM teams_bot_memoria WHERE conversacion_id = ?1 AND usuario_id = ?2').bind(String(act.conversation.id).slice(0, 200), yo.id).first();
+    if (!f || Date.parse(f.actualizado) < Date.now() - BOT_MEMORIA_HORAS * 3600e3) return { mensajes: [], sala_id: null, activa: true };
+    let ms = []; try { ms = JSON.parse(f.mensajes); } catch (e) { /* fila ilegible: se empieza de nuevo */ }
+    return { mensajes: Array.isArray(ms) ? ms.filter((x) => x && (x.rol === 'usuario' || x.rol === 'asistente') && typeof x.texto === 'string').slice(-BOT_MEMORIA_MENSAJES) : [], sala_id: f.sala_id, activa: true };
+  } catch (e) {
+    if (/no such table/i.test(e.message)) return { mensajes: [], sala_id: null, activa: false };   // sin el script 25
+    throw e;
+  }
+}
+async function botGuardarMemoria(env, act, yo, mensajes, salaId) {
+  try {
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO teams_bot_memoria (conversacion_id, usuario_id, mensajes, sala_id, actualizado) VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        ON CONFLICT (conversacion_id, usuario_id) DO UPDATE SET mensajes = excluded.mensajes, sala_id = excluded.sala_id, actualizado = excluded.actualizado`)
+        .bind(String(act.conversation.id).slice(0, 200), yo.id, JSON.stringify(mensajes.slice(-BOT_MEMORIA_MENSAJES)), salaId || null),
+      env.DB.prepare("DELETE FROM teams_bot_memoria WHERE actualizado < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-7 days')"),
+    ]);
+  } catch (e) { if (!/no such table/i.test(e.message)) console.error('Bot de Teams: no se pudo guardar la memoria: ' + e.message); }
+}
+async function botOlvidar(env, act, yo) {
+  try { await env.DB.prepare('DELETE FROM teams_bot_memoria WHERE conversacion_id = ?1 AND usuario_id = ?2').bind(String(act.conversation.id).slice(0, 200), yo.id).run(); }
+  catch (e) { if (!/no such table/i.test(e.message)) throw e; }
+}
+
 // ---------- Sobre qué sala pregunta ----------
-// 1) lo que escribe ("IM-4"), 2) el título del chat (el chat de Helios se llama "IM-4 · …"), 3) la única sala abierta, si hay una sola
-async function botSala(env, yo, texto, act) {
+// 1) lo que escribe ("IM-4"), 2) el título del chat de Helios ("IM-4 · …"), 3) la sala de la que venía hablando, 4) la única sala abierta
+async function botSala(env, yo, texto, act, memoria) {
   const m = texto.match(/\bIM-(\d{1,6})\b/i) || String((act.conversation && act.conversation.name) || '').match(/\bIM-(\d{1,6})\b/i);
   if (m) return { id: Number(m[1]) };
+  if (memoria && memoria.sala_id && memoria.mensajes.length) return { id: memoria.sala_id };
   if (!puede(yo, 'sala_crisis')) return {};
   try {
     const r = (await env.DB.prepare("SELECT id FROM incidentes_mayores WHERE estado <> 'CERRADO' ORDER BY id DESC LIMIT 3").all()).results;
@@ -182,13 +229,15 @@ async function botProcesar(env, request, act) {
   const origen = new URL(request.url).origin;
   const tipo = String(act.type || '');
   if (tipo === 'conversationUpdate') {
-    if ((act.membersAdded || []).some((x) => x && act.recipient && x.id === act.recipient.id)) await botResponder(env, act, BOT_SALUDO);
+    if ((act.membersAdded || []).some((x) => x && act.recipient && x.id === act.recipient.id)) await botResponder(env, act, botSaludo(botNombre(env, act)));
     return;
   }
-  if (tipo === 'installationUpdate') { if (act.action === 'add') await botResponder(env, act, BOT_SALUDO); return; }
+  if (tipo === 'installationUpdate') { if (act.action === 'add') await botResponder(env, act, botSaludo(botNombre(env, act))); return; }
   if (tipo !== 'message') return;
-  const texto = botLimpiar(act.text);
-  if (!texto) { await botResponder(env, act, BOT_SALUDO); return; }
+  // Además de la mención de Teams, en un chat de a dos se lo puede llamar por el nombre («gemma, ¿qué reviso?»)
+  const nombre = botNombre(env, act);
+  const texto = botSinNombre(botLimpiar(act.text), nombre);
+  if (!texto) { await botResponder(env, act, botSaludo(nombre)); return; }
   let correos;
   try { correos = await botCorreos(env, act); }
   catch (e) { console.error('Bot de Teams: no se pudo leer quién escribe: ' + e.message); await botResponder(env, act, 'No pude confirmar quién sos en Teams. Probá de nuevo en un momento.'); return; }
@@ -197,15 +246,26 @@ async function botProcesar(env, request, act) {
   catch (e) { console.error('Bot de Teams: ' + e.message); await botResponder(env, act, 'Todavía falta configurar el correo de los usuarios en Helios (script 23). Avisale al Administrador.'); return; }
   if (!yo) { await botResponder(env, act, 'No encontré tu usuario de Helios' + (correos[0] ? ' con el correo ' + correos[0] : '') + '. Pedile al Administrador que cargue tu correo en Administración > Usuarios.'); return; }
   if (!puede(yo, 'asistente')) { await botResponder(env, act, 'Tu perfil no tiene el asistente.'); return; }
+  if (BOT_OLVIDAR.test(texto)) {
+    await botOlvidar(env, act, yo);
+    await botResponder(env, act, 'Listo, empezamos de nuevo: no recuerdo lo anterior. Preguntame lo que necesites.');
+    return;
+  }
   await botEscribiendo(env, act);
-  const sala = await botSala(env, yo, texto, act);
+  let memoria = await botMemoria(env, act, yo);
+  const sala = await botSala(env, yo, texto, act, memoria);
+  // Si ahora pregunta por otra sala, lo anterior era de otro tema: se empieza de nuevo
+  if (memoria.sala_id && sala.id && sala.id !== memoria.sala_id) memoria = { ...memoria, mensajes: [] };
   const cuerpo = { pregunta: texto };
   if (sala.id) cuerpo.incidente_id = sala.id;
+  if (memoria.mensajes.length) cuerpo.historia = memoria.mensajes;
   // La misma ruta del asistente de siempre: permisos del perfil, límites de preguntas, auditoría y reglas de la sala
   const resp = await rutasAsistente(env, new Request(origen + '/api/asistente', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) }), '/api/asistente', yo);
   const j = await resp.json().catch(() => ({}));
   if (!resp.ok || j.ok === false) { await botResponder(env, act, String(j.error || 'No pude responder ahora. Probá de nuevo en un momento.')); return; }
   await botResponder(env, act, botArmarRespuesta(j, origen, sala));
+  // Se recuerda lo conversado (sin los saludos sueltos, que no pasaron por el modelo)
+  if (memoria.activa && !j.sin_ia && j.respuesta) await botGuardarMemoria(env, act, yo, memoria.mensajes.concat([{ rol: 'usuario', texto }, { rol: 'asistente', texto: String(j.respuesta).slice(0, 1500) }]), sala.id);
 }
 
 // ---------- Lo que llama Microsoft ----------
@@ -238,7 +298,9 @@ async function rutasTeamsBot(env, request, p, yo) {
     const falta = [];
     if (!cfg.id) falta.push('TEAMS_BOT_APP_ID');
     if (!cfg.secreto) falta.push('TEAMS_BOT_SECRET');
-    return okJson({ configurado: !!(cfg.id && cfg.secreto), falta, con_tenant: !!cfg.tenant, algo_cargado: cfg.cargado, direccion: new URL(request.url).origin + BOT_RUTA });
+    let memoria = true;
+    try { await env.DB.prepare('SELECT 1 FROM teams_bot_memoria LIMIT 1').all(); } catch (e) { if (/no such table/i.test(e.message)) memoria = false; else throw e; }
+    return okJson({ configurado: !!(cfg.id && cfg.secreto), falta, con_tenant: !!cfg.tenant, algo_cargado: cfg.cargado, memoria, nombre: botNombre(env, null), direccion: new URL(request.url).origin + BOT_RUTA });
   }
   if (request.method === 'POST' && p === '/teams/bot/probar') {
     if (!cfg.id || !cfg.secreto) return jsonError('Faltan cargar los secretos del bot (TEAMS_BOT_APP_ID y TEAMS_BOT_SECRET).', 409);

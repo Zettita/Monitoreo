@@ -9,10 +9,10 @@
     "privacyUrl": "{{URL}}",
     "termsOfUseUrl": "{{URL}}"
   },
-  "name": { "short": "Helios", "full": "Helios · Asistente de monitoreo" },
+  "name": { "short": "{{NOMBRE}}", "full": "{{NOMBRE}} · Asistente de Helios" },
   "description": {
-    "short": "Consultá a Helios sobre incidentes y alertas sin salir de Teams.",
-    "full": "El asistente de inteligencia artificial de Helios, la plataforma de monitoreo de servicios que procesan transacciones. Mencionalo en el chat de una sala de crisis o escribile de a dos para preguntar qué está pasando, qué revisar primero, qué tareas hay o si hubo algo parecido antes. Responde solo con lo que tu perfil puede ver en Helios. Solo lee y propone: las acciones se confirman en Helios."
+    "short": "Consultá a {{NOMBRE}} sobre incidentes y alertas sin salir de Teams.",
+    "full": "{{NOMBRE}} es el asistente de inteligencia artificial de Helios, la plataforma de monitoreo de servicios que procesan transacciones. Mencionalo (@{{NOMBRE}}) en el chat de una sala de crisis o escribile de a dos para preguntar qué está pasando, qué revisar primero, qué tareas hay o si hubo algo parecido antes. Responde solo con lo que tu perfil puede ver en Helios. Solo lee y propone: las acciones se confirman en Helios."
   },
   "icons": { "outline": "outline.png", "color": "color.png" },
   "accentColor": "#0F766E",

@@ -84,7 +84,7 @@ def sala(h):
         return h
     h = _rep(h, "'&message=' + encodeURIComponent('Sala de crisis ' + i.codigo + ' en Helios: ' + location.origin + '/incidente/' + i.id);",
              "'&message=' + encodeURIComponent('Sala de crisis ' + i.codigo + ' en Helios: ' + location.origin + '/incidente/' + i.id +\n"
-             "        '\\nPara consultar al asistente: sumá la app Helios a este chat y escribí @Helios ' + i.codigo + ' ¿qué reviso primero?');")
+             "        '\\nPara consultar al asistente: sumá la app ' + ((d.teams_chat || {}).bot || 'Gemma') + ' a este chat y escribí @' + ((d.teams_chat || {}).bot || 'Gemma') + ' ' + i.codigo + ' ¿qué reviso primero?');")
     return h
 
 

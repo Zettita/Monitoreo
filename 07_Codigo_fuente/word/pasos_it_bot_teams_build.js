@@ -35,7 +35,7 @@ h.push(H.titulo(2, 'Paso 1 · Abrir el Developer Portal'));
 h.push(H.vineta('Entrar a **https://dev.teams.microsoft.com** (antes se llamaba App Studio) con una cuenta de la empresa, o abrir la aplicación **Developer Portal** dentro de Teams.'));
 h.push(H.titulo(2, 'Paso 2 · Crear el bot'));
 h.push(H.vineta('En el panel de la izquierda: **Tools** > **Bot management** > **+ New Bot**.'));
-h.push(H.vineta('Escribir el nombre **Helios** y tocar **Add**.'));
+h.push(H.vineta('Escribir el nombre **Gemma** y tocar **Add**. Es el nombre con el que las personas lo van a mencionar en Teams (**@Gemma**), y tiene que ser el mismo que lleve la aplicación. Si prefieren otro nombre, avisennos antes de que armemos el paquete.'));
 h.push(H.titulo(2, 'Paso 3 · Indicar adónde llegan los mensajes'));
 h.push(H.vineta('Abrir el bot recién creado. En el campo de la **dirección del bot** (**Endpoint address**), pegar la siguiente y guardar:'));
 h.push(...H.codigo([URL_BOT]));
@@ -54,7 +54,7 @@ h.push(H.vineta('Ajuste general: **Manage apps** > **Actions** > **Org-wide app 
 h.push(H.titulo(2, 'Paso 7 · Los correos tienen que coincidir'));
 h.push(H.vineta('El bot sabe quién le escribe por su **correo de Teams** y lo busca entre los usuarios de Helios (Administración > Usuarios). Tiene que ser **el mismo correo**; si no, el bot le contesta que no encontró su usuario.'));
 h.push(H.titulo(2, 'Paso 8 · Prueba en conjunto'));
-h.push(H.vineta('Con alguien de Helios: agregar el bot a un chat, escribirle una pregunta y confirmar que contesta; probar con una persona que no esté en Helios y confirmar que no recibe datos.'));
+h.push(H.vineta('Con alguien de Helios: agregar el bot a un chat, escribirle una pregunta mencionándolo (**@Gemma** elegido de la lista que aparece al escribir, para que quede como mención) y confirmar que contesta; probar con una persona que no esté en Helios y confirmar que no recibe datos.'));
 
 h.push(H.titulo(1, '4. Seguridad y datos (para que IT lo evalúe)'));
 h.push(...H.tabla(['Tema', 'Cómo funciona'], cols(2, 8), [

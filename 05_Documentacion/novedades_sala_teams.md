@@ -68,14 +68,19 @@ Se le escribe al asistente dentro de Teams: en el chat de la sala (mencionándol
 3. En Helios, Administración > Equipos > **Bot de Helios en Teams**: tiene que decir «Secretos cargados» y **Probar conexión con Microsoft** tiene que dar «Microsoft aceptó el App ID y el secreto».
 4. Armar el paquete de la app: `python 07_Codigo_fuente/teams_app/armar_paquete.py <BOT_ID>` (deja `salida/Helios_bot_teams.zip`) y pasárselo a IT para publicarlo en Teams.
 5. Cargar el correo de cada persona en Administración > Usuarios (es el mismo que usa en Teams).
+6. Correr el script 25 (`02_Base_de_datos_D1/25_teams_bot_memoria_d1.txt`) para que el bot recuerde la conversación.
 
 **Probarlo:**
 1. Abrí una sala y tocá **Chat en Teams**: el borrador del mensaje explica cómo sumar al asistente. Sumá la app Helios al chat (Aplicaciones del chat) la primera vez: el bot saluda.
-2. Escribí `@Helios IM-4 ¿qué reviso primero?` (con el número de tu sala): responde con la guía de diagnóstico y, si propone algo, dice «Propuestas (no se hizo nada)» con el enlace a la sala.
+2. Escribí `@Gemma IM-4 ¿qué reviso primero?` (eligiendo a Gemma de la lista que aparece al escribir `@`, con el número de tu sala): responde con la guía de diagnóstico y, si propone algo, dice «Propuestas (no se hizo nada)» con el enlace a la sala.
 3. Con Soporte sin tareas en esa sala: contesta que la sala no tiene tareas para su usuario ni equipo (misma regla que en Helios). Con el Gerente: responde sin propuestas. Con alguien sin usuario o sin correo en Helios: «No encontré tu usuario de Helios…».
 4. `@Helios hola` no gasta una pregunta. Las preguntas cuentan en el mismo límite que el panel (por hora y por día) y quedan en la auditoría.
 
-**Limitaciones:** cada mensaje es independiente (no recuerda lo anterior); en chats grupales y canales solo contesta si se lo menciona; el bot lo agrega al chat una persona (el enlace del chat no puede sumarlo). Si no responde: Observability, buscar `Bot de Teams:` (por ejemplo «pedido rechazado (…)» cuando la firma no coincide: revisar `TEAMS_BOT_APP_ID` y `TEAMS_BOT_TENANT`).
+**Memoria (parche 77, script 25):** recuerda los últimos 6 mensajes de cada persona en cada chat y la sala de la que venía hablando, hasta 2 horas después del último mensaje (hay que correr `25_teams_bot_memoria_d1.txt`; sin él cada mensaje es independiente). Es por persona: lo que contestó a alguien no se usa con otro. «Empezar de nuevo» (o «olvidá todo») la borra.
+
+**El nombre (@Gemma):** se lo menciona con el nombre de la app. IT registra el bot como **Gemma** y el paquete se arma con `armar_paquete.py <BOT_ID> --nombre Gemma` (es el nombre por defecto). En un chat grupal hay que elegirlo de la lista que aparece al escribir `@`; escribir «@gemma» a mano sin elegirlo no le llega. En un chat de a dos se lo puede llamar sin mención («gemma, ¿qué reviso?»). Opcional: el secreto `TEAMS_BOT_NOMBRE` si la app se llama distinto.
+
+**Limitaciones:** en chats grupales y canales solo contesta si se lo menciona; el bot lo agrega al chat una persona (el enlace del chat no puede sumarlo). Si no responde: Observability, buscar `Bot de Teams:` (por ejemplo «pedido rechazado (…)» cuando la firma no coincide: revisar `TEAMS_BOT_APP_ID` y `TEAMS_BOT_TENANT`).
 
 ## 6. Problemas comunes
 

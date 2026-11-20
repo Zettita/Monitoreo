@@ -70,13 +70,14 @@ const q1=(sql,...a)=>db.prepare(sql).get(...a);
 const n=(sql,...a)=>db.prepare(sql).get(...a).n;
 // Un mensaje de Teams: arma la actividad, la firma y la manda como lo haría Microsoft; espera a que el bot termine de contestar
 const actividad = (uid, texto, extra = {}) => ({ type: 'message', id: 'msg-' + Math.random().toString(36).slice(2, 8), serviceUrl: SERVICIO, channelId: 'msteams', text: texto,
-  from: { id: uid, name: uid }, recipient: { id: '28:' + APP, name: 'Helios' }, conversation: { id: '19:chat@thread.v2', conversationType: 'groupChat', name: extra.chat }, channelData: { tenant: { id: extra.tenant || TENANT } }, ...extra.act });
+  from: { id: uid, name: uid }, recipient: { id: '28:' + APP, name: 'Gemma' }, conversation: { id: '19:chat@thread.v2', conversationType: 'groupChat', name: extra.chat }, channelData: { tenant: { id: extra.tenant || TENANT } }, ...extra.act });
 async function teams(act, token, cab) {
   salidas = []; pend.length = 0; pedidosIA.length = 0;
   const r = await call('', 'POST', '/api/teams/bot', act, { authorization: 'Bearer ' + (token === undefined ? jwt() : token), ...(cab || {}) });
   await Promise.all(pend);
   return r;
 }
+const olvidarTodo = () => db.exec('DELETE FROM teams_bot_memoria');
 const mensajes = () => salidas.filter((x) => x.metodo === 'POST' && x.cuerpo && x.cuerpo.type === 'message');
 const ultimo = () => (mensajes().slice(-1)[0] || {}).cuerpo;
 
@@ -148,18 +149,21 @@ ok('el token de Microsoft se reutiliza (no se pide en cada mensaje)', tokenPedid
 ok('y el correo de quien escribe también (no vuelve a consultar los integrantes)', !salidas.some(x=>x.metodo==='GET'));
 
 // Sala implícita (una sola abierta) y varias abiertas
+olvidarTodo();
 r=await teams(actividad('u-ana','¿cómo vamos?'));
 ok('con una sola sala abierta, la pregunta va a esa sala', /incidente\/4/.test((ultimo()||{}).text||''), ultimo());
 r=await teams(actividad('u-ana','¿cómo vamos?',{ chat: 'IM-4 · Se aprueban menos operaciones' }));
 ok('el título del chat de Helios ("IM-4 · …") también marca la sala', /incidente\/4/.test((ultimo()||{}).text||''));
 { const r2=await call(ck.ana,'POST','/api/incidentes',{alertas:ab.slice(2,3).length?ab.slice(2,3):[db.prepare("select alerta_id from alertas_historico where estado!='RESUELTA' and severidad_maxima!='BAJA' and alerta_id not in (select alerta_id from incidente_alertas) limit 1").get().alerta_id]});
   ok('(preparación) una segunda sala', r2.s===200, r2.j);
+  olvidarTodo();
   r=await teams(actividad('u-ana','¿cómo vamos?'));
   ok('con varias salas abiertas, avisa que hay que decir cuál', /varias salas abiertas/.test((ultimo()||{}).text||''), ultimo());
   r=await teams(actividad('u-ana','IM-'+r2.j.incidente.id+' ¿cómo vamos?'));
   ok('y con el número, responde de esa sala', new RegExp('incidente/'+r2.j.incidente.id).test((ultimo()||{}).text||''), ultimo()); }
 
 // ---------- Saludos, ayuda y permisos ----------
+olvidarTodo();
 r=await teams(actividad('u-ana','<at>Helios</at> hola'));
 ok('un saludo se contesta sin consultar el modelo', pedidosIA.length===0 && /^Hola\. Preguntame/.test((ultimo()||{}).text||''), ultimo());
 r=await teams(actividad('u-ana','<at>Helios</at>'));
@@ -177,6 +181,7 @@ r=await teams(actividad('u-gero','IM-4 ¿cómo vamos?'));
 ok('el Gerente consulta la sala en lectura (sin propuestas)', /Respuesta de Helios\./.test((ultimo()||{}).text||'') && !/Propuestas/.test((ultimo()||{}).text||''));
 
 // ---------- No ejecuta nada: las propuestas se confirman en Helios ----------
+olvidarTodo();
 const estadoAntes=JSON.stringify(db.prepare('select estado, asignado_usuario_id from alertas_historico order by alerta_id').all())+n('select count(*) n from incidente_tareas');
 textoIA='Te dejo una propuesta.';
 { const llamar=(nombre,args)=>({ choices:[{ message:{ content:'', tool_calls:[{ id:'c1', type:'function', function:{ name:nombre, arguments:JSON.stringify(args) } }] } }] });
@@ -189,6 +194,7 @@ textoIA='Te dejo una propuesta.';
 textoIA='Respuesta de Helios.';
 
 // ---------- Límites ----------
+olvidarTodo();
 env={ DB, AI, ...CFG, ASISTENTE_POR_HORA:'1' };
 db.exec("DELETE FROM asistente_uso");
 r=await teams(actividad('u-ana','IM-4 ¿qué está demorado?'));
@@ -201,6 +207,92 @@ env={ DB, AI, ...CFG };
   r=await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
   ok('sin Workers AI, avisa que falta configurarlo (no se cae)', /no está configurado|falta conectar/i.test((ultimo()||{}).text||''), ultimo());
   env={ DB, AI:aiAnterior, ...CFG }; }
+
+
+// ---------- Memoria de la conversación (parche 77, script 25) ----------
+const memoria = (uid, conv = '19:chat@thread.v2') => { const f = q1('select mensajes, sala_id, actualizado from teams_bot_memoria where usuario_id=? and conversacion_id=?', uid, conv); return f ? { ...f, ms: JSON.parse(f.mensajes) } : null; };
+const hablaCon = (frag) => pedidosIA.some((p) => JSON.stringify(p).includes(frag));
+olvidarTodo(); textoIA = 'Primero revisá el gateway de pagos (A1).';
+r=await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
+ok('la primera pregunta guarda lo conversado y la sala (usuario y asistente)', memoria(id('ana')).ms.length===2 && memoria(id('ana')).sala_id===4 && memoria(id('ana')).ms[0].rol==='usuario' && /A1/.test(memoria(id('ana')).ms[1].texto), memoria(id('ana')));
+ok('lo que se guarda es la respuesta del modelo, sin los enlaces ni las propuestas que arma el bot', !/https:\/\//.test(memoria(id('ana')).mensajes));
+textoIA = 'Depende del core de cuentas y del proveedor (A2).';
+r=await teams(actividad('u-ana','¿y de qué depende?'));
+ok('la segunda pregunta le llega al modelo con la primera y su respuesta', hablaCon('qué reviso primero') && hablaCon('(A1)'), pedidosIA.length);
+ok('sin decir la sala, sigue hablando de la misma (IM-4)', /incidente\/4/.test((ultimo()||{}).text||'') && memoria(id('ana')).ms.length===4);
+r=await teams(actividad('u-gero','¿cómo vamos?'));
+ok('otra persona en el mismo chat NO recibe lo que se le contestó a Ana (la memoria es por persona)', !hablaCon('qué reviso primero') && !hablaCon('(A1)') && !hablaCon('(A2)') && memoria(id('gero')).ms.length===2);
+ok('y la memoria de Ana no se tocó', memoria(id('ana')).ms.length===4);
+r=await teams(actividad('u-ana','¿y el proveedor?',{ act: { conversation: { id: '19:otro-chat@thread.v2', conversationType: 'groupChat' } } }));
+ok('en otro chat, Ana empieza de cero (la memoria es por chat)', !hablaCon('qué reviso primero') && !hablaCon('(A1)'));
+for (let i = 0; i < 3; i++) await teams(actividad('u-ana','pregunta de relleno ' + i));
+ok('guarda como mucho los últimos 6 mensajes', memoria(id('ana')).ms.length===6 && /relleno 2/.test(memoria(id('ana')).ms[4].texto), memoria(id('ana')).ms.length);
+{ const antes=memoria(id('ana')).mensajes;
+  await teams(actividad('u-ana','gracias'));
+  await teams(actividad('u-ana','hola'));
+  ok('los saludos sueltos no entran en la memoria (no pasaron por el modelo)', memoria(id('ana')).mensajes===antes); }
+{ const antes=memoria(id('ana')).mensajes; const aiAnterior=env.AI;
+  env={ DB, AI, ...CFG, ASISTENTE_POR_HORA:'1' }; db.exec('DELETE FROM asistente_uso'); db.prepare("INSERT INTO asistente_uso (hora, usuario_id, preguntas) VALUES (strftime('%Y-%m-%dT%H','now'), ?, 5)").run(id('ana'));
+  await teams(actividad('u-ana','otra pregunta sin cupo'));
+  ok('si no pudo responder (límite), tampoco se guarda', /máximo de 1 preguntas por hora/.test((ultimo()||{}).text||'') && memoria(id('ana')).mensajes===antes);
+  env={ DB, AI:aiAnterior, ...CFG }; db.exec('DELETE FROM asistente_uso'); }
+// Otra sala: lo anterior era de otro tema
+{ const r2=await call(ck.ana,'POST','/api/incidentes',{alertas:[db.prepare("select alerta_id from alertas_historico where estado!='RESUELTA' and severidad_maxima!='BAJA' and alerta_id not in (select alerta_id from incidente_alertas) limit 1").get().alerta_id]});
+  const IM2=r2.j.incidente.id;
+  await teams(actividad('u-ana','IM-'+IM2+' ¿cómo vamos?'));
+  ok('si pregunta por otra sala, empieza de cero y recuerda la nueva', !hablaCon('relleno') && !hablaCon('(A1)') && memoria(id('ana')).sala_id===IM2 && memoria(id('ana')).ms.length===2, memoria(id('ana')));
+  await teams(actividad('u-ana','¿y qué falta?'));
+  ok('la pregunta siguiente sigue en la sala nueva', new RegExp('incidente/'+IM2).test((ultimo()||{}).text||'') && hablaCon('¿cómo vamos?')); }
+// Vencimiento
+db.prepare("UPDATE teams_bot_memoria SET actualizado = strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-3 hours')").run();
+await teams(actividad('u-ana','¿y ahora?'));
+ok('pasadas 2 horas, el bot empieza de nuevo (no usa lo viejo ni la sala vieja)', !hablaCon('¿cómo vamos?') && !hablaCon('¿y qué falta?') && memoria(id('ana')).ms.length===2 && /varias salas abiertas/.test((ultimo()||{}).text||''), ultimo());
+// Limpieza de lo viejo
+db.prepare("INSERT OR REPLACE INTO teams_bot_memoria (conversacion_id, usuario_id, mensajes, sala_id, actualizado) VALUES ('19:viejo', ?, '[]', NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-8 days'))").run(id('carla'));
+await teams(actividad('u-ana','IM-4 ¿qué está demorado?'));
+ok('lo de más de 7 días se borra solo', !q1("select 1 from teams_bot_memoria where conversacion_id='19:viejo'"));
+// Empezar de nuevo
+await teams(actividad('u-ana','<at>Helios</at> Empezar de nuevo'));
+ok('«empezar de nuevo» borra la memoria, avisa y no consulta el modelo', pedidosIA.length===0 && /empezamos de nuevo/.test((ultimo()||{}).text||'') && !memoria(id('ana')), ultimo());
+await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
+await teams(actividad('u-gero','¿cómo vamos?'));
+ok('(preparación) cada uno tiene su memoria', !!memoria(id('ana')) && !!memoria(id('gero')));
+await teams(actividad('u-ana','olvidá todo'));
+ok('olvidar borra solo la memoria de quien lo pide', !memoria(id('ana')) && !!memoria(id('gero')));
+// Sin el script 25
+db.exec('DROP TABLE teams_bot_memoria');
+textoIA='Respuesta sin memoria.';
+r=await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
+ok('sin el script 25 el bot responde igual (cada mensaje es independiente)', /Respuesta sin memoria\./.test((ultimo()||{}).text||''), ultimo());
+r=await teams(actividad('u-ana','¿y de qué depende?'));
+ok('…y no recuerda lo anterior', !hablaCon('qué reviso primero') && !!ultimo());
+r=await call(A,'GET','/api/admin/teams/bot');
+ok('Administración avisa que falta el script 25', r.s===200 && r.j.memoria===false, r.j);
+r=await teams(actividad('u-ana','empezar de nuevo'));
+ok('y «empezar de nuevo» tampoco falla', /empezamos de nuevo/.test((ultimo()||{}).text||''));
+db.exec("CREATE TABLE teams_bot_memoria ( conversacion_id TEXT NOT NULL, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), mensajes TEXT NOT NULL, sala_id INTEGER, actualizado TEXT NOT NULL, PRIMARY KEY (conversacion_id, usuario_id) ) WITHOUT ROWID");
+r=await call(A,'GET','/api/admin/teams/bot'); ok('con el script 25, Administración lo ve activo', r.j.memoria===true);
+textoIA='Respuesta de Helios.';
+olvidarTodo();
+
+
+// ---------- El nombre con el que se lo menciona: @Gemma ----------
+olvidarTodo();
+r=await teams({ type:'conversationUpdate', id:'cu-n', serviceUrl:SERVICIO, channelId:'msteams', membersAdded:[{ id:'28:'+APP }], from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Gemma' }, conversation:{ id:'19:chat@thread.v2' }, channelData:{ tenant:{ id:TENANT } } });
+ok('el saludo usa el nombre de la app en Teams (@Gemma)', /soy Gemma/.test((ultimo()||{}).text||'') && /\*\*@Gemma IM-4/.test((ultimo()||{}).text||''), ultimo());
+r=await teams({ type:'conversationUpdate', id:'cu-m', serviceUrl:SERVICIO, channelId:'msteams', membersAdded:[{ id:'28:'+APP }], from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Asistente Helios' }, conversation:{ id:'19:chat@thread.v2' }, channelData:{ tenant:{ id:TENANT } } });
+ok('si la app se registró con otro nombre, usa ese', /\*\*@Asistente Helios IM-4/.test((ultimo()||{}).text||''), ultimo());
+r=await teams(actividad('u-ana','<at>Gemma</at> IM-4 ¿qué reviso primero?'));
+ok('la mención @Gemma de un chat grupal se contesta como cualquier otra', /Respuesta de Helios\./.test((ultimo()||{}).text||'') && hablaCon('qué reviso primero') && !hablaCon('<at>') && !hablaCon('Gemma IM-4'), ultimo());
+r=await teams(actividad('u-ana','gemma, ¿hubo algo parecido antes?'));
+ok('en un chat de a dos se lo puede llamar por el nombre sin mención («gemma, …»): el nombre no llega al modelo', /Respuesta de Helios\./.test((ultimo()||{}).text||'') && hablaCon('¿hubo algo parecido antes?') && !/"content":"gemma/i.test(JSON.stringify(pedidosIA)), ultimo());
+r=await teams(actividad('u-ana','@Gemma hola'));
+ok('«@Gemma hola» es un saludo (no gasta una pregunta)', pedidosIA.length===0 && /^Hola\./.test((ultimo()||{}).text||''), ultimo());
+r=await teams(actividad('u-ana','gemmas del sur: ¿qué reviso?'));
+ok('una palabra que empieza igual que el nombre (gemmas) no se recorta', hablaCon('gemmas del sur'), pedidosIA.length);
+r=await teams(actividad('u-ana','<at>Gemma</at>'));
+ok('solo la mención, sin pregunta: explica cómo usarlo', /soy Gemma/.test((ultimo()||{}).text||'') && pedidosIA.length===0);
+olvidarTodo();
 
 // ---------- Instalación y bienvenida ----------
 r=await teams({ type:'conversationUpdate', id:'cu-1', serviceUrl:SERVICIO, channelId:'msteams', membersAdded:[{ id:'28:'+APP }], from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Helios' }, conversation:{ id:'19:chat@thread.v2' }, channelData:{ tenant:{ id:TENANT } } });
@@ -237,7 +329,12 @@ r=await call(A,'POST','/api/admin/teams/bot/probar',{}); ok('con un secreto que 
 env={ DB, AI, ...CFG };
 r=await call(ck.ana,'POST','/api/admin/teams/bot/probar',{}); ok('un Analista no puede probar (403)', r.s===403);
 r=await call('','GET','/api/teams/bot'); ok('el GET de la dirección del bot no es una ruta pública (pide sesión)', r.s===401);
-r=await call(A,'GET',`/incidente/${IM}`); ok('la página de la sala sigue andando', r.s===200 && r.t.includes('@Helios'), r.s);
+r=await call(A,'GET',`/incidente/${IM}`); ok('la página de la sala sigue andando y su borrador del chat explica cómo sumar al asistente', r.s===200 && r.t.includes('sumá la app'), r.s);
+r=await call(A,'GET',`/api/incidentes/${IM}`); ok('la sala le pasa a la página el nombre del bot (Gemma por defecto)', r.s===200 && r.j.teams_chat && r.j.teams_chat.bot==='Gemma', r.j.teams_chat);
+env={ DB, AI, ...CFG, TEAMS_BOT_NOMBRE:'Helios' };
+r=await call(A,'GET',`/api/incidentes/${IM}`); ok('y con TEAMS_BOT_NOMBRE usa ese', r.j.teams_chat.bot==='Helios');
+r=await call(A,'GET','/api/admin/teams/bot'); ok('Administración muestra el nombre', r.j.nombre==='Helios', r.j);
+env={ DB, AI, ...CFG };
 
 globalThis.fetch = fetchReal;
 console.log(fallas ? 'FALLAS: '+fallas : 'TODO OK');

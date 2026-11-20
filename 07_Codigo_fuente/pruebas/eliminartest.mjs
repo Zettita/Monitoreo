@@ -58,6 +58,7 @@ const regPedroEq=await call(ck.ana,'POST','/api/admin/derivacion',{nombre:'Pagos
 ok('(preparación) hay avisos, uso del asistente, push y 2 reglas de derivación de Pedro', n('select count(*) n from avisos where usuario_id=?',id('pedro'))>=1 && n('select count(*) n from suscripciones_push where usuario_id=?',id('pedro'))===1 && regPedro.s===200 && regPedroEq.s===200, [regPedro.s, regPedroEq.s]);
 r=await call(ck.ana,'POST',`/api/alertas/${grupos[1]}/resolver`,{comentario:'Resuelta para la prueba'});
 const sesPedro=n('select count(*) n from sesiones where usuario_id=?',id('pedro'));
+db.prepare("INSERT INTO teams_bot_memoria (conversacion_id, usuario_id, mensajes, sala_id, actualizado) VALUES ('19:chat', ?, '[]', NULL, '2026-11-20T10:00:00Z')").run(id('pedro'));   // memoria del bot de Teams (parche 77)
 const aud0=n('select count(*) n from auditoria');
 r=await call(A,'POST',`/api/admin/usuarios/${id('pedro')}/borrar`,{});
 ok('el Administrador elimina a Pedro (con historial)', r.s===200 && !q1("select 1 from usuarios where usuario='pedro'"), r.j);
@@ -65,6 +66,7 @@ ok('se fueron sus sesiones, avisos, push, uso del asistente y pertenencia a equi
   && n("select count(*) n from avisos where usuario_id not in (select id from usuarios)")===0 && n("select count(*) n from suscripciones_push where endpoint like '%pedro'")===0
   && n("select count(*) n from asistente_uso where usuario_id not in (select id from usuarios)")===0 && n('select count(*) n from equipo_miembros where usuario_id not in (select id from usuarios)')===0);
 ok('la regla que mandaba solo a Pedro se borró y la que tenía también equipo quedó con el equipo', !q1("select 1 from reglas_derivacion where nombre='Todo a Pedro'") && q1("select usuario_id, equipo_id from reglas_derivacion where nombre='Pagos con Pedro'").usuario_id===null && q1("select equipo_id from reglas_derivacion where nombre='Pagos con Pedro'").equipo_id===eq('Pagos'));
+ok('se fue también su memoria del bot de Teams', n('select count(*) n from teams_bot_memoria where usuario_id not in (select id from usuarios)')===0 && n('select count(*) n from teams_bot_memoria')===0);
 ok('queda en la auditoría con su nombre', n("select count(*) n from auditoria where accion='BORRAR_USUARIO' and detalle='pedro (Pedro Pagos)'")===1 && n('select count(*) n from auditoria')===aud0+1);
 ok('no quedan referencias rotas en la base', fkRotas()===0, db.prepare('PRAGMA foreign_key_check').all().slice(0,3));
 ok('el historial de las alertas que tuvo el equipo sigue ahí', n("select count(*) n from alertas_historico where estado='RESUELTA'")>=1);

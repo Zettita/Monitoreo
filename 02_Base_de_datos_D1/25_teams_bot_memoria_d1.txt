@@ -1,0 +1,20 @@
+MEMORIA DEL BOT DE TEAMS (para la Console de D1: helios-monitoring-dev) — parche 77
+
+Qué hace: crea la tabla teams_bot_memoria, donde el bot de Helios en Teams guarda las últimas preguntas y respuestas de cada
+persona en cada chat (hasta 6 mensajes) y sobre qué sala venía hablando, para que pueda seguir una conversación
+("¿y de qué depende?") sin que haya que repetir todo. Es una fila por persona y por chat.
+- Se usa hasta 2 horas después del último mensaje; pasado ese tiempo el bot empieza de nuevo. Las filas de más de 7 días se borran solas.
+- Es por persona: lo que el bot le contestó a una persona nunca se usa para contestarle a otra (cada una ve solo lo de su perfil).
+- Quien escribe «empezar de nuevo» borra su memoria de ese chat.
+- Al eliminar un usuario (Administración) se borra también su memoria.
+Pasa de 32 a 33 tablas.
+
+Orden: 1) correr los dos bloques; 2) publicar 01_Worker/worker_alertas_cron.js.
+Sin este script el bot anda igual, pero cada mensaje es independiente (no recuerda lo anterior) y Administración lo avisa.
+Son 2 escrituras (una tabla y un índice): no hace falta /bookmark. Se pueden repetir sin problema.
+
+--- 1. Tabla de memoria ---
+CREATE TABLE IF NOT EXISTS teams_bot_memoria ( conversacion_id TEXT NOT NULL, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), mensajes TEXT NOT NULL, sala_id INTEGER, actualizado TEXT NOT NULL, PRIMARY KEY (conversacion_id, usuario_id) ) WITHOUT ROWID;
+
+--- 2. Índice por fecha (para borrar lo viejo) ---
+CREATE INDEX IF NOT EXISTS ix_teams_bot_memoria_actualizado ON teams_bot_memoria (actualizado);
