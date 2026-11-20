@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py y patch69.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py, patch69.py y patch70.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,11 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch70.py          sala de crisis en Teams (etapa 2 del AICIM, partes A y B): teams_sala_server.js. A: las novedades de la línea de tiempo de cada sala
+                        (menos notas y "empezó la tarea") van a un canal de Teams como tarjeta, con el secreto TEAMS_WEBHOOK (flujo de Workflows; solo
+                        direcciones de Microsoft); Administración > Equipos "Avisos en Teams" con aviso de prueba (/api/admin/teams). B: botón "Chat en Teams"
+                        en la sala (enlace teams.microsoft.com/l/chat con los correos de quienes están en la sala; teams_chat en GET /api/incidentes/<id>).
+                        Sin SQL. Prueba: pruebas/teamstest.mjs. Guía: 05_Documentacion/novedades_sala_teams.md
     patch69.py          sala de crisis (etapa 1 del AICIM): sala_crisis_server.js (rutas /api/incidentes…, permisos sala_crisis / sala_crisis_dirigir / sala_crisis_tarea),
                         sala_crisis_asistente.js (herramientas estado_incidente, tareas_incidente, guia_diagnostico solo dentro de la sala; propuestas asignar_tarea,
                         escalar, comunicar), sala_crisis.html (/incidentes y /incidente/<id>), escenas 20 a 22 de la demo. sala_crisis_sql.py genera
@@ -171,7 +176,7 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest comunicadostest jiratest textostest correousuariostest salacrisistest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest comunicadostest jiratest textostest correousuariostest salacrisistest teamstest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done
 # etapa 3b: migración a mitad de camino (esquema viejo -> scripts 16 y 17 -> Worker nuevo); necesita w_anterior.mjs
@@ -180,7 +185,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch70.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch71.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Video de demostración (18/11) — carpeta `08_Video_demo/`
 Pedido de Uriel (para la dueña del proyecto, a partir del mensaje al cliente con los 6 puntos del desarrollo): un video de la app usada de punta a punta, con subtítulos y voz en off **separada del video** (para poder usarlo mudo). Se arma solo, con el Worker de siempre sobre una base SQLite local: `python grabar.py` (≈ 9 min) y `python armar.py` (ver `08_Video_demo/LEEME.md`). Simulados, y dicho en el LEEME: el push en el celular (dibujo con los textos reales del Worker), Outlook, el asistente de IA (`ia_guion.mjs`, redacta con los datos reales), el ticket de Jira (modo simulado), el contexto externo (proveedores y noticias de ejemplo) y el historial de días anteriores. No cambia el Worker ni la base: no lleva parche ni script. Si cambia la pantalla de la app, revisar `capitulos.py`; si cambian los textos, `guion.py`.
@@ -320,6 +325,13 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - **Marca "Abierta hace N h/días"** en rojo cuando una alerta lleva más de 24 h abierta, en Seguimiento y en el tablero (surgió del incidente de 231 horas abierto de la reunión con Hugo del 12/11). Solo página. En la demo no se ve salvo con datos de más de un día.
 - Probado: demo igual al Worker anterior, 19 pruebas por módulo, `asistest` con casos nuevos (botones Derivar con 4 sin asignar, reparto, alerta de 3 días); los scripts de las páginas se revisaron con `node --check` (no se pudo mirar en un navegador real desde acá). Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
 
+## Sala de crisis en Teams (20/11, parche 70) — hecho en código, falta publicar (sin SQL)
+Pedido de Ale: la sala en Teams. Elegido con Ale: **A + B ahora y C después** (C necesita a IT).
+- **A · Avisos en un canal:** cada POST de la sala (y "Comunicar incidente" de una alerta que está en una sala) manda al canal los renglones nuevos de `incidente_linea_tiempo` (sin notas ni "empezó la tarea"), una tarjeta adaptable por sala con "Abrir sala en Helios". Secreto `TEAMS_WEBHOOK` = dirección del flujo de Workflows "Publicar en un canal cuando se recibe una solicitud de webhook" (solo hosts de Microsoft). Sin el secreto no hace nada; con él, 2 consultas y 1 pedido a Teams por acción de la sala. Si Teams falla, la acción igual se hace (`Teams: …` en el registro). Administración > Equipos: "Avisos en Teams" y "Mandar aviso de prueba" (solo Administrador, auditoría `TEAMS_PRUEBA`). Reemplaza al parche 30 viejo de la rama `version-parche-30-avisos-teams` para las salas; los avisos de alertas sueltas al canal siguen sin hacerse.
+- **B · "Chat en Teams"** en la sala: enlace `teams.microsoft.com/l/chat/0/0?users=…&topicName=…&message=…` con los correos (script 23) de quien abrió y dirige la sala, los responsables de tareas no canceladas y la gente de Soporte de los equipos con tareas; sin quien mira. `teams_chat: {correos, nombres, sin_correo}` en `GET /api/incidentes/<id>`. Sin Azure.
+- **C · Bot en Teams:** pendiente de IT (registro del bot, secreto, tenant, endpoint `/api/teams/bot`, permiso de instalación, mismo correo en Teams y Helios). Lista en la sección 4 de `05_Documentacion/novedades_sala_teams.md`.
+- Probado: `teamstest.mjs` (33 controles, Teams de mentira), demo igual y toda la batería; pantallas de la sala (PC y celular) y de Administración. `servidor_local.mjs` acepta `TEAMS_WEBHOOK`. Respaldo: `99_Archivo_viejo/worker_antes_parche70/`, ramas `respaldo-antes-parche-70` y `version-parche-70-sala-en-teams`.
+
 ## Sala de crisis, etapa 1 del AICIM (20/11, parche 69, script 24) — lista para publicar (en `main`); falta probar con el modelo real
 - Plan completo y decisiones: `05_Documentacion/plan_sala_crisis_etapa1.md` (leerlo antes de tocar algo de esto).
 - Es la **sala de crisis dentro de Helios**: incidentes mayores que agrupan alertas, tareas, línea de tiempo y guía de diagnóstico (componentes, dependencias y antecedentes), con el asistente que lee y **propone** asignar tarea, comunicar o escalar (no ejecuta). **Teams queda para la etapa 2.**
@@ -331,6 +343,7 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - Rama de trabajo `version-parche-69-sala-de-crisis`; respaldo `respaldo-antes-parche-69` (creado el 20/11, con la batería en verde).
 
 ## Pendiente, prioridad 2: avisos en un canal de Teams (decidido el 17/11)
+- **Para las salas de crisis, hecho en el parche 70.** Falta (si se quiere) mandar también las alertas sueltas al canal.
 - Quedó sin publicar. Está hecho como parche 30 viejo (ramas `version-parche-30-avisos-teams` y `avisos-teams-pendiente`, guía `novedades_avisos_teams.md` en esas ramas) pero el número 30 lo ocupó la ticketera de Uriel: hay que rehacerlo como parche nuevo (>= 55) encima de `main`, con el respaldo de siempre. Antes, revisar qué cubre ya "Comunicar incidente" (push con listas de difusión) para no duplicar.
 
 ## Contexto externo del asistente (13/11, patch29) — publicado

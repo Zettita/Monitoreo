@@ -53,6 +53,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 - `Helios_inventario_de_tablas.docx` — inventario y detalle de todas las tablas (estilo de los documentos del equipo).
 - `contexto_helios_para_ia.md` — contexto completo del proyecto para pasarle a otra IA.
 - `novedades_comunicados.md` — comunicar incidente por push (parche 46; desde el 63 con equipos en lugar de listas de difusión): perfil "Solo comunicados", equipos con rol por persona, Recibido y respuestas; cómo ponerlo en marcha y límites.
+- `novedades_sala_teams.md` — la sala de crisis en Teams (parche 70): conectar el canal con Workflows (secreto `TEAMS_WEBHOOK`), botón "Chat en Teams" y qué pedirle a IT para el bot.
 - `novedades_sala_crisis.md` — sala de crisis (parche 69): cómo publicarla, recorrer las escenas 20 a 22, probar el asistente con el modelo real, permisos y problemas comunes.
 - `plan_sala_crisis_etapa1.md` — plan de la sala de crisis (etapa 1 del AICIM, parche 69): qué incluye, decisiones, tablas, permisos, pasos, cómo quedó y pruebas.
 - `integracion_tickets.md` — Jira ya crea el issue en el proyecto KAN; InvGate sigue para completar. Qué recibe y devuelve cada función, cómo prenderlo y cómo probarlo.
@@ -67,7 +68,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58 y 60 a 69 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58 y 60 a 70 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
 - `word/` — helper para armar los Word con el estilo de la compañera.

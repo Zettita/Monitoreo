@@ -119,7 +119,9 @@ Las escenas traen **los datos**; las acciones de la sala las hace **quien presen
 4. Publicar: **primero** `24_sala_crisis_d1.txt` en la consola de D1, **después** el Worker.
 5. Respaldo `99_Archivo_viejo/worker_antes_parche69/` con su `LEEME.md`, ramas `respaldo-antes-parche-69` (ya creada) y `version-parche-69-sala-de-crisis`, documentación (`contexto_helios_para_ia.md` sección 16, `CLAUDE.md`, `LEEME.md`), commit en español y `git push`.
 
-## 8. Etapa 2 (para tener el rumbo, no se hace ahora)
+## 8. Etapa 2
+
+**20/11, parche 70:** hechos el aviso al canal (A) y el chat grupal (B); ver `novedades_sala_teams.md`. Falta el bot (C), que depende de IT, y la pantalla del catálogo.
 - Aviso automático a un canal de Teams al abrir, cambiar de estado o cerrar una sala (webhook; retomar la rama `version-parche-30-avisos-teams`).
 - Botón "Abrir en Teams" (chat grupal con los participantes por enlace directo, sin Microsoft Graph).
 - Después, si IT lo aprueba: bot de Teams que conteste las mismas preguntas del asistente desde el canal.

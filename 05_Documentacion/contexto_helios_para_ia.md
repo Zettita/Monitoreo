@@ -479,6 +479,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Sala de crisis en Teams (20/11, parche 70; sin SQL, falta publicar)**
+
+- **A:** las novedades de cada sala (apertura, alertas sumadas, tareas nuevas y hechas, escalamientos, estado, comunicados y cierre; no las notas) llegan a un canal de Teams como tarjeta con "Abrir sala en Helios". Se conecta con un flujo de Workflows de Teams y su dirección en el secreto `TEAMS_WEBHOOK`; sin él no hace nada. Administración > Equipos: "Avisos en Teams" con aviso de prueba (solo Administrador; rutas `GET /api/admin/teams` y `POST /api/admin/teams/probar`, auditoría `TEAMS_PRUEBA`).
+- **B:** botón "Chat en Teams" en la sala: abre un chat grupal de Teams con quienes están en la sala, por su correo (`teams_chat` en `GET /api/incidentes/<id>`).
+- **C (bot de Helios en Teams):** pendiente de IT; qué pedir en `05_Documentacion/novedades_sala_teams.md`.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche70/`, ramas `respaldo-antes-parche-70` y `version-parche-70-sala-en-teams`.
+
 **Sala de crisis, etapa 1 del AICIM (20/11, parche 69; script 24; lista para publicar)**
 
 - Plan en `05_Documentacion/plan_sala_crisis_etapa1.md`: incidentes mayores que agrupan alertas, con tareas, línea de tiempo y guía de diagnóstico dentro de Helios; el asistente propone asignar tareas, comunicar o escalar. Seis tablas nuevas (script `24_sala_crisis_d1.txt`, generado por `sala_crisis_sql.py` y ya probado; sin correr en D1): `incidentes_mayores`, `incidente_alertas`, `incidente_tareas`, `incidente_linea_tiempo`, `componentes_infraestructura`, `componente_dependencias`, con un catálogo de ejemplo y 3 antecedentes cerrados. Microsoft Teams queda para la etapa 2. Decisiones confirmadas por Ale. Programado y probado en la rama `version-parche-69-sala-de-crisis` (páginas `/incidentes` y `/incidente/<id>`, rutas `/api/incidentes…`, herramientas `estado_incidente`, `tareas_incidente` y `guia_diagnostico` del asistente, que solo se ofrecen dentro de una sala; propuestas `asignar_tarea`, `escalar` y `comunicar`). Demo: escenas 20 a 22 (se cae el gateway de pagos en tres clientes, la sala trabaja, servicio restablecido). Listo para publicar (script 24 → Worker, que trae también los parches 64 a 68; el script 23 ya se corrió el 20/11); falta probar el asistente con el modelo real. Guía: `05_Documentacion/novedades_sala_crisis.md`. Respaldo: `99_Archivo_viejo/worker_antes_parche69/`, ramas `respaldo-antes-parche-69` y `version-parche-69-sala-de-crisis`.
@@ -914,7 +921,8 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [x] Dashboard gerencial: Gerente con lista de alertas y detalle en solo lectura, incidentes activos, resumen por Día / Semana / Mes y disponibilidad mensual configurable (16/11, parches 42 a 45; falta publicar con el script 20).
 - [ ] Disponibilidad: con datos reales, revisar si el objetivo de 99,9 % y los pesos (Grave 100 %, Importante 50 %) le sirven a Hugo; evaluar la evolución mes a mes de cada cliente.
 - [ ] War Room en Teams desde una alerta (en pausa; evaluar enlace directo vs. Microsoft Graph).
-- [ ] **Prioridad 2 (decidido el 17/11): avisos en un canal de Teams con webhook (etapa 5).** Ya hay un parche viejo en las ramas `version-parche-30-avisos-teams` y `avisos-teams-pendiente`: rehacerlo como parche nuevo encima de `main` y revisar antes qué cubre "Comunicar incidente". Además: Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
+- [x] Sala de crisis en Teams: avisos al canal y "Chat en Teams" (20/11, parche 70; falta publicar y conectar el canal). Bot de Teams: pendiente de IT.
+- [ ] **Prioridad 2 (decidido el 17/11): avisos en un canal de Teams con webhook (etapa 5).** Para las salas de crisis, hecho en el parche 70; faltan las alertas sueltas. Ya hay un parche viejo en las ramas `version-parche-30-avisos-teams` y `avisos-teams-pendiente`: rehacerlo como parche nuevo encima de `main` y revisar antes qué cubre "Comunicar incidente". Además: Mail, SMS o app de celular (lo investiga la compañera; el servicio elegido tiene que tener una API HTTP simple, porque el Worker solo puede hacer `fetch`).
 - [x] Perfiles: Gerente de lectura con Panorama, Analista deriva y avisa pre-alertas, Soporte solo con sus tickets, Administrador orientado a la configuración (11/11).
 - [x] Criticidad por servicio, objetivo de disponibilidad y umbrales configurables por cliente (11/11).
 - [ ] Definir advertencia vs. alerta (por ejemplo, `MEDIA` y `BAJA` = advertencia).

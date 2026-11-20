@@ -86,6 +86,7 @@ const R2_LOCAL = {
 const env = {
   EVIDENCIA: process.env.CON_R2 ? R2_LOCAL : undefined,
   AI: process.env.ASISTENTE_LOCAL === 'simulado' ? AI_SIMULADO : undefined,
+  TEAMS_WEBHOOK: process.env.TEAMS_WEBHOOK,   // parche 70: dirección del flujo de Workflows de Teams (opcional)
   VAPID_JWK: process.env.VAPID_JWK || fs.readFileSync(archivoClave, 'utf8').trim(),
   DB: {
     prepare: preparar,
