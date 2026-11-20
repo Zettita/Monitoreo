@@ -2,7 +2,7 @@
 
 > Primera etapa del **AICIM** (Asistente Inteligente de Coordinación de Incidentes Mayores), el que se presenta como "próxima capacidad" al final del video de demostración. Este documento lo leen el equipo y la IA de Ale: si algo cambia, se actualiza acá primero.
 >
-> **Estado (20/11):** decisiones confirmadas por Ale. Pasos 3, 4 y 5 hechos y probados en la rama `version-parche-69-sala-de-crisis` (secciones 5.1 y 6). Sigue el paso 6 (modelo real y publicación). **Todavía no se publica:** `01_Worker/` sigue con el Worker del parche 68.
+> **Estado (20/11):** decisiones confirmadas por Ale. Pasos 3, 4 y 5 hechos y probados en la rama `version-parche-69-sala-de-crisis` (secciones 5.1 y 6). Paso 6: Worker en `01_Worker/`, respaldo hecho y rama unida a `main` (20/11). **Falta:** correr los scripts y publicar en Cloudflare, y probar el asistente con el modelo real (lista en `novedades_sala_crisis.md`).
 
 ## 1. Qué es y qué no es la etapa 1
 

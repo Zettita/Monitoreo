@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py y patch68.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py y patch69.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,10 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch69.py          sala de crisis (etapa 1 del AICIM): sala_crisis_server.js (rutas /api/incidentes…, permisos sala_crisis / sala_crisis_dirigir / sala_crisis_tarea),
+                        sala_crisis_asistente.js (herramientas estado_incidente, tareas_incidente, guia_diagnostico solo dentro de la sala; propuestas asignar_tarea,
+                        escalar, comunicar), sala_crisis.html (/incidentes y /incidente/<id>), escenas 20 a 22 de la demo. sala_crisis_sql.py genera
+                        sala_crisis_d1.sql y el script 24. Prueba: pruebas/salacrisistest.mjs. Guía: 05_Documentacion/novedades_sala_crisis.md
     patch58.py          un solo campo de fecha (el de Disponibilidad: se escribe dd/mm/aaaa, tiene calendario) en el Histórico, Clientes con más problemas y Administración
                         (auditoría, feriados, eventos), y un bloque de CSS al final de todas las páginas que unifica el tema (esquinas de 4 px en cajas y 3 px en campos y
                         etiquetas, títulos de 20/600, selectores y campos de 40 px). fecha_ui.py tiene el campo (CSS, JS y marcado). Solo páginas. Sin SQL.
@@ -176,7 +180,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch69.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch70.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Video de demostración (18/11) — carpeta `08_Video_demo/`
 Pedido de Uriel (para la dueña del proyecto, a partir del mensaje al cliente con los 6 puntos del desarrollo): un video de la app usada de punta a punta, con subtítulos y voz en off **separada del video** (para poder usarlo mudo). Se arma solo, con el Worker de siempre sobre una base SQLite local: `python grabar.py` (≈ 9 min) y `python armar.py` (ver `08_Video_demo/LEEME.md`). Simulados, y dicho en el LEEME: el push en el celular (dibujo con los textos reales del Worker), Outlook, el asistente de IA (`ia_guion.mjs`, redacta con los datos reales), el ticket de Jira (modo simulado), el contexto externo (proveedores y noticias de ejemplo) y el historial de días anteriores. No cambia el Worker ni la base: no lleva parche ni script. Si cambia la pantalla de la app, revisar `capitulos.py`; si cambian los textos, `guion.py`.
@@ -316,13 +320,13 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - **Marca "Abierta hace N h/días"** en rojo cuando una alerta lleva más de 24 h abierta, en Seguimiento y en el tablero (surgió del incidente de 231 horas abierto de la reunión con Hugo del 12/11). Solo página. En la demo no se ve salvo con datos de más de un día.
 - Probado: demo igual al Worker anterior, 19 pruebas por módulo, `asistest` con casos nuevos (botones Derivar con 4 sin asignar, reparto, alerta de 3 días); los scripts de las páginas se revisaron con `node --check` (no se pudo mirar en un navegador real desde acá). Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
 
-## En curso (20/11): sala de crisis, etapa 1 del AICIM (parche 69, script 24) — programada y probada en la rama, falta demo y publicar
+## Sala de crisis, etapa 1 del AICIM (20/11, parche 69, script 24) — lista para publicar (en `main`); falta probar con el modelo real
 - Plan completo y decisiones: `05_Documentacion/plan_sala_crisis_etapa1.md` (leerlo antes de tocar algo de esto).
 - Es la **sala de crisis dentro de Helios**: incidentes mayores que agrupan alertas, tareas, línea de tiempo y guía de diagnóstico (componentes, dependencias y antecedentes), con el asistente que lee y **propone** asignar tarea, comunicar o escalar (no ejecuta). **Teams queda para la etapa 2.**
 - Tablas nuevas (script `24_sala_crisis_d1.txt`, de 26 a 32): `incidentes_mayores`, `incidente_alertas`, `incidente_tareas`, `incidente_linea_tiempo`, `componentes_infraestructura`, `componente_dependencias`. No toca tablas existentes.
 - Propuesto: el Analista abre y dirige; Soporte actualiza sus tareas; Gerente y Administrador leen. Datos de ejemplo con `CLI_001` a `CLI_008`. Escenas nuevas 20 a 22; las 19 actuales tienen que dar lo mismo. Decisiones confirmadas por Ale (20/11).
 - **Paso 3 hecho:** `sala_crisis_sql.py` genera `sala_crisis_d1.sql` (lo carga `mkdb.mjs`; `SIN_SCRIPT_24=1` arma la base sin él) y `02_Base_de_datos_D1/24_sala_crisis_d1.txt` (30 bloques): 6 tablas, 9 componentes, 18 dependencias y 3 antecedentes cerrados (`origen = 'IMPORTADO'`, IM-1 a IM-3). Probado con el límite de dos `SELECT` unidos; batería y demo iguales con el script. Sigue el paso 4: `patch69.py`.
-- **Paso 4 hecho (20/11):** `sala_crisis_server.js`, `sala_crisis_asistente.js`, `sala_crisis.html` y `patch69.py` (en `build.py`). Detalle en la sección 5.1 del plan. Prueba nueva `salacrisistest.mjs` (93 controles): sumarla al `for` de la batería. **`01_Worker/` todavía tiene el Worker del parche 68:** se copia al terminar el paso 6 (modelo real).
+- **Paso 4 hecho (20/11):** `sala_crisis_server.js`, `sala_crisis_asistente.js`, `sala_crisis.html` y `patch69.py` (en `build.py`). Detalle en la sección 5.1 del plan. Prueba nueva `salacrisistest.mjs` (93 controles): sumarla al `for` de la batería. **Paso 6 (20/11):** Worker copiado a `01_Worker/` y rama unida a `main`. **Para publicar:** script 23 (si falta) → script 24 → Worker; guía y lista de prueba con el modelo real en `05_Documentacion/novedades_sala_crisis.md`. Respaldo: `99_Archivo_viejo/worker_antes_parche69/`, ramas `respaldo-antes-parche-69` y `version-parche-69-sala-de-crisis`.
 - **Paso 5 hecho (20/11):** escenas 20 a 22 de la demo (se cae el gateway de pagos en CLI_006, CLI_002 y CLI_005 · la sala trabaja · servicio restablecido): traen los datos y el texto dice qué tocar en la sala; las acciones las hace quien presenta. **La demo tiene 22 escenas**; las 19 de antes dan lo mismo (`out_a.txt` solo suma E20 a E22). `test_auth` recorre todas; `inctest` compara las 22.
 - Rama de trabajo `version-parche-69-sala-de-crisis`; respaldo `respaldo-antes-parche-69` (creado el 20/11, con la batería en verde).
 

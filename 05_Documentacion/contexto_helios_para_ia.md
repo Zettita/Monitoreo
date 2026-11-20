@@ -27,7 +27,8 @@ Funciones que existen hoy:
 - Panel de administración: usuarios, equipos, reglas, derivación, umbrales, modelo (solo lectura) y auditoría.
 - Tema claro, oscuro o el del sistema, con color principal verde azulado.
 - El análisis histórico se hace en el propio tablero (Power BI se dejó de usar el 11/11).
-- Modo demo con reloj simulado y 19 escenas.
+- Modo demo con reloj simulado y 22 escenas (las 20 a 22, desde el parche 69, para la sala de crisis).
+- **Sala de crisis** (parche 69): incidentes mayores que agrupan alertas, con tareas, línea de tiempo, guía de diagnóstico y el asistente que propone (no ejecuta).
 
 **Lo que se quiere ahora:** sumar un **agente de IA** (todavía no definido) y **migrar fuera de Cloudflare** a un servidor propio, por los límites de la base.
 
@@ -478,9 +479,9 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Sala de crisis, etapa 1 del AICIM (20/11, parche 69; en diseño, sin programar)**
+**Sala de crisis, etapa 1 del AICIM (20/11, parche 69; script 24; lista para publicar)**
 
-- Plan en `05_Documentacion/plan_sala_crisis_etapa1.md`: incidentes mayores que agrupan alertas, con tareas, línea de tiempo y guía de diagnóstico dentro de Helios; el asistente propone asignar tareas, comunicar o escalar. Seis tablas nuevas (script `24_sala_crisis_d1.txt`, generado por `sala_crisis_sql.py` y ya probado; sin correr en D1): `incidentes_mayores`, `incidente_alertas`, `incidente_tareas`, `incidente_linea_tiempo`, `componentes_infraestructura`, `componente_dependencias`, con un catálogo de ejemplo y 3 antecedentes cerrados. Microsoft Teams queda para la etapa 2. Decisiones confirmadas por Ale. Programado y probado en la rama `version-parche-69-sala-de-crisis` (páginas `/incidentes` y `/incidente/<id>`, rutas `/api/incidentes…`, herramientas `estado_incidente`, `tareas_incidente` y `guia_diagnostico` del asistente, que solo se ofrecen dentro de una sala; propuestas `asignar_tarea`, `escalar` y `comunicar`). Demo: escenas 20 a 22 (se cae el gateway de pagos en tres clientes, la sala trabaja, servicio restablecido). Falta probar con el modelo real y publicar: el Worker publicado sigue siendo el del parche 68.
+- Plan en `05_Documentacion/plan_sala_crisis_etapa1.md`: incidentes mayores que agrupan alertas, con tareas, línea de tiempo y guía de diagnóstico dentro de Helios; el asistente propone asignar tareas, comunicar o escalar. Seis tablas nuevas (script `24_sala_crisis_d1.txt`, generado por `sala_crisis_sql.py` y ya probado; sin correr en D1): `incidentes_mayores`, `incidente_alertas`, `incidente_tareas`, `incidente_linea_tiempo`, `componentes_infraestructura`, `componente_dependencias`, con un catálogo de ejemplo y 3 antecedentes cerrados. Microsoft Teams queda para la etapa 2. Decisiones confirmadas por Ale. Programado y probado en la rama `version-parche-69-sala-de-crisis` (páginas `/incidentes` y `/incidente/<id>`, rutas `/api/incidentes…`, herramientas `estado_incidente`, `tareas_incidente` y `guia_diagnostico` del asistente, que solo se ofrecen dentro de una sala; propuestas `asignar_tarea`, `escalar` y `comunicar`). Demo: escenas 20 a 22 (se cae el gateway de pagos en tres clientes, la sala trabaja, servicio restablecido). Listo para publicar (script 23 si falta → script 24 → Worker, que trae también los parches 64 a 68); falta probar el asistente con el modelo real. Guía: `05_Documentacion/novedades_sala_crisis.md`. Respaldo: `99_Archivo_viejo/worker_antes_parche69/`, ramas `respaldo-antes-parche-69` y `version-parche-69-sala-de-crisis`.
 
 
 **Correo de cada usuario y elegir destinatarios (18/11, parche 68; script 23, falta publicar)**
