@@ -1,20 +1,23 @@
-MEMORIA DEL BOT DE TEAMS (para la Console de D1: helios-monitoring-dev) — parche 77
+MEMORIA DEL BOT DE TEAMS (para la Console de D1: helios-monitoring-dev) — parches 77 y 78
 
-Qué hace: crea la tabla teams_bot_memoria, donde el bot de Helios en Teams guarda las últimas preguntas y respuestas de cada
-persona en cada chat (hasta 6 mensajes) y sobre qué sala venía hablando, para que pueda seguir una conversación
-("¿y de qué depende?") sin que haya que repetir todo. Es una fila por persona y por chat.
+Qué hace: crea la tabla teams_bot_memoria, donde el bot de Helios en Teams guarda los últimos mensajes de cada chat (hasta 6, cada pregunta con el
+nombre de quien la hizo) y sobre qué sala venían hablando, para que pueda seguir una conversación ("¿y de qué depende?") sin repetir todo.
+Es una fila por chat y es de todo el chat: en un chat de grupo todos leen las mismas respuestas, así que si alguien pregunta y otra persona sigue
+después, el bot responde en base a lo que se viene hablando ahí. El permiso de cada pregunta sigue siendo el de quien la hace.
 - Se usa hasta 2 horas después del último mensaje; pasado ese tiempo el bot empieza de nuevo. Las filas de más de 7 días se borran solas.
-- Es por persona: lo que el bot le contestó a una persona nunca se usa para contestarle a otra (cada una ve solo lo de su perfil).
-- Quien escribe «empezar de nuevo» borra su memoria de ese chat.
-- Al eliminar un usuario (Administración) se borra también su memoria.
+- Quien escribe «empezar de nuevo» borra la memoria de ese chat para todos.
 Pasa de 32 a 33 tablas.
 
-Orden: 1) correr los dos bloques; 2) publicar 01_Worker/worker_alertas_cron.js.
+Orden: 1) correr los tres bloques; 2) publicar 01_Worker/worker_alertas_cron.js.
 Sin este script el bot anda igual, pero cada mensaje es independiente (no recuerda lo anterior) y Administración lo avisa.
-Son 2 escrituras (una tabla y un índice): no hace falta /bookmark. Se pueden repetir sin problema.
+El bloque 1 borra la tabla si existía (por ejemplo, la primera versión del parche 77, que era por persona): solo se pierde memoria de corto plazo.
+Se puede repetir sin problema (cada vez empieza sin memoria). Son pocas escrituras: no hace falta /bookmark.
 
---- 1. Tabla de memoria ---
-CREATE TABLE IF NOT EXISTS teams_bot_memoria ( conversacion_id TEXT NOT NULL, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), mensajes TEXT NOT NULL, sala_id INTEGER, actualizado TEXT NOT NULL, PRIMARY KEY (conversacion_id, usuario_id) ) WITHOUT ROWID;
+--- 1. Borrar la versión anterior (si existía) ---
+DROP TABLE IF EXISTS teams_bot_memoria;
 
---- 2. Índice por fecha (para borrar lo viejo) ---
+--- 2. Tabla de memoria, una fila por chat ---
+CREATE TABLE teams_bot_memoria ( conversacion_id TEXT PRIMARY KEY, mensajes TEXT NOT NULL, sala_id INTEGER, actualizado TEXT NOT NULL ) WITHOUT ROWID;
+
+--- 3. Índice por fecha (para borrar lo viejo) ---
 CREATE INDEX IF NOT EXISTS ix_teams_bot_memoria_actualizado ON teams_bot_memoria (actualizado);

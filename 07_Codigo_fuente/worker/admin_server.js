@@ -305,7 +305,7 @@ async function adminBorrarUsuario(env, yo, id) {
   if (pendientes.length) return jsonError('No se puede eliminar: tiene ' + pendientes.join(', ') + '. Derivalas, resolvelas o cerralas primero (o desactivá al usuario).', 409);
   // Lo que cuelga de la persona y vive en tablas de scripts opcionales (si la tabla no existe, no hay nada que limpiar)
   const sueltas = [
-    'DELETE FROM suscripciones_push WHERE usuario_id = ?1', 'DELETE FROM teams_bot_memoria WHERE usuario_id = ?1', 'DELETE FROM asistente_uso WHERE usuario_id = ?1', 'DELETE FROM comunicado_destinatarios WHERE usuario_id = ?1',
+    'DELETE FROM suscripciones_push WHERE usuario_id = ?1', 'DELETE FROM asistente_uso WHERE usuario_id = ?1', 'DELETE FROM comunicado_destinatarios WHERE usuario_id = ?1',
     'UPDATE comunicados_incidente SET enviado_por = NULL WHERE enviado_por = ?1', 'UPDATE tickets_alerta SET creado_por = NULL WHERE creado_por = ?1',
     'UPDATE eventos_comerciales SET creado_por = NULL WHERE creado_por = ?1',
     'UPDATE incidente_tareas SET responsable_usuario_id = NULL WHERE responsable_usuario_id = ?1', 'UPDATE incidente_tareas SET creada_por = NULL WHERE creada_por = ?1',

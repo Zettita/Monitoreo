@@ -24,7 +24,8 @@
 //     La pregunta pasa por la misma ruta del asistente de siempre (/api/asistente): mismos permisos por perfil, mismos límites
 //     de preguntas por hora y por día, misma auditoría, y las mismas reglas de la sala (Soporte solo ve salas donde tiene una tarea).
 //   - Los saludos y agradecimientos sueltos no llaman al modelo (parche 74).
-//   - Recuerda la conversación (parche 77, script 25): últimos 6 mensajes de cada persona en cada chat y la sala de la que venía hablando; «empezar de nuevo» la borra.
+//   - Recuerda la conversación (parches 77 y 78, script 25): últimos 6 mensajes de cada chat (con el nombre de quien preguntó) y la sala de la que venían hablando;
+//     es del chat, no de cada persona, porque en un chat grupal todos leen las mismas respuestas. «Empezar de nuevo» la borra.
 //   - El pedido se contesta enseguida (200) y la respuesta se manda después, por la API de Microsoft: la IA puede tardar unos segundos.
 // =====================================================================
 const BOT_RUTA = '/api/teams/bot';
@@ -160,37 +161,41 @@ async function botUsuario(env, correos) {
     () => env.DB.prepare('SELECT id, usuario, nombre, perfil, debe_cambiar FROM usuarios WHERE activo = 1 AND lower(correo) IN (?1, ?2) ORDER BY id LIMIT 1').bind(a, b).first());
 }
 
-// ---------- Memoria de la conversación (parche 77, script 25) ----------
-// Una fila por persona y por chat con sus últimos mensajes (hasta 6) y la sala de la que venía hablando. Es por persona: lo que el bot le
-// contestó a alguien nunca se usa para contestarle a otro (cada uno ve solo lo de su perfil). Se usa hasta 2 horas después del último
-// mensaje y lo viejo (más de 7 días) se borra solo. Sin la tabla, cada mensaje es independiente, como antes.
+// ---------- Memoria de la conversación (parches 77 y 78, script 25) ----------
+// Una fila por CHAT con sus últimos mensajes (hasta 6, con el nombre de quien preguntó cada uno) y la sala de la que venían hablando. Es del chat y no
+// de cada persona: en un chat grupal todos leen las mismas respuestas, así que si alguien pregunta y otra persona sigue después, el bot responde en
+// base a lo que se viene hablando ahí. El permiso de cada pregunta sigue siendo el de quien la hace. Se usa hasta 2 horas después del último
+// mensaje y lo viejo (más de 7 días) se borra solo. Sin la tabla, cada mensaje es independiente.
 const BOT_MEMORIA_MENSAJES = 6;
 const BOT_MEMORIA_HORAS = 2;
 const BOT_OLVIDAR = /^(empezar de nuevo|empecemos de nuevo|nueva consulta|nueva conversaci[oó]n|olvid[aá](te)?( todo| lo anterior)?|reiniciar|borr[aá] (la )?(memoria|conversaci[oó]n))[.!? ]*$/i;
-async function botMemoria(env, act, yo) {
+const botChat = (act) => String(act.conversation.id).slice(0, 200);
+async function botMemoria(env, act) {
   try {
-    const f = await env.DB.prepare('SELECT mensajes, sala_id, actualizado FROM teams_bot_memoria WHERE conversacion_id = ?1 AND usuario_id = ?2').bind(String(act.conversation.id).slice(0, 200), yo.id).first();
+    const f = await env.DB.prepare('SELECT mensajes, sala_id, actualizado FROM teams_bot_memoria WHERE conversacion_id = ?1').bind(botChat(act)).first();
     if (!f || Date.parse(f.actualizado) < Date.now() - BOT_MEMORIA_HORAS * 3600e3) return { mensajes: [], sala_id: null, activa: true };
     let ms = []; try { ms = JSON.parse(f.mensajes); } catch (e) { /* fila ilegible: se empieza de nuevo */ }
     return { mensajes: Array.isArray(ms) ? ms.filter((x) => x && (x.rol === 'usuario' || x.rol === 'asistente') && typeof x.texto === 'string').slice(-BOT_MEMORIA_MENSAJES) : [], sala_id: f.sala_id, activa: true };
   } catch (e) {
-    if (/no such table/i.test(e.message)) return { mensajes: [], sala_id: null, activa: false };   // sin el script 25
+    if (/no such table|no such column/i.test(e.message)) return { mensajes: [], sala_id: null, activa: false };   // sin el script 25
     throw e;
   }
 }
-async function botGuardarMemoria(env, act, yo, mensajes, salaId) {
+// Lo que se le pasa al modelo: cada pregunta con el nombre de quien la hizo, para que distinga quién dijo qué
+const botHistoria = (mensajes) => mensajes.map((m) => ({ rol: m.rol, texto: m.rol === 'usuario' && m.quien ? m.quien + ': ' + m.texto : m.texto }));
+async function botGuardarMemoria(env, act, mensajes, salaId) {
   try {
     await env.DB.batch([
-      env.DB.prepare(`INSERT INTO teams_bot_memoria (conversacion_id, usuario_id, mensajes, sala_id, actualizado) VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-        ON CONFLICT (conversacion_id, usuario_id) DO UPDATE SET mensajes = excluded.mensajes, sala_id = excluded.sala_id, actualizado = excluded.actualizado`)
-        .bind(String(act.conversation.id).slice(0, 200), yo.id, JSON.stringify(mensajes.slice(-BOT_MEMORIA_MENSAJES)), salaId || null),
+      env.DB.prepare(`INSERT INTO teams_bot_memoria (conversacion_id, mensajes, sala_id, actualizado) VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        ON CONFLICT (conversacion_id) DO UPDATE SET mensajes = excluded.mensajes, sala_id = excluded.sala_id, actualizado = excluded.actualizado`)
+        .bind(botChat(act), JSON.stringify(mensajes.slice(-BOT_MEMORIA_MENSAJES)), salaId || null),
       env.DB.prepare("DELETE FROM teams_bot_memoria WHERE actualizado < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-7 days')"),
     ]);
-  } catch (e) { if (!/no such table/i.test(e.message)) console.error('Bot de Teams: no se pudo guardar la memoria: ' + e.message); }
+  } catch (e) { if (!/no such table|no such column/i.test(e.message)) console.error('Bot de Teams: no se pudo guardar la memoria: ' + e.message); }
 }
-async function botOlvidar(env, act, yo) {
-  try { await env.DB.prepare('DELETE FROM teams_bot_memoria WHERE conversacion_id = ?1 AND usuario_id = ?2').bind(String(act.conversation.id).slice(0, 200), yo.id).run(); }
-  catch (e) { if (!/no such table/i.test(e.message)) throw e; }
+async function botOlvidar(env, act) {
+  try { await env.DB.prepare('DELETE FROM teams_bot_memoria WHERE conversacion_id = ?1').bind(botChat(act)).run(); }
+  catch (e) { if (!/no such table|no such column/i.test(e.message)) throw e; }
 }
 
 // ---------- Sobre qué sala pregunta ----------
@@ -247,25 +252,25 @@ async function botProcesar(env, request, act) {
   if (!yo) { await botResponder(env, act, 'No encontré tu usuario de Helios' + (correos[0] ? ' con el correo ' + correos[0] : '') + '. Pedile al Administrador que cargue tu correo en Administración > Usuarios.'); return; }
   if (!puede(yo, 'asistente')) { await botResponder(env, act, 'Tu perfil no tiene el asistente.'); return; }
   if (BOT_OLVIDAR.test(texto)) {
-    await botOlvidar(env, act, yo);
-    await botResponder(env, act, 'Listo, empezamos de nuevo: no recuerdo lo anterior. Preguntame lo que necesites.');
+    await botOlvidar(env, act);
+    await botResponder(env, act, 'Listo, empezamos de nuevo: no recuerdo lo anterior de este chat. Preguntame lo que necesites.');
     return;
   }
   await botEscribiendo(env, act);
-  let memoria = await botMemoria(env, act, yo);
+  let memoria = await botMemoria(env, act);
   const sala = await botSala(env, yo, texto, act, memoria);
-  // Si ahora pregunta por otra sala, lo anterior era de otro tema: se empieza de nuevo
+  // Si ahora se pregunta por otra sala, lo anterior era de otro tema: se empieza de nuevo
   if (memoria.sala_id && sala.id && sala.id !== memoria.sala_id) memoria = { ...memoria, mensajes: [] };
   const cuerpo = { pregunta: texto };
   if (sala.id) cuerpo.incidente_id = sala.id;
-  if (memoria.mensajes.length) cuerpo.historia = memoria.mensajes;
+  if (memoria.mensajes.length) cuerpo.historia = botHistoria(memoria.mensajes);
   // La misma ruta del asistente de siempre: permisos del perfil, límites de preguntas, auditoría y reglas de la sala
   const resp = await rutasAsistente(env, new Request(origen + '/api/asistente', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) }), '/api/asistente', yo);
   const j = await resp.json().catch(() => ({}));
   if (!resp.ok || j.ok === false) { await botResponder(env, act, String(j.error || 'No pude responder ahora. Probá de nuevo en un momento.')); return; }
   await botResponder(env, act, botArmarRespuesta(j, origen, sala));
   // Se recuerda lo conversado (sin los saludos sueltos, que no pasaron por el modelo)
-  if (memoria.activa && !j.sin_ia && j.respuesta) await botGuardarMemoria(env, act, yo, memoria.mensajes.concat([{ rol: 'usuario', texto }, { rol: 'asistente', texto: String(j.respuesta).slice(0, 1500) }]), sala.id);
+  if (memoria.activa && !j.sin_ia && j.respuesta) await botGuardarMemoria(env, act, memoria.mensajes.concat([{ rol: 'usuario', texto, quien: String(yo.nombre || '').split(/\s+/)[0] }, { rol: 'asistente', texto: String(j.respuesta).slice(0, 1500) }]), sala.id);
 }
 
 // ---------- Lo que llama Microsoft ----------

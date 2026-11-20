@@ -60,9 +60,10 @@ h.push(H.titulo(1, '4. Seguridad y datos (para que IT lo evalúe)'));
 h.push(...H.tabla(['Tema', 'Cómo funciona'], cols(2, 8), [
   ['**Quién puede escribirle al bot**', 'Solo quienes tengan la aplicación disponible en Teams. Además, el bot responde solo a personas con usuario activo en Helios.'],
   ['**Qué ve cada persona**', 'Lo mismo que ve en Helios según su perfil (Analista, Soporte, Gerente…). Un Gerente recibe lectura, sin acciones. Quien no tenga usuario no recibe datos.'],
+  ['**Chats grupales**', 'El bot contesta en el chat y **todas las personas del chat leen la respuesta**: el control de permisos es el de quien pregunta, no el de quienes leen. Conviene usarlo en chats donde todos ya pueden ver lo mismo (por ejemplo, el de una sala de crisis). El bot responde en base a lo que se viene hablando en ese chat.'],
   ['**Qué puede hacer el bot**', 'Solo leer y proponer. **No ejecuta nada**: las acciones se hacen desde Helios, con sus permisos y su auditoría.'],
   ['**Cómo se valida que el mensaje viene de Microsoft**', 'Helios verifica la firma de cada mensaje que le llega (el token del servicio de bots de Microsoft) y descarta cualquier otro. El secreto solo está en Cloudflare.'],
-  ['**Qué datos viajan**', 'Las preguntas y respuestas del chat: alertas, clientes, servicios, estado y tareas de la sala. Quedan en el Microsoft 365 de la empresa. En la demo todos los datos son ficticios.'],
+  ['**Qué datos viajan**', 'Las preguntas y respuestas del chat: alertas, clientes, servicios, estado y tareas de la sala. Quedan en el Microsoft 365 de la empresa. Además, Helios guarda en su base los últimos 6 mensajes de cada chat para responder en contexto: se usan hasta 2 horas después del último mensaje y se borran a los 7 días; quien escribe «empezar de nuevo» los borra. En la demo todos los datos son ficticios.'],
   ['**Límites de uso**', 'Los mismos del asistente de Helios: preguntas por persona y por hora, y un tope diario total. Cada consulta queda en la auditoría de Helios.'],
   ['**Conexiones de red**', 'Entrante: Microsoft le envía los mensajes al punto de Cloudflare indicado arriba. Saliente: Helios llama a los servicios públicos de Microsoft para responder. No toca la red interna.'],
 ], true));

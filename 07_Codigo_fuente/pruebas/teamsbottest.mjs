@@ -209,72 +209,79 @@ env={ DB, AI, ...CFG };
   env={ DB, AI:aiAnterior, ...CFG }; }
 
 
-// ---------- Memoria de la conversación (parche 77, script 25) ----------
-const memoria = (uid, conv = '19:chat@thread.v2') => { const f = q1('select mensajes, sala_id, actualizado from teams_bot_memoria where usuario_id=? and conversacion_id=?', uid, conv); return f ? { ...f, ms: JSON.parse(f.mensajes) } : null; };
+// ---------- Memoria de la conversación: una por chat, compartida por quienes están en él (parches 77 y 78, script 25) ----------
+const CHAT = '19:chat@thread.v2';
+const memoria = (conv = CHAT) => { const f = q1('select mensajes, sala_id, actualizado from teams_bot_memoria where conversacion_id=?', conv); return f ? { ...f, ms: JSON.parse(f.mensajes) } : null; };
 const hablaCon = (frag) => pedidosIA.some((p) => JSON.stringify(p).includes(frag));
 olvidarTodo(); textoIA = 'Primero revisá el gateway de pagos (A1).';
 r=await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
-ok('la primera pregunta guarda lo conversado y la sala (usuario y asistente)', memoria(id('ana')).ms.length===2 && memoria(id('ana')).sala_id===4 && memoria(id('ana')).ms[0].rol==='usuario' && /A1/.test(memoria(id('ana')).ms[1].texto), memoria(id('ana')));
-ok('lo que se guarda es la respuesta del modelo, sin los enlaces ni las propuestas que arma el bot', !/https:\/\//.test(memoria(id('ana')).mensajes));
+ok('la primera pregunta guarda lo conversado (con el nombre de quien preguntó) y la sala, en una sola fila del chat', n('select count(*) n from teams_bot_memoria')===1 && memoria().ms.length===2 && memoria().sala_id===4 && memoria().ms[0].rol==='usuario' && memoria().ms[0].quien==='Ana' && /A1/.test(memoria().ms[1].texto), memoria());
+ok('lo que se guarda es la respuesta del modelo, sin los enlaces ni las propuestas que arma el bot', !/https:\/\//.test(memoria().mensajes));
 textoIA = 'Depende del core de cuentas y del proveedor (A2).';
 r=await teams(actividad('u-ana','¿y de qué depende?'));
-ok('la segunda pregunta le llega al modelo con la primera y su respuesta', hablaCon('qué reviso primero') && hablaCon('(A1)'), pedidosIA.length);
-ok('sin decir la sala, sigue hablando de la misma (IM-4)', /incidente\/4/.test((ultimo()||{}).text||'') && memoria(id('ana')).ms.length===4);
-r=await teams(actividad('u-gero','¿cómo vamos?'));
-ok('otra persona en el mismo chat NO recibe lo que se le contestó a Ana (la memoria es por persona)', !hablaCon('qué reviso primero') && !hablaCon('(A1)') && !hablaCon('(A2)') && memoria(id('gero')).ms.length===2);
-ok('y la memoria de Ana no se tocó', memoria(id('ana')).ms.length===4);
+ok('la segunda pregunta le llega al modelo con la primera y su respuesta, y la primera lleva el nombre de quien la hizo', hablaCon('Ana: IM-4 ¿qué reviso primero?') && hablaCon('(A1)'), pedidosIA.length);
+ok('sin decir la sala, sigue hablando de la misma (IM-4)', /incidente\/4/.test((ultimo()||{}).text||'') && memoria().ms.length===4);
+// Otra persona del mismo chat: sigue lo que se viene hablando ahí (todos leen las mismas respuestas)
+textoIA = 'El proveedor tiene un incidente abierto (A3).';
+r=await teams(actividad('u-gero','¿y eso a quién afecta?'));
+ok('otra persona del mismo chat responde en base a lo que se viene hablando ahí (le llega lo que preguntó Ana y lo que se contestó)', hablaCon('Ana: IM-4 ¿qué reviso primero?') && hablaCon('(A1)') && hablaCon('(A2)'), pedidosIA.length);
+ok('y su pregunta se suma a la misma conversación, con su nombre', n('select count(*) n from teams_bot_memoria')===1 && memoria().ms.length===6 && memoria().ms[4].quien==='Gero' && /A3/.test(memoria().ms[5].texto), memoria().ms.map(x=>x.quien||x.rol));
+ok('sin decir la sala, Gero también sigue en IM-4', /incidente\/4/.test((ultimo()||{}).text||''));
 r=await teams(actividad('u-ana','¿y el proveedor?',{ act: { conversation: { id: '19:otro-chat@thread.v2', conversationType: 'groupChat' } } }));
-ok('en otro chat, Ana empieza de cero (la memoria es por chat)', !hablaCon('qué reviso primero') && !hablaCon('(A1)'));
-for (let i = 0; i < 3; i++) await teams(actividad('u-ana','pregunta de relleno ' + i));
-ok('guarda como mucho los últimos 6 mensajes', memoria(id('ana')).ms.length===6 && /relleno 2/.test(memoria(id('ana')).ms[4].texto), memoria(id('ana')).ms.length);
-{ const antes=memoria(id('ana')).mensajes;
+ok('en otro chat no se arrastra nada (la memoria es de cada chat)', !hablaCon('(A1)') && !hablaCon('(A3)') && n('select count(*) n from teams_bot_memoria')===2);
+await teams(actividad('u-ana','pregunta de relleno 1')); await teams(actividad('u-gero','pregunta de relleno 2')); await teams(actividad('u-ana','pregunta de relleno 3'));
+ok('guarda como mucho los últimos 6 mensajes del chat (de varias personas)', memoria().ms.length===6 && /relleno 3/.test(memoria().ms[4].texto) && memoria().ms[2].quien==='Gero', memoria().ms.length);
+{ const antes=memoria().mensajes;
   await teams(actividad('u-ana','gracias'));
-  await teams(actividad('u-ana','hola'));
-  ok('los saludos sueltos no entran en la memoria (no pasaron por el modelo)', memoria(id('ana')).mensajes===antes); }
-{ const antes=memoria(id('ana')).mensajes; const aiAnterior=env.AI;
+  await teams(actividad('u-gero','hola'));
+  ok('los saludos sueltos no entran en la memoria (no pasaron por el modelo)', memoria().mensajes===antes); }
+{ const antes=memoria().mensajes; const aiAnterior=env.AI;
   env={ DB, AI, ...CFG, ASISTENTE_POR_HORA:'1' }; db.exec('DELETE FROM asistente_uso'); db.prepare("INSERT INTO asistente_uso (hora, usuario_id, preguntas) VALUES (strftime('%Y-%m-%dT%H','now'), ?, 5)").run(id('ana'));
   await teams(actividad('u-ana','otra pregunta sin cupo'));
-  ok('si no pudo responder (límite), tampoco se guarda', /máximo de 1 preguntas por hora/.test((ultimo()||{}).text||'') && memoria(id('ana')).mensajes===antes);
+  ok('si no pudo responder (límite), tampoco se guarda', /máximo de 1 preguntas por hora/.test((ultimo()||{}).text||'') && memoria().mensajes===antes);
   env={ DB, AI:aiAnterior, ...CFG }; db.exec('DELETE FROM asistente_uso'); }
+// El permiso es el de quien pregunta: Soporte sin tareas en la sala no recibe datos aunque el chat venga hablando de ella
+{ const antes=memoria().mensajes;
+  r=await teams(actividad('u-upn','¿qué reviso primero?'));
+  ok('el permiso sigue siendo el de quien pregunta: Soporte sin tareas en la sala recibe el aviso de siempre y no se guarda nada', pedidosIA.length===0 && /Esa sala de crisis no tiene tareas/.test((ultimo()||{}).text||'') && memoria().mensajes===antes, ultimo()); }
 // Otra sala: lo anterior era de otro tema
 { const r2=await call(ck.ana,'POST','/api/incidentes',{alertas:[db.prepare("select alerta_id from alertas_historico where estado!='RESUELTA' and severidad_maxima!='BAJA' and alerta_id not in (select alerta_id from incidente_alertas) limit 1").get().alerta_id]});
   const IM2=r2.j.incidente.id;
-  await teams(actividad('u-ana','IM-'+IM2+' ¿cómo vamos?'));
-  ok('si pregunta por otra sala, empieza de cero y recuerda la nueva', !hablaCon('relleno') && !hablaCon('(A1)') && memoria(id('ana')).sala_id===IM2 && memoria(id('ana')).ms.length===2, memoria(id('ana')));
+  await teams(actividad('u-gero','IM-'+IM2+' ¿cómo vamos?'));
+  ok('si se pregunta por otra sala, se empieza de cero y se recuerda la nueva', !hablaCon('relleno') && !hablaCon('(A1)') && memoria().sala_id===IM2 && memoria().ms.length===2, memoria());
   await teams(actividad('u-ana','¿y qué falta?'));
-  ok('la pregunta siguiente sigue en la sala nueva', new RegExp('incidente/'+IM2).test((ultimo()||{}).text||'') && hablaCon('¿cómo vamos?')); }
+  ok('la pregunta siguiente (de otra persona) sigue en la sala nueva', new RegExp('incidente/'+IM2).test((ultimo()||{}).text||'') && hablaCon('Gero: IM-'+IM2+' ¿cómo vamos?')); }
 // Vencimiento
 db.prepare("UPDATE teams_bot_memoria SET actualizado = strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-3 hours')").run();
 await teams(actividad('u-ana','¿y ahora?'));
-ok('pasadas 2 horas, el bot empieza de nuevo (no usa lo viejo ni la sala vieja)', !hablaCon('¿cómo vamos?') && !hablaCon('¿y qué falta?') && memoria(id('ana')).ms.length===2 && /varias salas abiertas/.test((ultimo()||{}).text||''), ultimo());
+ok('pasadas 2 horas, el bot empieza de nuevo (no usa lo viejo ni la sala vieja)', !hablaCon('¿cómo vamos?') && !hablaCon('¿y qué falta?') && memoria().ms.length===2 && /varias salas abiertas/.test((ultimo()||{}).text||''), ultimo());
 // Limpieza de lo viejo
-db.prepare("INSERT OR REPLACE INTO teams_bot_memoria (conversacion_id, usuario_id, mensajes, sala_id, actualizado) VALUES ('19:viejo', ?, '[]', NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-8 days'))").run(id('carla'));
+db.prepare("INSERT OR REPLACE INTO teams_bot_memoria (conversacion_id, mensajes, sala_id, actualizado) VALUES ('19:viejo', '[]', NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-8 days'))").run();
 await teams(actividad('u-ana','IM-4 ¿qué está demorado?'));
 ok('lo de más de 7 días se borra solo', !q1("select 1 from teams_bot_memoria where conversacion_id='19:viejo'"));
-// Empezar de nuevo
-await teams(actividad('u-ana','<at>Helios</at> Empezar de nuevo'));
-ok('«empezar de nuevo» borra la memoria, avisa y no consulta el modelo', pedidosIA.length===0 && /empezamos de nuevo/.test((ultimo()||{}).text||'') && !memoria(id('ana')), ultimo());
+// Empezar de nuevo (vale para todo el chat)
 await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
-await teams(actividad('u-gero','¿cómo vamos?'));
-ok('(preparación) cada uno tiene su memoria', !!memoria(id('ana')) && !!memoria(id('gero')));
+await teams(actividad('u-gero','<at>Gemma</at> Empezar de nuevo'));
+ok('«empezar de nuevo» (lo pida quien lo pida) borra la memoria de ese chat, avisa y no consulta el modelo', pedidosIA.length===0 && /empezamos de nuevo/.test((ultimo()||{}).text||'') && !memoria(), ultimo());
+await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
+await teams(actividad('u-ana','¿y qué más?',{ act: { conversation: { id: '19:otro-chat@thread.v2', conversationType: 'groupChat' } } }));
 await teams(actividad('u-ana','olvidá todo'));
-ok('olvidar borra solo la memoria de quien lo pide', !memoria(id('ana')) && !!memoria(id('gero')));
+ok('olvidar borra solo la memoria del chat donde se pide', !memoria() && !!memoria('19:otro-chat@thread.v2'));
 // Sin el script 25
 db.exec('DROP TABLE teams_bot_memoria');
 textoIA='Respuesta sin memoria.';
 r=await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
 ok('sin el script 25 el bot responde igual (cada mensaje es independiente)', /Respuesta sin memoria\./.test((ultimo()||{}).text||''), ultimo());
-r=await teams(actividad('u-ana','¿y de qué depende?'));
+r=await teams(actividad('u-gero','¿y de qué depende?'));
 ok('…y no recuerda lo anterior', !hablaCon('qué reviso primero') && !!ultimo());
 r=await call(A,'GET','/api/admin/teams/bot');
 ok('Administración avisa que falta el script 25', r.s===200 && r.j.memoria===false, r.j);
 r=await teams(actividad('u-ana','empezar de nuevo'));
 ok('y «empezar de nuevo» tampoco falla', /empezamos de nuevo/.test((ultimo()||{}).text||''));
-db.exec("CREATE TABLE teams_bot_memoria ( conversacion_id TEXT NOT NULL, usuario_id INTEGER NOT NULL REFERENCES usuarios (id), mensajes TEXT NOT NULL, sala_id INTEGER, actualizado TEXT NOT NULL, PRIMARY KEY (conversacion_id, usuario_id) ) WITHOUT ROWID");
+db.exec("CREATE TABLE teams_bot_memoria ( conversacion_id TEXT PRIMARY KEY, mensajes TEXT NOT NULL, sala_id INTEGER, actualizado TEXT NOT NULL ) WITHOUT ROWID");
 r=await call(A,'GET','/api/admin/teams/bot'); ok('con el script 25, Administración lo ve activo', r.j.memoria===true);
 textoIA='Respuesta de Helios.';
 olvidarTodo();
-
 
 // ---------- El nombre con el que se lo menciona: @Gemma ----------
 olvidarTodo();

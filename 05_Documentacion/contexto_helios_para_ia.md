@@ -120,7 +120,7 @@ Hoy pesa unos 7 MB (13 series con historia, unos 9 días). Casi todo son métric
 | `eventos_comerciales` | **Eventos comerciales (parche 29, script 12).** Días con tráfico distinto al habitual (Black Friday, CyberMonday, Hot Sale, promos de un cliente). Los carga el Administrador en Umbrales; hoy solo los usa el asistente | `id`, `nombre`, `fecha_desde`, `fecha_hasta` (`AAAA-MM-DD`, hasta 31 días), `cliente_id` y `servicio_id` (NULL = todos), `efecto_esperado` (`MAS_TRAFICO` / `MENOS_TRAFICO`), `nota`, `creado_por`, `creado`. Índice `ix_eventos_comerciales_fechas` |
 | `tickets_alerta` | **Tickets a demanda (parche 41, script 19).** Un ticket de InvGate o Jira generado desde una alerta (o simulado) | `id`, `alerta_id`, `sistema` (`INVGATE`/`JIRA`), `clave` (única por herramienta), `url`, `estado`, `simulado`, `resumen`, `descripcion`, `creado_por`, `creado`, `actualizado`. Índice `ix_tickets_alerta_alerta` |
 | `comunicados_incidente` · `comunicado_destinatarios` | **Comunicar incidente (parche 46, script 21).** Cada comunicado de un incidente y a quién le llegó | `comunicados_incidente`: `id`, `alerta_id`, `mensaje`, `listas`, `enviado_por`, `enviado` · `comunicado_destinatarios`: PK (`comunicado_id`, `usuario_id`), `rol` (`INFORMADO`/`TECNICO`/`LIDER`), `visto`, `recibido` |
-| `teams_bot_memoria` | **Memoria del bot de Teams (parche 77, script 25).** Los últimos mensajes de cada persona en cada chat y la sala de la que venía hablando. `WITHOUT ROWID` | PK (`conversacion_id`, `usuario_id`), `mensajes` (JSON, hasta 6), `sala_id`, `actualizado` (UTC). Índice `ix_teams_bot_memoria_actualizado` |
+| `teams_bot_memoria` | **Memoria del bot de Teams (parches 77 y 78, script 25).** Los últimos mensajes de cada chat (compartida por quienes están en él) y la sala de la que venían hablando. `WITHOUT ROWID` | PK `conversacion_id`, `mensajes` (JSON, hasta 6, con `quien` en cada pregunta), `sala_id`, `actualizado` (UTC). Índice `ix_teams_bot_memoria_actualizado` |
 | `meta_diccionario_datos` | Diccionario de datos: `capa`, `tipo_objeto`, `objeto_nombre`, `campo_nombre`, `descripcion` | Del equipo; vacía: hay que completarla |
 
 ### Sin vistas (desde el 11/11)
@@ -481,6 +481,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**La memoria del bot de Teams es del chat (20/11, parche 78; script 25 cambiado, falta publicar)**
+
+- En un chat de grupo todos leen las mismas respuestas, así que la memoria es **del chat**, no de cada persona: una fila por chat con los últimos 6 mensajes (cada pregunta con el nombre de quien la hizo) y la sala de la que venían hablando; si alguien pregunta después, el bot responde en base a lo que se viene hablando ahí. El permiso sigue siendo el de quien pregunta (en un chat grupal, la respuesta la leen todos los del chat). Si ya se había corrido el script 25 del parche 77, hay que volver a correrlo (rehace la tabla). Respaldo: `99_Archivo_viejo/worker_antes_parche78/`, ramas `respaldo-antes-parche-78` y `version-parche-78-memoria-por-chat`.
 
 **El bot de Teams recuerda la conversación y se lo menciona como @Gemma (20/11, parche 77; script 25, falta publicar y que IT registre el bot)**
 

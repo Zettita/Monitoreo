@@ -36,7 +36,7 @@ Del 1 al 23 ya están aplicados (el 24 es nuevo: falta correrlo): sirven para re
 
 23. `23_correo_usuarios_d1.txt` — **ya corrido (20/11).** Una columna, `usuarios.correo`: el correo de cada persona, para elegir destinatarios al enviar correos desde una alerta. Siguen 26 tablas. Se corre antes de publicar el Worker; sin él todo anda como antes.
 
-25. `25_teams_bot_memoria_d1.txt` — **nuevo (parche 77), falta correrlo.** Tabla `teams_bot_memoria` con la memoria del bot de Teams (últimos mensajes de cada persona en cada chat). Pasa de 32 a 33 tablas. Se corre antes de publicar el Worker; sin él el bot anda igual, sin recordar.
+25. `25_teams_bot_memoria_d1.txt` — **nuevo (parche 77), falta correrlo.** Tabla `teams_bot_memoria` con la memoria del bot de Teams (últimos mensajes de cada chat, compartida por quienes están en él; desde el parche 78, una fila por chat: si se había corrido la primera versión, volver a correrlo). Pasa de 32 a 33 tablas. Se corre antes de publicar el Worker; sin él el bot anda igual, sin recordar.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
 - `perfil_comportamiento_d1.txt` — **ya cargado en D1 (11/11).** Crea `perfil_comportamiento` y su índice e inserta los 26.208 perfiles. Sirve también para recargarlo después de reentrenar.
