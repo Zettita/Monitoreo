@@ -1,8 +1,10 @@
 // Datos y cuentas compartidos por los dos documentos de modelos de IA.
 // Precios en USD por millón de tokens, verificados el 18/11/2026 (ver fuentes en el documento técnico).
+// Criterio del 20/11/2026: siempre plan pago. No se descuenta ningún cupo gratuito.
 // Los dos Word (cliente e ingeniería) leen de acá, así los números siempre coinciden.
 
-const FECHA = '18/11/2026';
+const FECHA_PRECIOS = '18/11/2026';
+const FECHA = '20/11/2026';
 
 // Supuesto de una consulta del asistente: lo que el servidor le arma al modelo (datos del perfil + instrucciones) y lo que contesta.
 // Coincide con lo medido en Workers AI con Qwen3 30B-A3B: 30 a 70 neuronas por pregunta (con estos números da 58).
@@ -29,36 +31,27 @@ const MODELOS = [
 ];
 const M = Object.fromEntries(MODELOS.map((m) => [m.id, m]));
 
-const PRECIO_NEURONAS = 0.011 / 1000; // USD por neurona
-const NEURONAS_GRATIS_DIA = 10000;
-
 function costoConsulta(m) {
   return (SUPUESTO.entrada * m.ent + SUPUESTO.salida * m.sal) / 1e6;
 }
 function neuronasConsulta(m) {
   return (SUPUESTO.entrada * m.neur[0] + SUPUESTO.salida * m.neur[1]) / 1e6;
 }
-// Costo mensual para un escenario. Workers AI: se descuentan las 10.000 neuronas gratis por día.
+// Costo mensual en plan pago, sin descontar cupos gratuitos.
 function costoMes(m, esc) {
-  if (m.neur) {
-    const porDia = neuronasConsulta(m) * esc.porDia;
-    return Math.max(0, porDia - NEURONAS_GRATIS_DIA) * PRECIO_NEURONAS * DIAS_MES;
-  }
   return costoConsulta(m) * esc.porDia * DIAS_MES;
 }
 const nf = (n, d) => n.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
 function usdConsulta(n) { return 'USD ' + nf(n, 4); }
 function usdMes(n) {
-  if (n === 0) return 'USD 0 (dentro del cupo gratis)';
   return 'USD ' + (n >= 100 ? nf(n, 0) : nf(n, 2));
 }
 function usdMesCorto(n) {
-  if (n === 0) return 'USD 0';
   return 'USD ' + (n >= 100 ? nf(n, 0) : nf(n, 2));
 }
 const mil = (n) => nf(n, 0);
 
-module.exports = { FECHA, SUPUESTO, ESCENARIOS, DIAS_MES, MODELOS, M, costoConsulta, neuronasConsulta, costoMes, usdConsulta, usdMes, usdMesCorto, mil, nf, NEURONAS_GRATIS_DIA };
+module.exports = { FECHA, FECHA_PRECIOS, SUPUESTO, ESCENARIOS, DIAS_MES, MODELOS, M, costoConsulta, neuronasConsulta, costoMes, usdConsulta, usdMes, usdMesCorto, mil, nf };
 
 if (require.main === module) {
   console.log('neuronas por consulta (Qwen):', neuronasConsulta(M.wai_qwen).toFixed(1));

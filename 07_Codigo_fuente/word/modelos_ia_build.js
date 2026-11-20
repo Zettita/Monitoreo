@@ -14,23 +14,31 @@ const vinetas = (lista) => lista.map((t) => H.vineta(t));
 // ───────────────────────────── Documento para el cliente ─────────────────────────────
 async function documentoCliente() {
   const h = [];
-  h.push(...H.cabecera('Inteligencia artificial en Helios', 'Opciones de modelo: beneficios, costos y privacidad', 'Propuesta'));
+  h.push(...H.cabecera('Inteligencia artificial en Helios', 'Alcance, integraciones, costo y seguridad', 'Propuesta'));
   h.push(...H.marcaIndice());
 
   h.push(H.titulo(1, '1. Resumen'));
-  h.push(H.P('Helios ya tiene un asistente de inteligencia artificial que ayuda a las personas a entender qué está pasando con las alertas. Ahora hay que decidir **qué modelo de IA** lo hace funcionar. Comparamos cuatro caminos posibles y proponemos uno.'));
-  h.push(...H.nota('idea', 'Lo que proponemos', 'seguir con el modelo actual mientras Helios esté en la nube y, cuando esté el servidor propio, **pasar a un modelo que corra dentro de la empresa**. Así los datos de los clientes no salen de la empresa y casi no hay costo mensual. Un proveedor externo queda como respaldo opcional, solo si ustedes lo aprueban.'));
+  h.push(H.P('Helios ya tiene un asistente que explica las alertas y responde preguntas. Este documento baja a tierra **cuatro formas de conectarlo a un modelo de IA**: qué abarca cada una, cuánto cuesta en plan pago y qué tiene que revisar seguridad informática.'));
+  h.push(...H.nota('decision', 'Decisión de trabajo', 'la integración en el servidor propio se desarrolla igual, en el servidor del equipo. Que el cliente la use en su ambiente es una decisión aparte, de alcance y de seguridad. No depende de comprar una placa de video: el desarrollo arranca con el servidor que ya está previsto.'));
   h.push(H.P('Lo que hay que saber en pocas líneas:'));
   h.push(...vinetas([
-    '**La IA no decide ni ejecuta nada.** Propone y una persona confirma. Además, solo ve lo que el perfil de esa persona puede ver.',
-    '**Hoy cuesta casi nada:** con el uso actual (150 consultas por día) el costo es USD 0 por mes.',
-    '**Un servicio externo de primer nivel** responde mejor en casos difíciles, pero cuesta más a medida que crece el uso (de USD 5 a USD 99 por mes con el uso actual, según el modelo) y los datos salen de la empresa.',
-    '**Un modelo propio** exige comprar una placa de video (GPU) y mantenerla, pero los datos no salen y el costo por consulta es prácticamente cero.',
-    '**Antes de elegir definitivamente** hacemos una prueba comparativa con casos reales de Helios. Los modelos cambian rápido y conviene decidir con datos propios.',
+    '**El alcance funcional es el mismo en las cuatro.** Cambia dónde corre el modelo, quién ve los datos y cuánto se paga.',
+    '**La IA no decide ni ejecuta nada.** Propone y una persona confirma. Solo recibe lo que el perfil de esa persona puede ver.',
+    '**Todos los costos son de plan pago.** No usamos planes gratuitos: en algunos, el proveedor usa los datos para mejorar sus productos.',
+    `**Con el uso actual** (150 consultas por día) un modelo chico sale entre ${usdMesCorto(costoMes(M.wai_qwen, E[0]))} y ${usdMesCorto(costoMes(M.haiku, E[0]))} por mes. Un modelo grande, ${usdMesCorto(costoMes(M.sonnet, E[0]))}.`,
+    '**En el servidor propio no hay costo por consulta.** La placa de video no es obligatoria: se evalúa solo si el chat queda lento.',
   ]));
 
-  h.push(H.titulo(1, '2. Qué hace la IA en Helios'));
-  h.push(H.P('La IA trabaja en tareas de lectura y redacción. No cambia alertas, no deriva y no resuelve por sí sola.'));
+  h.push(H.titulo(1, '2. Alcance'));
+  h.push(H.P('La IA trabaja en lectura y redacción. El motor de alertas, los permisos y las acciones siguen en Helios, con o sin modelo.'));
+  h.push(...H.tabla(['Dentro del alcance', 'Fuera del alcance'], cols(5, 5), [
+    ['Responder preguntas sobre la operación, según el perfil de quien pregunta.', 'Decidir sola: tomar, derivar, resolver, enviar un correo o abrir un ticket.'],
+    ['Explicar una alerta y sugerir qué mirar primero.', 'Entrar a la base de datos. El modelo no tiene usuario ni clave.'],
+    ['Resumir el turno: qué está pendiente, qué está demorado y qué conviene atender.', 'Ver datos de otro perfil. Soporte no recibe lo que ve el Analista.'],
+    ['Avisar si hay feriados, eventos, incidentes de proveedores o noticias que puedan afectar.', 'Reemplazar al monitoreo. Si el modelo no responde, Helios sigue igual.'],
+    ['Más adelante, si se aprueba: borrador de correo y una explicación al abrirse una alerta.', 'Guardar conversaciones para entrenar un modelo, propio o de un tercero.'],
+  ], true));
+  h.push(H.P('En la práctica, eso se ve así. El estado no cambia de una integración a otra.'));
   h.push(...H.tabla(['Función', 'Qué hace', 'Estado'], cols(3, 6, 2), [
     ['Asistente de preguntas', 'Responde preguntas como "¿Cómo está la operación?" o "¿Qué incidentes están activos y quién los trabaja?", según el perfil de quien pregunta.', 'Funcionando'],
     ['"¿Qué está pasando?"', 'Explica una alerta en palabras simples y sugiere qué mirar primero.', 'Funcionando'],
@@ -41,106 +49,150 @@ async function documentoCliente() {
   ], true));
   h.push(...H.nota('regla', 'Regla de seguridad', 'la IA solo propone acciones. Quien decide es siempre una persona, y cada pregunta queda registrada en la auditoría de Helios.'));
 
-  h.push(H.titulo(1, '3. Las cuatro opciones'));
-  h.push(H.P('Cada opción responde a una pregunta distinta: dónde corre el modelo y quién lo mantiene.'));
+  h.push(H.titulo(1, '3. Cómo se conecta, en los cuatro casos'));
+  h.push(H.P('La persona pregunta desde Helios. Helios comprueba la sesión y el perfil, arma un resumen con lo que esa persona puede ver y se lo manda al modelo. El modelo devuelve un texto y, si corresponde, una propuesta. La persona confirma. El modelo no ejecuta nada.'));
+  h.push(H.P('Las cuatro opciones usan ese mismo camino. Lo que cambia es **a quién se le manda el resumen**.'));
 
-  h.push(H.titulo(2, 'Opción A. Servicio en la misma nube de Helios (hoy)'));
-  h.push(H.P('El modelo corre en Cloudflare, la misma plataforma donde hoy está Helios. Es la opción que ya está funcionando, con un modelo de código abierto (Qwen3).'));
-  h.push(H.titulo(3, 'Ventajas'));
-  h.push(...vinetas(['Ya está instalada y probada con los cuatro perfiles.', 'Sin inversión inicial ni equipos que mantener.', 'Costo mínimo: gratis hasta unas 170 consultas por día y unos USD 16 por mes con 1.000 por día.']));
-  h.push(H.titulo(3, 'A tener en cuenta'));
-  h.push(...vinetas(['Los datos de las consultas se procesan en servidores de Cloudflare, fuera de la empresa.', 'Pierde sentido cuando Helios se mude al servidor propio: dependería de internet y de esa cuenta.', 'La calidad es buena para resumir y explicar, pero menor que la de los servicios de primer nivel en casos complejos.']));
+  h.push(H.titulo(1, '4. Las cuatro integraciones'));
 
-  h.push(H.titulo(2, 'Opción B. Proveedor externo de primer nivel'));
-  h.push(H.P('Se contrata el servicio de un proveedor especializado: Claude (Anthropic), GPT (OpenAI) o Gemini (Google). Cada uno ofrece modelos chicos y baratos y modelos grandes y más capaces.'));
-  h.push(H.titulo(3, 'Ventajas'));
-  h.push(...vinetas(['Las mejores respuestas disponibles: entienden mejor el contexto y redactan mejor en español.', 'No hay equipos propios: el proveedor se ocupa de la disponibilidad y de actualizar el modelo.', 'Se paga solo lo que se usa y se puede poner un tope de gasto.']));
-  h.push(H.titulo(3, 'A tener en cuenta'));
-  h.push(...vinetas(['Los datos de los clientes (nombres, servicios, métricas) viajan al proveedor. Requiere aprobación de la empresa y revisar el contrato.', 'El costo crece con el uso y los precios cambian. Por ejemplo, el de Gemini Flash se duplica el 1/1/2027.', 'Si no hay internet, el asistente deja de funcionar (el resto de Helios sigue igual).', 'Los proveedores retiran modelos viejos cada tanto y hay que migrar.']));
-
-  h.push(H.titulo(2, 'Opción C. Modelo propio en el servidor de la empresa'));
-  h.push(H.P('El modelo corre en un servidor de la empresa con una placa de video (GPU). Se usan modelos de código abierto, sin costo de licencia, que se pueden mantener fijos todo el tiempo que se quiera.'));
-  h.push(H.titulo(3, 'Ventajas'));
-  h.push(...vinetas(['**Los datos no salen de la empresa.** Es la mejor respuesta si hay cláusulas de confidencialidad con los clientes.', 'Costo por consulta prácticamente cero (solo electricidad), sin importar cuánto se use.', 'Funciona sin internet y no depende de ningún proveedor ni de sus cambios de precio.']));
-  h.push(H.titulo(3, 'A tener en cuenta'));
-  h.push(...vinetas(['Hay que comprar la GPU y mantenerla: cotizarla con un proveedor local. Hoy una placa de 32 GB de memoria cuesta entre USD 6.200 y USD 11.900 por la escasez (el precio de lanzamiento era USD 1.999).', 'Si el servidor falla, el asistente se detiene hasta repararlo. Helios sigue funcionando sin él.', 'La calidad es parecida a la de la opción A (los mismos modelos), pero menor que la de los servicios de primer nivel en casos complejos.', 'Necesita una persona del equipo que se ocupe de actualizarlo y vigilarlo.']));
-
-  h.push(H.titulo(2, 'Opción D. Combinada: propio con respaldo externo'));
-  h.push(H.P('El modelo propio atiende todas las consultas. Si hay un caso difícil o el servidor propio no está disponible, se puede usar un proveedor externo, solo con datos sin nombres de clientes y solo si la empresa lo habilita.'));
-  h.push(H.titulo(3, 'Ventajas'));
-  h.push(...vinetas(['Privacidad por defecto y mejor calidad cuando hace falta.', 'El asistente sigue funcionando si se cae el servidor propio.', 'El gasto externo es muy bajo porque se usa solo en una fracción de los casos.']));
-  h.push(H.titulo(3, 'A tener en cuenta'));
-  h.push(...vinetas(['Es lo más completo, pero también lo más trabajoso de armar y de explicar a los clientes.', 'Hay que definir y controlar qué datos pueden salir y cuáles no.']));
-
-  h.push(H.titulo(1, '4. Comparación'));
-  h.push(...H.tabla(['Criterio', 'A. Nube actual', 'B. Proveedor externo', 'C. Modelo propio', 'D. Combinada'], cols(2.4, 2, 2, 2, 2), [
-    ['Datos de los clientes', 'Salen a Cloudflare', 'Salen al proveedor', '**No salen**', 'No salen (salvo respaldo aprobado)'],
-    ['Calidad de las respuestas', 'Buena', '**La mejor**', 'Buena', 'Buena, y la mejor cuando hace falta'],
-    ['Costo mensual con el uso actual', '**USD 0**', 'USD 5 a USD 99', 'Electricidad', 'Electricidad (más USD 0 a 5 si hay respaldo)'],
-    ['Inversión inicial', '**Ninguna**', 'Ninguna', 'GPU y servidor', 'GPU y servidor'],
-    ['Si crece el uso', 'Sube de a poco', 'Sube en proporción', '**No cambia el costo**', 'Casi no cambia'],
-    ['Funciona sin internet', 'No', 'No', '**Sí**', 'Sí (sin respaldo)'],
-    ['Quién lo mantiene', 'Cloudflare', 'El proveedor', 'Nuestro equipo y la empresa', 'Nuestro equipo y la empresa'],
-    ['Listo para usar', '**Hoy**', 'Requiere una integración chica', 'Cuando esté la GPU', 'Cuando esté la GPU'],
+  h.push(H.titulo(2, 'A. La nube donde ya está Helios (plan pago)'));
+  h.push(H.P('El modelo corre en Cloudflare, la misma plataforma de Helios. Ya está conectado y probado con los cuatro perfiles, con un modelo de código abierto (Qwen3). Hoy se usa un cupo diario sin cargo: para este documento lo pasamos a plan pago y pagamos cada consulta.'));
+  h.push(...H.tabla(['Punto', 'Detalle'], cols(2.2, 7.8), [
+    ['Alcance', 'El asistente actual. Cambiar de modelo dentro de esta nube es un ajuste de configuración.'],
+    ['Costo', `Solo consumo. Con el uso actual, ${usdMesCorto(costoMes(M.wai_qwen, E[0]))} por mes con Qwen3. El plan de la plataforma se suma aparte.`],
+    ['Datos', 'El resumen sale de la empresa y lo procesa Cloudflare.'],
+    ['Para ponerla', 'Ya está. Falta pasar la cuenta a plan pago y dejar por escrito cómo trata los datos.'],
   ], true));
 
-  h.push(H.titulo(1, '5. Costos estimados'));
-  h.push(H.P(`Calculamos el costo mensual con una consulta típica: unas 4.500 palabras de datos de entrada y 750 de respuesta. Son valores orientativos en dólares, sin impuestos, con los precios publicados al ${D.FECHA}.`));
+  h.push(H.titulo(2, 'B. Un proveedor de IA, en plan pago'));
+  h.push(H.P('Helios le manda el mismo resumen a Claude (Anthropic), GPT (OpenAI) o Gemini (Google). Hay modelos chicos, del orden de los USD 5 por mes con el uso actual, y modelos grandes, del orden de los USD 99.'));
+  h.push(...H.tabla(['Punto', 'Detalle'], cols(2.2, 7.8), [
+    ['Alcance', 'El mismo asistente. Respuestas mejores en casos difíciles y en redacción. Sirve también para el borrador de correo, si se aprueba.'],
+    ['Costo', `Se paga lo que se usa, con tope de gasto. Chico: ${usdMesCorto(costoMes(M.haiku, E[0]))} por mes. Grande: ${usdMesCorto(costoMes(M.sonnet, E[0]))}. Gemini sube el 1/1/2027.`],
+    ['Datos', 'El resumen sale de la empresa y lo procesa el proveedor. Hace falta contrato y aprobación de seguridad.'],
+    ['Para ponerla', 'Una integración chica en Helios, una clave guardada como secreto y una cuenta paga. Sin plan gratuito.'],
+  ], true));
+
+  h.push(H.titulo(2, 'C. El servidor propio'));
+  h.push(H.P('El modelo corre en el servidor de la empresa. Helios le pide la respuesta ahí, en la red interna, en vez de pedírsela a un tercero. Es la integración que el equipo va a desarrollar de todas formas, en el servidor de desarrollo.'));
+  h.push(...H.tabla(['Punto', 'Detalle'], cols(2.2, 7.8), [
+    ['Alcance', 'El mismo asistente. Primero en el servidor de desarrollo, para probarlo con casos de Helios. Después se decide si pasa al ambiente del cliente.'],
+    ['Costo', 'Sin costo por consulta ni licencia del modelo. El servidor ya está previsto. La placa de video es opcional (ver más abajo).'],
+    ['Datos', 'El resumen no sale de la empresa. No hay un tercero que lo procese.'],
+    ['Para ponerla', 'Un servicio en el servidor propio que habla el mismo idioma que las opciones A y B. Helios cambia el destino de la consulta.'],
+  ], true));
+  h.push(...H.nota('idea', 'La placa de video no es obligatoria', 'el desarrollo arranca con el procesador del servidor y un modelo mediano. Alcanza para construir y probar la integración. Para el chat, con varias personas a la vez, una placa de video deja la respuesta en pocos segundos; sin ella puede tardar bastante más. Se compra solo si una prueba de velocidad lo pide. Una de 32 GB cuesta hoy entre USD 6.200 y USD 11.900.'));
+
+  h.push(H.titulo(2, 'D. Servidor propio, con un proveedor pago de respaldo'));
+  h.push(H.P('El servidor propio atiende todas las consultas. Si no responde, o si seguridad habilita un caso difícil, Helios usa la opción B. Antes de salir, se sacan nombres de clientes y de personas.'));
+  h.push(...H.tabla(['Punto', 'Detalle'], cols(2.2, 7.8), [
+    ['Alcance', 'El mismo asistente, con respaldo si el servidor propio no está y con un modelo más capaz para los casos que se listen.'],
+    ['Costo', 'El del servidor propio, más una fracción del costo de B. Con el uso actual, esa fracción queda muy por debajo de los USD 5 por mes si el respaldo se usa poco.'],
+    ['Datos', 'Por defecto no salen. Lo que sale pasa por un filtro y queda registrado. Seguridad tiene que aprobar la lista de lo que puede salir.'],
+    ['Para ponerla', 'La opción C más la B, y una regla explícita de qué datos pueden salir. Es la que más controles pide.'],
+  ], true));
+
+  h.push(H.titulo(1, '5. Comparación'));
+  h.push(...H.tabla(['Criterio', 'A. Nube actual', 'B. Proveedor pago', 'C. Servidor propio', 'D. Propio y respaldo'], cols(2.4, 2, 2, 2, 2), [
+    ['Alcance funcional', 'El asistente', 'El asistente', 'El asistente', 'El asistente'],
+    ['Datos de los clientes', 'Salen a Cloudflare', 'Salen al proveedor', '**No salen**', 'No salen, salvo respaldo aprobado'],
+    ['Plan', 'Pago', 'Pago. Sin plan gratis', 'Sin tercero', 'Pago solo en el respaldo'],
+    ['Costo con el uso actual', usdMesCorto(costoMes(M.wai_qwen, E[0])) + ' (Qwen3)', usdMesCorto(costoMes(M.haiku, E[0])) + ' a ' + usdMesCorto(costoMes(M.sonnet, E[0])), 'Electricidad del servidor', 'Electricidad y una fracción de B'],
+    ['Inversión inicial', 'Ninguna', 'Ninguna', 'Ninguna para empezar. Placa de video solo si hace falta', 'Igual que C'],
+    ['Si crece el uso', 'Sube con el consumo', 'Sube con el consumo', '**El costo no cambia**', 'Casi no cambia'],
+    ['Funciona sin internet', 'No', 'No', '**Sí**', 'Sí, sin el respaldo'],
+    ['Quién lo mantiene', 'Cloudflare', 'El proveedor', 'El equipo', 'El equipo'],
+    ['Estado', '**Funcionando**', 'Integración chica', '**La desarrollamos igual**', 'Después de C, si seguridad aprueba'],
+  ], true));
+
+  h.push(H.titulo(1, '6. Costos en plan pago'));
+  h.push(H.P(`Una consulta típica lleva unas 4.500 palabras de datos y 750 de respuesta. Los números son orientativos, en dólares, sin impuestos, con los precios publicados al ${D.FECHA_PRECIOS}. No se descuenta ningún cupo gratuito.`));
   const filaE = (etq, ids) => [etq, ...E.map((e) => ids.map((id) => usdMesCorto(costoMes(M[id], e))).join(' a '))];
   h.push(...H.tabla(['Opción y modelo', ...E.map((e) => `${e.nombre} (${mil(e.porDia)} por día)`)], cols(3.4, 2, 2, 2), [
     ['**A.** Qwen3 30B-A3B en Cloudflare (hoy)', ...E.map((e) => usdMesCorto(costoMes(M.wai_qwen, e)))],
     ['**B.** Modelo chico de un proveedor (Claude Haiku, GPT Luna)', ...E.map((e) => usdMesCorto(costoMes(M.haiku, e)))],
     ['**B.** Modelo intermedio (GPT Terra, Gemini Flash)', ...E.map((e) => `${usdMesCorto(costoMes(M.terra, e))} a ${usdMesCorto(costoMes(M.gem_2027, e))}`)],
     ['**B.** Modelo grande (Claude Sonnet)', ...E.map((e) => usdMesCorto(costoMes(M.sonnet, e)))],
-    ['**C.** Modelo propio', 'Electricidad', 'Electricidad', 'Electricidad'],
+    ['**C y D.** Servidor propio', 'Sin costo de modelo', 'Sin costo de modelo', 'Sin costo de modelo'],
   ], true));
-  h.push(H.P('El modelo propio no tiene costo por consulta, pero sí una inversión inicial y costos fijos:'));
-  h.push(...H.tabla(['Concepto', 'Valor orientativo'], cols(4, 6), [
-    ['Placa de video (GPU) de 32 GB', 'USD 6.200 a USD 11.900 hoy en el mercado (precio de lanzamiento: USD 1.999). Cotizar con un proveedor local.'],
-    ['Placa profesional de 96 GB (para modelos más grandes)', 'A cotizar. Alquilada, ronda los USD 1.600 por mes.'],
-    ['Servidor que la aloje', 'A cotizar. El servidor propio ya está previsto; hay que sumarle la GPU y una fuente de energía adecuada.'],
-    ['Electricidad', 'Estimado: unos 150 kWh por mes en reposo; más cuando responde.'],
-    ['Mantenimiento', 'Unas pocas horas por mes de una persona del equipo.'],
+  h.push(H.P('El servidor propio no paga por consulta. Estos son los costos que sí puede tener, y cuáles hacen falta para empezar:'));
+  h.push(...H.tabla(['Concepto', '¿Hace falta para empezar?', 'Valor orientativo'], cols(3.4, 2.4, 4.2), [
+    ['Servidor propio', 'Sí. Ya está previsto', 'El de la máquina prevista (4 procesadores, 8 a 16 GB de memoria). Para un modelo mediano conviene 32 GB de memoria.'],
+    ['Placa de video de 32 GB', 'No. Solo si el chat queda lento', 'USD 6.200 a USD 11.900 hoy (lanzamiento: USD 1.999). Cotizar en el país.'],
+    ['Placa de 96 GB', 'No. Solo para un modelo más grande', 'A cotizar. Alquilada, cerca de USD 1.600 por mes.'],
+    ['Electricidad de una placa', 'Solo si se compra', 'Estimado: unos 150 kWh por mes en reposo, más cuando responde.'],
+    ['Horas de desarrollo', 'Sí', 'Las pone el equipo. Es la integración de la opción C.'],
   ], true));
-  h.push(...H.nota('idea', 'Cómo leerlo', 'con el uso actual, un modelo propio **no ahorra plata** frente a un modelo chico de un proveedor (USD 5 por mes). Lo que aporta es **privacidad y control**. Frente a un modelo grande con uso intenso (USD 3.300 por mes) sí se amortizaría en pocos meses (la GPU de 32 GB, en 2 a 4), siempre que el modelo propio alcance para ese uso, algo que hay que medir.'));
+  h.push(...H.nota('idea', 'Cómo leerlo', `con el uso actual, el servidor propio no ahorra plata frente a un modelo chico (${usdMesCorto(costoMes(M.haiku, E[0]))} por mes). Lo que aporta es que los datos no salen. La placa de video se justifica frente a un modelo grande con uso intenso (${usdMesCorto(costoMes(M.sonnet, E[2]))} por mes), y solo si la prueba de velocidad la pide.`));
 
-  h.push(H.titulo(1, '6. Privacidad y seguridad'));
-  h.push(H.P('Cuando alguien le pregunta algo al asistente, Helios le arma al modelo un resumen con lo que esa persona puede ver: clientes, servicios, estado de las alertas y comentarios. No se le da acceso a la base de datos.'));
+  h.push(H.titulo(1, '7. Seguridad'));
+  h.push(H.P('Esta sección está escrita para revisarla con seguridad informática. El control no está en el modelo: está en Helios, antes de armar el resumen y después de recibir la respuesta.'));
+  h.push(H.titulo(2, '7.1 Qué datos se mandan y cuáles no'));
+  h.push(H.P('A cada consulta, Helios arma un resumen con lo que esa persona puede ver: nombres de clientes, servicios, estado de las alertas, mediciones y comentarios. Eso es información de la operación. No es la base de datos.'));
+  h.push(...H.tabla(['Nunca se le manda al modelo', 'Por qué'], cols(4.5, 5.5), [
+    ['La base, las claves y las contraseñas', 'El modelo no tiene acceso. Pide datos y Helios se los da ya resumidos.'],
+    ['Lo que el perfil no puede ver', 'Helios arma el resumen después de aplicar los permisos. Un pedido fuera de perfil se rechaza.'],
+    ['Los archivos de evidencia', 'Quedan en Helios. Al modelo le llega, como mucho, que hay un archivo.'],
+    ['Direcciones web largas', 'Van como un código corto. El enlace real se completa en Helios, al mostrar la respuesta.'],
+  ], true));
+  h.push(H.titulo(2, '7.2 Controles que ya están, en cualquier opción'));
   h.push(...vinetas([
-    '**Con un modelo propio (C)**, ese resumen nunca sale de la empresa.',
-    '**Con Cloudflare (A) o un proveedor externo (B)**, el resumen se envía a un tercero. Los proveedores indican en sus condiciones comerciales cómo tratan esos datos. Por ejemplo, Google aclara que solo los planes pagos no usan los datos para mejorar sus productos. Hay que contratar el plan pago y revisar el contrato.',
-    '**Los permisos se controlan en Helios**, no en el modelo: Soporte ve lo suyo, el Gerente lee, el Administrador configura.',
-    '**Todo queda registrado:** quién preguntó, cuándo y qué.',
-    '**Límites de uso** por persona y por día para evitar abusos y gastos inesperados.',
+    '**Identidad.** Hay que tener sesión. Sin sesión, el asistente no responde.',
+    '**Autorización.** Cada perfil ve solo lo suyo: Soporte lo asignado, el Gerente en lectura, el Administrador la configuración.',
+    '**La persona confirma.** El modelo propone. Tomar, derivar o resolver lo hace la persona, por las mismas pantallas de siempre.',
+    '**Tope de uso.** 20 preguntas por persona por hora y 150 por día en total. El tope se puede cambiar. En un proveedor pago se suma un tope de gasto.',
+    '**Registro.** Cada pregunta queda en la auditoría: quién, cuándo y qué preguntó. No se guarda el resumen completo enviado al modelo, salvo una depuración con fecha de vencimiento.',
+    '**Si el modelo no está, Helios sigue.** El asistente avisa que no está disponible y el resto del sistema no se frena.',
+  ]));
+  h.push(H.titulo(2, '7.3 Qué cambia según la integración'));
+  h.push(...H.tabla(['Control', 'A. Nube actual', 'B. Proveedor pago', 'C. Servidor propio', 'D. Con respaldo'], cols(1.8, 2.1, 2.1, 2, 2), [
+    ['Quién procesa el resumen', 'Cloudflare', 'Anthropic, OpenAI o Google', 'La empresa', 'La empresa y, si se habilita, el proveedor'],
+    ['Sale de la empresa', 'Sí', 'Sí', 'No', 'Solo el respaldo, filtrado'],
+    ['Cifrado en el camino', 'HTTPS', 'HTTPS', 'Red interna. El modelo no se publica a internet', 'HTTPS solo en el respaldo'],
+    ['Uso para entrenar', 'A confirmar por contrato, en plan pago', 'El plan pago publica que no. Hay que dejarlo en el contrato', 'No hay tercero', 'Igual que B, solo en el respaldo'],
+    ['Dónde vive la clave', 'En la cuenta de Cloudflare', 'Secreto de Helios. Hay que rotarla', 'En el servidor. El modelo no se abre a internet', 'Las dos'],
+    ['Si hay un incidente del tercero', 'Puede alcanzar a los resúmenes ya enviados', 'Igual que A', 'El riesgo es el acceso al servidor propio', 'Los dos, en la parte que corresponda'],
+  ], true));
+  h.push(...H.nota('regla', 'Planes gratuitos, no', 'el plan gratuito de Google usa los datos de las consultas para mejorar sus productos. Por eso esta propuesta asume siempre plan pago, también en Cloudflare. En el plan pago, Google publica que no los usa para eso. Anthropic y OpenAI publican lo mismo para su API paga. Tiene que quedar escrito en el contrato, con retención, borrado, subencargados y, si se puede, el país donde se procesa.'));
+  h.push(H.titulo(2, '7.4 Qué tiene que validar seguridad antes de aprobar una salida'));
+  h.push(H.P('Para las opciones A, B y el respaldo de D, que son las que sacan datos:'));
+  h.push(...vinetas([
+    'Contrato del plan pago: no entrenar con los datos, cuánto tiempo los guardan, cómo se borran, qué subencargados hay y en qué país se procesan.',
+    'Lista cerrada de qué campos pueden salir. Comentarios y nombres son los más sensibles.',
+    'Dónde queda la clave, quién puede verla y cada cuánto se rota.',
+    'Tope de gasto en el panel del proveedor, además del tope de Helios.',
+    'Una prueba de que un perfil no recibe datos de otro, hecha con casos de Helios.',
+  ]));
+  h.push(H.P('Para la opción C, que no saca datos, el control pasa al servidor:'));
+  h.push(...vinetas([
+    'El servicio del modelo escucha solo dentro del servidor, no en internet.',
+    'Quién puede entrar a ese servidor y con qué cuenta.',
+    'Qué se registra de cada consulta y por cuánto tiempo.',
+    'El modelo se fija en una versión. Una actualización se prueba antes de pasarla.',
   ]));
 
-  h.push(H.titulo(1, '7. Recomendación y plan por etapas'));
-  h.push(...H.tabla(['Etapa', 'Qué se hace', 'Cuándo'], cols(1.6, 6, 2.4), [
-    ['1. Ahora', 'Seguir con el modelo actual (A). Sin costo ni cambios. En paralelo, armar una prueba comparativa con casos reales de Helios.', 'Inmediato'],
-    ['2. Con el servidor propio', 'Pasar a un modelo propio (C) con una GPU de 32 GB como mínimo. Si la prueba lo pide, evaluar una de 96 GB.', 'Cuando esté el servidor y la GPU'],
-    ['3. Opcional', 'Sumar un proveedor externo como respaldo (D), solo con datos sin nombres de clientes y con aprobación expresa.', 'Si la empresa lo aprueba'],
+  h.push(H.titulo(1, '8. Cómo seguimos'));
+  h.push(...H.tabla(['Paso', 'Qué se hace', 'Quién'], cols(1.4, 6.2, 2.4), [
+    ['1', 'Seguir con la opción A, pasada a plan pago, mientras Helios esté en esa nube.', 'Equipo'],
+    ['2', 'Desarrollar la opción C en el servidor de desarrollo, sin placa de video. Medir cuánto tarda una consulta real.', 'Equipo. Va igual'],
+    ['3', 'Revisar la sección 7 y decir si los datos pueden salir, y con qué proveedor.', 'Seguridad y el cliente'],
+    ['4', 'Probar las opciones que queden habilitadas con unos 40 casos de Helios: si acierta, cuánto tarda y cuánto sale.', 'Equipo, con ustedes'],
+    ['5', 'Decidir si C pasa al ambiente del cliente y si hace falta la placa de video.', 'El cliente, con el resultado de la prueba'],
   ], true));
-  h.push(...H.nota('decision', 'Por qué esta secuencia', 'cuesta casi nada hoy, evita comprar equipos antes de saber cuál alcanza, y deja las decisiones sobre datos en manos de la empresa.'));
+  h.push(...H.nota('decision', 'Qué queda firme y qué no', 'firme: desarrollamos la integración en el servidor propio, y no usamos planes gratuitos. Abierto: si el cliente opera con A, con B, con C o con D, y si compra una placa de video. Esas dos se cierran con seguridad y con la prueba.'));
 
-  h.push(H.titulo(1, '8. Qué necesitamos que nos definan'));
+  h.push(H.titulo(1, '9. Qué necesitamos que nos definan'));
   h.push(...vinetas([
-    '**Datos de clientes:** ¿pueden salir de la empresa hacia un proveedor externo? ¿Hay cláusulas de confidencialidad que lo impidan?',
-    '**Presupuesto:** ¿hay fondos para una GPU? ¿Cuál es el tope mensual aceptable para un servicio externo?',
-    '**Uso esperado:** ¿cuántas personas usarán el asistente y en qué turnos?',
-    '**Nuevos usos:** ¿se aprueba el análisis automático de cada alerta nueva y los borradores de correo?',
-    '**Servidor:** ¿cuándo estará disponible, qué características tiene y quién lo mantiene?',
-    '**Proveedores aprobados:** si hay una lista de proveedores de IA que la empresa ya acepta, usarla.',
+    '**Salida de datos:** ¿el resumen puede salir de la empresa? ¿Hay cláusulas con los clientes que lo impidan?',
+    '**Proveedor:** si hay una lista de proveedores de IA ya aceptados, partimos de esa. Si no, hay que elegir entre Anthropic, OpenAI y Google para las opciones B y D.',
+    '**Tope de gasto:** ¿cuál es el máximo mensual aceptable para un proveedor pago?',
+    '**Uso esperado:** cuántas personas y en qué turnos, para saber si el servidor sin placa de video alcanza.',
+    '**Alcance nuevo:** si se aprueban el borrador de correo y la explicación automática al abrirse una alerta.',
+    '**Servidor del cliente:** cuándo está, cuánta memoria tiene y quién lo administra. El desarrollo no espera por esto: arranca en el nuestro.',
   ]));
+  h.push(H.P(`Precios publicados al ${D.FECHA_PRECIOS}. Criterio de plan pago, ${D.FECHA}. Los precios cambian: se vuelven a mirar antes de cerrar.`, { run: { size: 18, color: '5F5F5F' } }));
 
-  h.push(H.titulo(1, '9. Próximos pasos'));
-  h.push(...vinetas([
-    'Elegir con ustedes las preguntas y casos para la prueba comparativa (unos 40 casos reales de Helios).',
-    'Probar los modelos candidatos con esos casos y compartir el resultado: calidad, velocidad y costo.',
-    'Con el resultado y las respuestas de la sección anterior, cerrar la decisión y cotizar la GPU.',
-  ]));
-  h.push(H.P(`Los precios y modelos se verificaron el ${D.FECHA}. Cambian seguido: los volvemos a revisar antes de cerrar la decisión.`, { run: { size: 18, color: '5F5F5F' } }));
-
-  return H.documento({ titulo: 'Inteligencia artificial en Helios: opciones de modelo', pie: 'Opciones de modelos de IA para Helios · Propuesta', hijos: h });
+  return H.documento({ titulo: 'Inteligencia artificial en Helios: alcance, integraciones, costo y seguridad', pie: 'Integraciones de IA para Helios · Propuesta', hijos: h });
 }
 
 // ───────────────────────────── Documento para ingeniería ─────────────────────────────
@@ -157,11 +209,11 @@ async function documentoIngenieria() {
     ['2', 'API de Anthropic', 'Claude Haiku 5.5, Sonnet 5.5', 'Salen al proveedor', usdMesCorto(costoMes(M.haiku, E[0])) + ' a ' + usdMesCorto(costoMes(M.sonnet, E[0])), 'Ninguna'],
     ['3', 'API de OpenAI', 'GPT-6 Luna, GPT-6.1 Terra', 'Salen al proveedor', usdMesCorto(costoMes(M.luna, E[0])) + ' a ' + usdMesCorto(costoMes(M.terra, E[0])), 'Ninguna'],
     ['4', 'API de Google', 'Gemini 3.8 Flash', 'Salen al proveedor', usdMesCorto(costoMes(M.gem_hoy, E[0])) + ' a ' + usdMesCorto(costoMes(M.gem_2027, E[0])), 'Ninguna'],
-    ['5', 'Local en el servidor propio', 'Qwen3.6-35B-A3B, gpt-oss-120b, GLM-4.7-Flash', '**No salen**', 'Electricidad', 'GPU y servidor'],
-    ['6', 'Híbrido', 'Local por defecto y API como respaldo', 'No salen (salvo respaldo)', 'Electricidad + poco', 'GPU y servidor'],
+    ['5', 'Local en el servidor propio', 'Qwen3.6-35B-A3B, gpt-oss-120b, GLM-4.7-Flash', '**No salen**', 'Electricidad', 'Servidor. GPU opcional'],
+    ['6', 'Híbrido', 'Local por defecto y API de pago como respaldo', 'No salen (salvo respaldo)', 'Electricidad + poco', 'Servidor. GPU opcional'],
   ], true));
-  h.push(...H.nota('decision', 'Recomendación', '(a) mantener Workers AI con Qwen3 mientras Helios siga en Cloudflare; (b) con el servidor propio, pasar a un **modelo local de la misma familia (Qwen3.6-35B-A3B) servido con vLLM**, porque conserva el comportamiento sobre el que ya ajustamos las instrucciones (parches 28b a 29e); (c) dejar la interfaz del modelo desacoplada para poder sumar una API externa como respaldo (opción 6) si el cliente lo aprueba. Todo sujeto a la prueba comparativa de la sección 9.'));
-  h.push(...H.nota('regla', 'Supuestos que conviene validar', 'los costos usan 6.000 tokens de entrada y 1.000 de salida por consulta (coincide con lo medido en Workers AI: unas 58 neuronas). Los precios son de la fecha del documento. Los rendimientos de los modelos locales vienen de pruebas de terceros chicas; los confirmamos con nuestro propio set.'));
+  h.push(...H.nota('decision', 'Recomendación', '(a) mientras Helios siga en Cloudflare, Workers AI con Qwen3 **en plan pago**; (b) **desarrollar igual** la opción local en el servidor de desarrollo, sin GPU para empezar, con un modelo de la misma familia (Qwen3.6-35B-A3B) porque conserva el comportamiento de los parches 28b a 29e; (c) API externa solo como respaldo, en plan pago y si seguridad lo aprueba. Que el cliente adopte la opción local es aparte: el desarrollo no espera esa decisión.'));
+  h.push(...H.nota('regla', 'Plan pago, siempre', `los costos usan ${mil(D.SUPUESTO.entrada)} tokens de entrada y ${mil(D.SUPUESTO.salida)} de salida (unas 58 neuronas en Qwen3) y **no descuentan cupo gratuito**. Precios del ${D.FECHA_PRECIOS}. Cloudflare incluye 10.000 neuronas por día incluso en el plan pago: no las restamos. Los rendimientos locales salen de pruebas chicas de terceros; los confirmamos con nuestro set.`));
 
   h.push(H.titulo(1, '2. Punto de partida: cómo funciona hoy'));
   h.push(...vinetas([
@@ -169,7 +221,7 @@ async function documentoIngenieria() {
     '**El modelo no consulta la base.** Usa herramientas de solo lectura del servidor (`asistente_server.js`); cada una exige un permiso de `PERMISOS`. Si el modelo pide una que el perfil no tiene, el servidor la rechaza.',
     '**Nunca ejecuta:** propone con `sugerir_accion` (validada en el servidor) y la página muestra "Hacerlo".',
     '**Datos que llegan al modelo:** datos principales del perfil (`ASIST_BASE`), más hasta 3 herramientas según las palabras de la pregunta (`ASIST_PALABRAS`), ya resumidos en frases, con horas de Argentina y enlaces cambiados por códigos cortos (`[E1]`, `[N1]`).',
-    '**Límites:** 600 caracteres por pregunta, 6 mensajes de historia, 20 por persona por hora (`ASISTENTE_POR_HORA`) y 150 por día en total (`ASISTENTE_POR_DIA`), para quedar bajo las 10.000 neuronas gratis por día.',
+    '**Límites:** 600 caracteres por pregunta, 6 mensajes de historia, 20 por persona por hora (`ASISTENTE_POR_HORA`) y 150 por día en total (`ASISTENTE_POR_DIA`). El tope de 150 se pensó para el cupo gratis. En plan pago se mantiene como control de abuso y se le suma un tope de gasto en el proveedor.',
     '**Formato de respuesta:** el código acepta el formato OpenAI y el propio de Workers AI, y reintenta con los datos como texto si un modelo no acepta mensajes de herramienta. Esto facilita enchufar otros proveedores.',
   ]));
   h.push(H.titulo(2, '2.1 Lo que aprendimos con el modelo actual'));
@@ -201,7 +253,7 @@ async function documentoIngenieria() {
   h.push(...H.tabla(['Modelo', 'Vía', 'Entrada', 'Salida', 'Costo por consulta'], cols(3.6, 2.4, 1.2, 1.2, 1.8), D.MODELOS.map((m) => [m.nombre, m.via, 'USD ' + nf(m.ent, m.ent < 1 ? 3 : 2), 'USD ' + nf(m.sal, m.sal < 1 ? 3 : 2), usdConsulta(costoConsulta(m))])));
   h.push(H.titulo(2, '4.2 Costo mensual por escenario'));
   h.push(...H.tabla(['Modelo', ...E.map((e) => `${e.nombre} (${mil(e.porDia)} por día)`)], cols(3.8, 2, 2, 2), D.MODELOS.map((m) => [m.nombre, ...E.map((e) => usdMesCorto(costoMes(m, e)))])));
-  h.push(...H.nota('regla', 'Cómo leer la tabla', 'en Workers AI se descuentan las 10.000 neuronas diarias gratis (alcanzan para unas 170 consultas por día con Qwen3 30B-A3B) y, al pasar ese cupo, hace falta el plan Workers Paid. En el resto no hay cupo gratis. No incluye impuestos ni percepciones sobre servicios del exterior.'));
+  h.push(...H.nota('regla', 'Cómo leer la tabla', 'todo es plan pago, sin descontar cupos. Cloudflare igual incluye 10.000 neuronas por día: no las restamos, para no presupuestar sobre un beneficio que puede cambiar. No incluye impuestos ni el abono de la plataforma, solo la inferencia.'));
   h.push(H.titulo(2, '4.3 Qué mueve el costo'));
   h.push(...vinetas([
     '**Tokens de entrada:** son cerca de la mitad del gasto (48 a 55 % con este supuesto). Bajarlos con datos más resumidos rinde más que cambiar de modelo.',
@@ -214,7 +266,7 @@ async function documentoIngenieria() {
   h.push(H.titulo(1, '5. Opciones, una por una'));
 
   h.push(H.titulo(2, '5.1 Workers AI (Cloudflare), modelos abiertos'));
-  h.push(H.P('Es lo que corre hoy. Cloudflare aloja modelos de código abierto y cobra en neuronas ($0,011 cada 1.000, con 10.000 gratis por día). Se llama desde el Worker con el enlace `AI` o desde afuera con la API REST.'));
+  h.push(H.P('Es lo que corre hoy. Cloudflare aloja modelos de código abierto y cobra en neuronas ($0,011 cada 1.000, en el plan pago). Se llama desde el Worker con el enlace `AI` (`env.AI.run` en `asistente_server.js`) o desde afuera con la API REST.'));
   h.push(...H.tabla(['Modelo', 'Entrada / salida (USD por millón)', 'Comentario'], cols(2.6, 2.4, 5), [
     ['`@cf/qwen/qwen3-30b-a3b-fp8` (hoy)', '0,051 / 0,335', 'MoE de 30 mil millones de parámetros con 3 mil millones activos. El más barato y el que ya está probado con los 4 perfiles.'],
     ['`@cf/google/gemma-4-26b-a4b-it`', '0,10 / 0,30', 'Alternativa del mismo tamaño y costo. Habría que reajustar instrucciones y probar herramientas.'],
@@ -222,9 +274,9 @@ async function documentoIngenieria() {
     ['`@cf/qwen/qwen3.8-27b`', '0,45 / 3,20', 'La salida cuesta casi 10 veces la de Qwen3 30B-A3B. Solo si la prueba muestra una mejora clara.'],
   ], true));
   h.push(H.titulo(3, 'Pros'));
-  h.push(...vinetas(['Ya integrado y probado: cambiar de modelo es cambiar `ASISTENTE_MODELO`.', 'Costo prácticamente nulo hasta unas 170 consultas por día.', 'Sin servidores, sin GPU, sin parches de drivers.', 'Los modelos también están disponibles para correr localmente: se puede migrar a la opción 5 con el mismo modelo.']));
+  h.push(...vinetas(['Ya integrado y probado: cambiar de modelo es cambiar `ASISTENTE_MODELO`.', `Con Qwen3 y el uso actual, ${usdMesCorto(costoMes(M.wai_qwen, E[0]))} por mes en plan pago.`, 'Sin servidores propios ni GPU.', 'Los mismos modelos se pueden correr en la opción 5.']));
   h.push(H.titulo(3, 'Contras'));
-  h.push(...vinetas(['Los datos se procesan en Cloudflare; hay que revisar sus condiciones para el cliente.', 'Lo ata a una cuenta de Cloudflare. Si Helios se muda, el asistente depende de internet y de esa cuenta.', 'El cupo gratis de 10.000 neuronas por día es compartido por toda la cuenta; al pasarlo, las llamadas fallan hasta las 00:00 UTC (o hay que pasar al plan pago).', 'Los modelos del catálogo cambian y algunos requieren plan pago.', 'Calidad de modelos medianos: más "andamiaje" del lado del servidor.']));
+  h.push(...vinetas(['Los datos se procesan en Cloudflare. Hay que dejar en el contrato del plan pago que no se usan para entrenar, cuánto se retienen y qué subencargados hay.', 'Lo ata a una cuenta de Cloudflare. Si Helios se muda, el asistente depende de internet y de esa cuenta.', 'Algunos modelos del catálogo exigen plan pago o créditos. No usamos el cupo gratis como supuesto de operación.', 'Calidad de modelos medianos: más trabajo del lado del servidor.']));
   h.push(...H.nota('idea', 'Cuándo conviene', 'mientras Helios siga en Cloudflare y el cliente acepte que los resúmenes se procesen allí.'));
 
   h.push(H.titulo(2, '5.2 API de Anthropic (Claude)'));
@@ -257,13 +309,13 @@ async function documentoIngenieria() {
     ['Gemini 3.5 Flash-Lite', '0,30 / 2,50 (Google Cloud)', 'Opción económica; ver disponibilidad en la API para desarrolladores.'],
   ], true));
   h.push(H.titulo(3, 'Pros'));
-  h.push(...vinetas(['Plan gratuito para probar sin costo.', 'Caché de contexto y descuentos por lotes.', 'Si la empresa ya usa Google Cloud, hay facturación unificada y residencia regional.']));
+  h.push(...vinetas(['Caché de contexto y descuentos por lotes, en el plan pago.', 'Si la empresa ya usa Google Cloud, hay facturación unificada y residencia regional.']));
   h.push(H.titulo(3, 'Contras'));
   h.push(...vinetas(['**El plan gratuito usa los datos para mejorar los productos de Google:** nunca debe usarse con datos reales. El plan pago no los usa.', 'El precio se duplica el 1/1/2027, así que el costo de hoy no sirve para presupuestar.', 'El razonamiento se cobra como salida y puede encarecer cada consulta.', 'Los datos salen al proveedor.']));
   h.push(...H.nota('idea', 'Cuándo conviene', 'solo si el cliente ya usa Google Cloud. Si no, ofrece menos ventajas que las opciones 2 y 3 para este caso.'));
 
   h.push(H.titulo(2, '5.5 Modelo local en el servidor propio'));
-  h.push(H.P('El modelo corre en un servidor de la empresa con GPU y se sirve con una API compatible con OpenAI. Los modelos son de código abierto con licencias permisivas (Apache 2.0 en Qwen, gpt-oss y Gemma 4; MIT en GLM-4.7-Flash).'));
+  h.push(H.P('El modelo corre en el servidor propio y se sirve con una API compatible con OpenAI, así Helios cambia el destino y no el formato. Licencias permisivas: Apache 2.0 en Qwen, gpt-oss y Gemma 4; MIT en GLM-4.7-Flash. **Esta pata se desarrolla igual**, en el servidor de desarrollo, aunque el cliente no la adopte. La GPU no es condición para empezar.'));
   h.push(...H.tabla(['Modelo', 'Tamaño en 4 bits', 'Dato de interés', 'Comentario'], cols(2.4, 1.6, 3, 3), [
     ['Qwen3.6-35B-A3B', '20,4 GB', 'MoE: 3 mil millones activos. Contexto nativo de 262.000.', '**Candidato principal.** Misma familia que el Qwen3 de hoy: conserva el comportamiento. Analizador de herramientas de vLLM: `qwen3_coder`.'],
     ['GLM-4.7-Flash', '18,2 GB', 'Licencia MIT. 95 % en una prueba independiente de herramientas.', 'Buena alternativa; menos cabida de procesos en paralelo por su caché.'],
@@ -275,7 +327,7 @@ async function documentoIngenieria() {
   h.push(H.titulo(3, 'Pros'));
   h.push(...vinetas(['**Los datos nunca salen del servidor.** Es la única opción que lo garantiza.', 'Costo marginal por consulta cercano a cero; no cambia con el volumen.', 'Se fija la versión del modelo: no hay retiros inesperados ni cambios de precio.', 'Funciona sin internet. Si cae internet, el asistente sigue (salvo el contexto externo).', 'Mismo formato de API que usan OpenAI y la mayoría de los proveedores: el cambio en el código es chico.', 'Ajustable a futuro (afinar el modelo con casos propios).']));
   h.push(H.titulo(3, 'Contras'));
-  h.push(...vinetas(['**Inversión inicial y escasez de GPU:** una RTX 5090 de 32 GB se consigue hoy entre USD 6.199 y USD 11.896 (lanzamiento: USD 1.999). Las GPU profesionales de 96 GB se cotizan aparte.', 'Calidad menor que los modelos de primer nivel en razonamiento complejo y matices del español. Se mitiga con datos armados por el servidor.', 'Operarlo es trabajo: drivers, versión del runtime, monitoreo de GPU, energía, temperatura, actualizaciones de modelo.', 'Punto único de falla: sin redundancia, si la GPU cae el asistente se detiene.', 'La VM actual prevista (4 vCPU, 8 a 16 GB de RAM) no alcanza: hace falta GPU. En CPU sola solo andan modelos de 4 a 9 mil millones de parámetros y con demoras largas para 6.000 tokens de entrada.', 'Los resultados de herramientas varían por modelo y versión del runtime: hay que probar con nuestro código.']));
+  h.push(...vinetas(['**Sin GPU se puede desarrollar y se puede operar, con límites.** En CPU entran modelos de 4 a 9 mil millones de parámetros (Qwen3.5-9B, unos 5,6 GB) y, con 32 GB de RAM o más, un MoE como Qwen3.6-35B-A3B (unos 20 GB de pesos, 3 mil millones activos por token). La generación anda. Lo lento es leer los 6.000 tokens de entrada: en CPU puede pasar de unos segundos a un minuto. Varias consultas a la vez se encolan. Sirve para construir la integración y para tareas que no son del momento (análisis de una alerta nueva). Para el chat con varias personas, la meta de mediana menor a 8 segundos probablemente no se cumpla.', '**La GPU es una compra aparte, si la prueba de velocidad la pide.** Una RTX 5090 de 32 GB sale hoy entre USD 6.199 y USD 11.896 (lanzamiento: USD 1.999). Las de 96 GB se cotizan aparte.', 'Calidad menor que los modelos de primer nivel en razonamiento complejo. Se mitiga con los datos que ya arma el servidor.', 'Operarlo es trabajo: versión del runtime, acceso al servidor, actualizaciones del modelo. Con GPU se suman drivers, energía y temperatura.', 'Punto único de falla: si el servicio local cae, el asistente se detiene. Helios sigue.', 'Los resultados de herramientas varían por modelo y versión del runtime: hay que probarlos con nuestro código.']));
   h.push(...H.nota('regla', 'Si el Worker sigue en Cloudflare', 'un modelo local en la LAN no es accesible desde el Worker. Haría falta un túnel (`cloudflared`), y entonces los datos pasan igual por Cloudflare. El modelo local tiene sentido cuando Helios corre también en el servidor propio.'));
 
   h.push(H.titulo(2, '5.6 Híbrido: local por defecto, API como respaldo'));
@@ -295,7 +347,7 @@ async function documentoIngenieria() {
     ['Esfuerzo de operación', 'Bajo', 'Bajo', 'Bajo', 'Bajo', '**Alto**', 'Alto'],
     ['Funciona sin internet', 'No', 'No', 'No', 'No', '**Sí**', 'Sí (sin respaldo)'],
     ['Riesgo de retiro de modelo', 'Medio', 'Medio', 'Medio', 'Medio', '**Nulo**', 'Bajo'],
-    ['Estado hoy', '**Funcionando**', 'A integrar', 'A integrar', 'A integrar', 'Requiere GPU', 'Requiere GPU'],
+    ['Estado hoy', '**Funcionando**', 'A integrar', 'A integrar', 'A integrar', '**La desarrollamos**', 'Después de la 5'],
   ], true));
   h.push(H.P('* Calidad esperada: hipótesis basada en el tamaño de los modelos y pruebas de terceros. No está medida sobre Helios; se mide en la sección 9.', { run: { size: 18, color: '5F5F5F' } }));
 
@@ -311,8 +363,8 @@ async function documentoIngenieria() {
   ], true));
 
   h.push(H.titulo(1, '8. Consideraciones del despliegue local'));
-  h.push(H.titulo(2, '8.1 Hardware: la memoria de la GPU manda'));
-  h.push(H.P('La memoria de la GPU (VRAM) tiene que alojar el modelo más la memoria de trabajo de cada consulta (caché KV). Cada consulta en paralelo suma caché, y esa caché crece con el contexto.'));
+  h.push(H.titulo(2, '8.1 Hardware: primero CPU, GPU si la latencia no alcanza'));
+  h.push(H.P('Para desarrollar no hace falta GPU. El servidor previsto (4 vCPU, 8 a 16 GB de RAM) alcanza para un modelo de 4 a 9 mil millones. Para Qwen3.6-35B-A3B en CPU hacen falta unos 32 GB de RAM. Si la prueba de chat no entra en la latencia, recién ahí se mira una GPU: su memoria tiene que alojar el modelo más la caché de cada consulta en paralelo.'));
   h.push(...H.tabla(['Nivel', 'GPU', 'Modelos que entran', 'Consultas en paralelo (contexto de 64.000)'], cols(1.2, 2.2, 3.8, 2.8), [
     ['0. Pruebas', '8 a 16 GB', 'Qwen3.5-9B (5,6 GB), gpt-oss-20b (12,1 GB)', 'Pocas; para ensayos y tareas livianas.'],
     ['1. Producción chica', '24 a 32 GB (por ejemplo RTX 5090 de 32 GB)', 'Qwen3.6-35B-A3B (20,4 GB), GLM-4.7-Flash (18,2 GB), Gemma 4 26B-A4B (14,6 GB)', 'Con 32 GB, Qwen3.6-35B-A3B admite 5 consultas de 64.000 tokens (11 con caché de 8 bits). gpt-oss-20b admite 10.'],
@@ -348,6 +400,13 @@ async function documentoIngenieria() {
   ]));
 
   h.push(H.titulo(2, '8.3 Integración con el código de Helios'));
+  h.push(H.P('Las cuatro integraciones del documento para el cliente se enchufan en el mismo lugar: hoy `asistModelo` llama a `env.AI.run`. Se reemplaza por `llamarModelo`, y el resto (permisos, límites, auditoría, "Hacerlo") no se toca.'));
+  h.push(...H.tabla(['Integración', 'Destino de llamarModelo', 'Secreto', 'Plan'], cols(2.2, 4.2, 2.2, 1.4), [
+    ['A. Nube actual', '`env.AI.run` con `ASISTENTE_MODELO`', 'La cuenta de Cloudflare', 'Pago'],
+    ['B. Proveedor', 'HTTPS a la API de Anthropic, OpenAI o Google', '`ASISTENTE_CLAVE`', 'Pago'],
+    ['C. Servidor propio', 'HTTP a `127.0.0.1` (vLLM, Ollama o llama.cpp), API compatible con OpenAI', 'Clave local', 'Sin tercero'],
+    ['D. Con respaldo', 'C, y si falla o el caso está habilitado, B', 'Las dos', 'Pago solo en B'],
+  ], true));
   h.push(...vinetas([
     '**Interfaz única:** una función `llamarModelo(mensajes, herramientas)` que lea `ASISTENTE_PROVEEDOR` (`workers_ai` o `compatible_openai`), `ASISTENTE_URL`, `ASISTENTE_CLAVE` (secreto) y `ASISTENTE_MODELO`. `asistente_server.js` ya acepta respuestas en formato OpenAI.',
     '**Anthropic y Google** ofrecen una capa de compatibilidad con el formato OpenAI (confirmar que siga vigente); si no, un adaptador chico.',
@@ -367,6 +426,7 @@ async function documentoIngenieria() {
     '**Texto libre como vector:** comentarios y evidencia pueden incluir instrucciones ("ignorá lo anterior"). La defensa es la actual: el modelo solo lee y propone, y el servidor valida cada acción. Con modelos más chicos hay que probarlo explícitamente.',
     '**Falla de la GPU:** el asistente avisa que no está disponible y Helios sigue igual (hoy ya es así sin el enlace `AI`). Con respaldo externo, solo si está habilitado.',
     '**Licencias:** guardar la licencia de cada modelo usado (Apache 2.0 o MIT en los candidatos); revisar las políticas de uso de gpt-oss.',
+    '**Para la revisión de seguridad:** el resumen es dato de operación (clientes, servicios, métricas, comentarios), no una credencial. En A, B y el respaldo de D, plan pago con contrato de no entrenamiento, retención, borrado, subencargados y país. Lista cerrada de campos que salen. En C, el control es el acceso al servidor y que el puerto no esté publicado.',
   ]));
 
   h.push(H.titulo(1, '9. Plan de prueba comparativa'));
@@ -401,7 +461,7 @@ async function documentoIngenieria() {
   h.push(H.titulo(1, '10. Riesgos'));
   h.push(...H.tabla(['Riesgo', 'Impacto', 'Mitigación'], cols(3.2, 2.8, 4), [
     ['Los datos de clientes salen a un proveedor sin aprobación', 'Incumplimiento contractual', 'Local por defecto; salida externa solo con filtro y habilitación expresa.'],
-    ['GPU cara o difícil de conseguir', 'Retraso del servidor propio', 'Seguir en Workers AI; alquilar GPU por horas para la prueba.'],
+    ['La GPU no se consigue o es cara', 'El chat local queda lento', 'El desarrollo sigue en CPU. La GPU se compra solo si la medición no entra en la meta. Para la prueba se puede alquilar por horas.'],
     ['El modelo local rinde menos de lo esperado', 'Respuestas flojas', 'Prueba previa; respaldo externo (opción 6); más trabajo del servidor armando datos.'],
     ['Un proveedor retira o cambia un modelo', 'Hay que reajustar instrucciones', 'Interfaz desacoplada; set de prueba para revalidar rápido.'],
     ['Costo externo fuera de control', 'Gasto inesperado', 'Límites de Helios y tope de gasto en el proveedor.'],
@@ -412,13 +472,13 @@ async function documentoIngenieria() {
 
   h.push(H.titulo(1, '11. Recomendación y próximos pasos'));
   h.push(...vinetas([
-    '**Ahora:** dejar Qwen3 30B-A3B en Workers AI. Costo cero con el uso actual.',
-    '**Ahora, en paralelo:** armar el set de prueba (sección 9) y desacoplar la llamada al modelo (sección 8.3). Es trabajo que sirve para cualquier opción.',
-    '**Con el servidor propio:** modelo local Qwen3.6-35B-A3B servido con vLLM en una GPU de 32 GB como mínimo; evaluar 96 GB si la prueba pide un modelo mayor o más consultas en paralelo.',
-    '**Opcional:** respaldo externo con filtro de datos, si el cliente lo aprueba.',
-    '**Decisiones que dependen del cliente:** si los datos pueden salir, presupuesto de GPU y tope mensual de un servicio externo, uso esperado, y cuándo estará el servidor.',
+    '**Ahora:** Qwen3 30B-A3B en Workers AI, presupuestado en plan pago (`' + usdMesCorto(costoMes(M.wai_qwen, E[0])) + '` por mes con 150 consultas por día).',
+    '**Ahora, en el servidor de desarrollo, pase lo que pase con el cliente:** servicio local con API compatible con OpenAI (Ollama o llama.cpp para empezar, vLLM si hay GPU). Desacoplar `env.AI.run` detrás de `llamarModelo` (sección 8.3). Medir latencia en CPU con 5 a 10 consultas de la demo.',
+    '**GPU:** solo si esa medición no entra en la meta (mediana menor a 8 segundos). Candidato: Qwen3.6-35B-A3B en 32 GB. 96 GB si la prueba pide un modelo mayor.',
+    '**Respaldo externo:** plan pago, con filtro de datos y aprobación de seguridad. Nunca el plan gratuito.',
+    '**Lo que definen el cliente y seguridad:** si los datos pueden salir, el tope mensual, el proveedor aceptado y si la opción local pasa a su ambiente.',
   ]));
-  h.push(...H.nota('regla', 'Pendiente de confirmar', 'cotización real de la GPU en el mercado local, disponibilidad del servidor, y qué proveedores de IA ya acepta la empresa. Nada de esto está definido todavía.'));
+  h.push(...H.nota('regla', 'Pendiente de confirmar', 'si seguridad aprueba que los datos salgan, qué proveedor ya acepta la empresa, el tope mensual y la memoria del servidor de desarrollo. La GPU no se cotiza hasta medir la latencia en CPU.'));
 
   h.push(H.titulo(1, '12. Fuentes consultadas'));
   h.push(H.P(`Precios y modelos verificados el ${D.FECHA}. Los precios cambian seguido.`));
