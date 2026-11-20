@@ -1,0 +1,395 @@
+<!-- Sala de crisis (parche 69): /incidentes (lista) y /incidente/<id> (la sala).
+     patch69.py la arma a partir de Mis alertas ya terminada (barra, tema, campanita, push y asistente), como la de comunicados. -->
+<style id="sc-css">
+.sc-wrap { max-width: 1320px; }
+.sc-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.sc-cab h1 { margin: 0; }
+.sc-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sc-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; text-decoration: none; color: inherit; background: var(--panel);
+  border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 4px; padding: 12px 14px; }
+.sc-card:hover { border-color: var(--accent); }
+.sc-card.CRITICA { border-left-color: var(--critica); } .sc-card.ALTA { border-left-color: var(--alta); } .sc-card.cerrado { opacity: .75; }
+.sc-card b { font-size: 15px; }
+.sc-card small { color: var(--ink-3); font-size: 13px; }
+.sc-card .der { text-align: right; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.sc-estado { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; background: var(--track); color: var(--ink-2); }
+.sc-estado.ABIERTO { background: var(--critica-bg); color: var(--critica-txt); } .sc-estado.MITIGADO { background: var(--media-bg); color: var(--media-txt); }
+.sc-estado.RESUELTO { background: var(--ok-bg); color: var(--ok-txt); } .sc-estado.CERRADO { background: var(--track); color: var(--ink-2); }
+.sc-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+.sc-cab-uno h1 { margin: 0 0 4px; }
+.sc-cab-uno { margin-bottom: 14px; }
+.sc-acc { margin-top: -2px; }
+.sc-acc { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+.sc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.sc-col { display: grid; gap: 14px; min-width: 0; }
+.sc-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow); padding: 14px 16px; min-width: 0; }
+.sc-panel h2 { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
+.sc-panel-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+.sc-panel-cab h2 { margin: 0; }
+.sc-vacio { color: var(--ink-3); font-size: 14px; margin: 0; }
+.sc-alertas, .sc-tareas, .sc-linea, .sc-comp, .sc-ant { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sc-alertas li { display: grid; gap: 2px; font-size: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.sc-alertas li:last-child { border-bottom: 0; padding-bottom: 0; }
+.sc-alertas a { color: var(--link, var(--accent)); font-weight: 600; text-decoration: none; }
+.sc-alertas small { color: var(--ink-3); font-size: 12.5px; }
+.sc-tareas li { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 4px; padding: 10px 12px; font-size: 14px; display: grid; gap: 4px; }
+.sc-tareas li.EN_CURSO { border-left-color: var(--accent); } .sc-tareas li.HECHA { border-left-color: var(--ok); } .sc-tareas li.CANCELADA { opacity: .6; }
+.sc-tareas li.mia { background: var(--track); }
+.sc-tareas .t-cab { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.sc-tareas .t-cab b { font-size: 14.5px; }
+.sc-tareas .t-meta { color: var(--ink-2); font-size: 13px; }
+.sc-tareas .t-res { margin: 2px 0 0; padding: 6px 9px; border-radius: 4px; background: var(--ok-suave, var(--track)); font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sc-tareas .t-acc { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.sc-tareas .demorada { color: var(--critica-txt); font-weight: 600; }
+.sc-asist { display: inline-block; font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 3px; background: var(--pre-bg); color: var(--pre-txt); margin-left: 6px; vertical-align: 1px; }
+.sc-linea li { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 8px; font-size: 13.5px; }
+.sc-linea time { color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: 12.5px; padding-top: 1px; }
+.sc-linea .txt { overflow-wrap: anywhere; }
+.sc-linea .txt b { font-weight: 600; }
+.sc-linea li.CIERRE .txt, .sc-linea li.ESTADO .txt { font-weight: 600; }
+.sc-linea li.ESCALAMIENTO .txt { color: var(--critica-txt); }
+.sc-linea .tipo { display: inline-block; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .02em; margin-right: 4px; }
+#f-nota { display: grid; gap: 6px; margin-bottom: 12px; }
+#f-nota textarea { min-height: 64px; border: 1px solid var(--line-input); background: var(--input-bg); color: var(--ink); border-radius: 3px; padding: 8px 10px; font: inherit; font-size: 14px; }
+#f-nota button { justify-self: end; }
+.sc-comp li { border: 1px solid var(--line); border-radius: 4px; padding: 9px 11px; font-size: 13.5px; }
+.sc-comp li.causa { border-color: var(--critica); }
+.sc-comp b { font-size: 14px; }
+.sc-comp .area { color: var(--ink-3); font-size: 12.5px; margin-left: 6px; }
+.sc-comp p { margin: 4px 0 0; color: var(--ink-2); }
+.sc-comp .dep { margin: 6px 0 0; padding-left: 12px; border-left: 2px solid var(--line); display: grid; gap: 3px; color: var(--ink-2); font-size: 13px; }
+.sc-guia h3 { font-size: 13.5px; font-weight: 600; margin: 12px 0 6px; color: var(--ink-2); }
+.sc-ant li { font-size: 13.5px; padding: 8px 10px; background: var(--track); border-radius: 4px; }
+.sc-ant li b { display: block; }
+.sc-elegir { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 50vh; overflow: auto; }
+.sc-elegir label { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line-input); border-radius: 4px; padding: 8px 10px; cursor: pointer; font-size: 14px; }
+.sc-elegir label:has(input:checked) { border-color: var(--accent); background: var(--track); }
+.sc-elegir label.no { opacity: .55; cursor: not-allowed; }
+.sc-elegir small { display: block; color: var(--ink-3); font-size: 12.5px; }
+.sc-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 1100px) { .sc-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .sc-grid > .sc-col:last-child { grid-column: 1 / -1; } }
+@media (max-width: 720px) { .sc-grid { grid-template-columns: minmax(0, 1fr); } .sc-grid > .sc-col:nth-child(2) { order: -1; } .sc-card { grid-template-columns: minmax(0, 1fr); } .sc-card .der { text-align: left; } .sc-dos { grid-template-columns: 1fr; } }
+</style>
+<!-- MAIN -->
+<main class="wrap sc-wrap">
+  <div id="vista-lista">
+    <div class="sc-cab"><h1>Sala de crisis</h1><button class="btn primario" id="btn-abrir" hidden>Abrir sala de crisis</button></div>
+    <ul class="sc-lista" id="lista"><li class="sc-vacio">Cargando…</li></ul>
+  </div>
+  <div id="vista-uno" hidden>
+    <a class="btn chico" href="/incidentes" style="margin-bottom:10px;display:inline-flex">← Salas de crisis</a>
+    <div class="sc-cab-uno"><div class="sc-chips" id="u-chips"></div><h1 id="u-titulo">Cargando…</h1><p class="bajada" id="u-sub"></p></div>
+    <div class="sc-acc" id="u-acc"></div>
+    <div class="sc-grid">
+      <section class="sc-col">
+        <div class="sc-panel"><h2>Alertas</h2><ul class="sc-alertas" id="u-alertas"></ul></div>
+        <div class="sc-panel sc-guia"><h2>Guía de diagnóstico</h2><div id="u-guia"></div></div>
+      </section>
+      <section class="sc-col">
+        <div class="sc-panel"><div class="sc-panel-cab"><h2>Tareas <span id="u-tareas-n" class="sc-vacio"></span></h2><button class="btn chico" id="btn-tarea" hidden>Nueva tarea</button></div>
+          <ul class="sc-tareas" id="u-tareas"></ul></div>
+      </section>
+      <section class="sc-col">
+        <div class="sc-panel"><h2>Línea de tiempo</h2>
+          <form id="f-nota" hidden><textarea id="nota-txt" maxlength="1500" placeholder="Qué se sabe, qué se probó, qué falta…" aria-label="Nota"></textarea><button class="btn chico" type="submit">Agregar nota</button></form>
+          <ol class="sc-linea" id="u-linea"></ol></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<dialog id="dlg-alertas">
+  <form id="f-alertas" method="dialog">
+    <h2 id="al-titulo">Abrir sala de crisis</h2>
+    <ul class="sc-elegir" id="al-lista"></ul>
+    <label class="campo" id="al-tit-campo"><span>Título (opcional)</span><input id="al-tit" maxlength="120" placeholder="Se arma con el problema y el cliente"></label>
+    <label class="campo" id="al-desc-campo"><span>Qué se sabe (opcional)</span><textarea id="al-desc" maxlength="2000"></textarea></label>
+    <p class="error-form" id="al-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="al-ok">Abrir sala</button></div>
+  </form>
+</dialog>
+<dialog id="dlg-tarea">
+  <form id="f-tarea" method="dialog">
+    <h2 id="ta-titulo-dlg">Nueva tarea</h2>
+    <label class="campo" id="ta-tit-campo"><span>Qué hay que hacer</span><input id="ta-tit" maxlength="160"></label>
+    <label class="campo"><span id="ta-det-et">Detalle (opcional)</span><textarea id="ta-det" maxlength="1500"></textarea></label>
+    <div class="sc-dos">
+      <label class="campo"><span>Persona</span><select id="ta-persona"></select></label>
+      <label class="campo"><span>Equipo</span><select id="ta-equipo"></select></label>
+    </div>
+    <label class="campo" id="ta-comp-campo"><span>Componente a revisar (opcional)</span><select id="ta-comp"></select></label>
+    <p class="error-form" id="ta-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="ta-ok">Asignar</button></div>
+  </form>
+</dialog>
+<dialog id="dlg-hecha">
+  <form id="f-hecha" method="dialog">
+    <h2>Marcar como hecha</h2>
+    <p class="bajada" id="he-tarea"></p>
+    <label class="campo"><span>Qué se encontró o qué se hizo</span><textarea id="he-res" maxlength="1500" required></textarea></label>
+    <p class="error-form" id="he-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario">Marcar hecha</button></div>
+  </form>
+</dialog>
+<dialog id="dlg-cerrar">
+  <form id="f-cerrar" method="dialog">
+    <h2>Cerrar el incidente</h2>
+    <label class="campo"><span>Causa raíz</span><textarea id="ce-causa" maxlength="1000" required></textarea></label>
+    <label class="campo"><span>Componente donde estuvo la causa (opcional)</span><select id="ce-comp"></select></label>
+    <label class="campo"><span>Qué se hizo y qué queda por mejorar (opcional)</span><textarea id="ce-res" maxlength="2000"></textarea></label>
+    <p class="error-form" id="ce-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario">Cerrar incidente</button></div>
+  </form>
+</dialog>
+<!-- FIN MAIN -->
+<script id="sc-js">
+(function () {
+  'use strict';
+  var TZ = 'America/Argentina/Buenos_Aires';
+  var PERFIL_TXT = { ADMIN: 'Administrador', GERENTE: 'Gerente', ANALISTA: 'Analista', SOPORTE: 'Soporte', COMUNICADOS: 'Solo comunicados' };
+  var SEV_TXT = { CRITICA: 'Grave', ALTA: 'Importante', MEDIA: 'Leve', BAJA: 'Informativo' };
+  var EST_TXT = { ABIERTO: 'Abierto', MITIGADO: 'Mitigado', RESUELTO: 'Resuelto', CERRADO: 'Cerrado' };
+  var TAR_TXT = { PENDIENTE: 'Pendiente', EN_CURSO: 'En curso', HECHA: 'Hecha', CANCELADA: 'Cancelada' };
+  var LIN_TXT = { APERTURA: 'Apertura', ALERTA_SUMADA: 'Alerta', ESTADO: 'Estado', TAREA: 'Tarea', NOTA: 'Nota', COMUNICADO: 'Comunicado', ESCALAMIENTO: 'Escalamiento', CIERRE: 'Cierre' };
+  var SERV_TXT = { TRANSFERENCIAS: 'Transferencias', PAGO_SERVICIOS: 'Pago de servicios', RECARGA_CELULAR: 'Recarga de celular', RECARGA_TRANSPORTE: 'Recarga de transporte' };
+  var CANAL_TXT = { MOBILE: 'app', WEB: 'web', API: 'API' };
+  var FRASE = { VOLUMEN_BAJO: 'Entra menos tráfico de lo normal', VOLUMEN_ALTO: 'Entra mucho más tráfico de lo normal', APROBACION_BAJA: 'Se aprueban menos operaciones',
+    RECHAZO_ALTO: 'Suben los rechazos', ERROR_ALTO: 'Suben los errores técnicos', IMPORTE_BAJO: 'Se opera menos dinero de lo normal', IMPORTE_ALTO: 'Se opera más dinero de lo normal',
+    LATENCIA_ALTA: 'El servicio responde lento', SIN_EXITOS: 'No se aprueba ninguna operación', DATO_TARDIO: 'Los datos llegan con demora', DATO_INCONSISTENTE: 'Los datos informados no cierran',
+    VENTANA_FALTANTE: 'Dejaron de llegar datos' };
+  var ID = Number((location.pathname.match(/^\/incidente\/(\d+)/) || [])[1]) || null;
+  window.ASIS_INCIDENTE = ID;   // el asistente pregunta dentro de esta sala
+  var yo = null, permisos = [], d = null, modoTarea = 'tarea', tareaHecha = null, modoAlertas = 'abrir';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (x) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[x]; }); }
+  function puedo(p) { return permisos.indexOf(p) >= 0; }
+  function toast(msg, error) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast' + (error ? ' error' : ''); t.style.display = 'block';
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = 'none'; }, error ? 7000 : 3500);
+  }
+  function pedir(url, cuerpo) {
+    var op = cuerpo === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) };
+    return fetch(url, op).then(function (r) {
+      if (r.status === 401) { location.href = '/login'; throw new Error('Tu sesión venció.'); }
+      return r.json().then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('Error ' + r.status)); return j; });
+    });
+  }
+  function aFecha(iso) { return iso ? new Date(String(iso).replace(' ', 'T') + (/[zZ]$/.test(iso) ? '' : 'Z')) : null; }
+  function hora(iso) { var x = aFecha(iso); return x && !isNaN(x) ? x.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TZ }) : ''; }
+  function fecha(iso) { var x = aFecha(iso); return x && !isNaN(x) ? x.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: TZ }) + ' ' + hora(iso) : ''; }
+  function dur(ms) { var m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : ''); }
+  function iniciales(n) { return n.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || '?'; }
+  function errorForm(id, msg) { var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+  function dondeAlerta(a) { return a.cliente_id + ', ' + (SERV_TXT[a.servicio_id] || a.servicio_id) + ' por ' + (CANAL_TXT[a.canal_id] || a.canal_id); }
+
+  // Menú del usuario
+  function menu(abrir) { var m = $('menu-usuario'); if (abrir === undefined) abrir = m.hidden; m.hidden = !abrir; $('btn-avatar').setAttribute('aria-expanded', abrir ? 'true' : 'false'); }
+  $('btn-avatar').addEventListener('click', function (ev) { ev.stopPropagation(); menu(); });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('.usuario')) menu(false); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') menu(false); });
+  $('btn-salir').addEventListener('click', function () { pedir('/api/logout', {}).catch(function () {}).then(function () { location.href = '/login'; }); });
+  $('btn-actualizar').addEventListener('click', function () { cargar(); });
+  document.querySelectorAll('dialog [data-cerrar]').forEach(function (b) { b.addEventListener('click', function () { b.closest('dialog').close(); }); });
+
+  // ---------- Lista ----------
+  function cargarLista() {
+    $('btn-abrir').hidden = !puedo('sala_crisis_dirigir');
+    return pedir('/api/incidentes').then(function (r) {
+      var xs = r.incidentes || [];
+      $('lista').innerHTML = xs.length ? xs.map(function (x) {
+        var donde = [x.cliente_id || 'Varios clientes', x.servicio_id ? SERV_TXT[x.servicio_id] || x.servicio_id : ''].filter(Boolean).join(' · ');
+        return '<li><a class="sc-card ' + esc(x.severidad) + (x.estado === 'CERRADO' ? ' cerrado' : '') + '" href="/incidente/' + x.id + '">' +
+          '<div><div class="sc-chips"><span class="sc-estado ' + esc(x.estado) + '">' + esc(EST_TXT[x.estado]) + '</span><span class="sev ' + esc(x.severidad) + '">' + esc(SEV_TXT[x.severidad]) + '</span></div>' +
+          '<b>IM-' + x.id + ' · ' + esc(x.titulo) + '</b><br><small>' + esc(donde) + (x.responsable ? ' · Dirige ' + esc(x.responsable) : '') + '</small></div>' +
+          '<div class="der">' + (x.estado === 'CERRADO' ? 'Cerrado ' + esc(fecha(x.cerrado)) : 'Desde ' + esc(fecha(x.inicio))) + '<br>' + x.alertas + (x.alertas === 1 ? ' alerta' : ' alertas') +
+          (x.estado !== 'CERRADO' ? ' · ' + x.tareas_pendientes + (x.tareas_pendientes === 1 ? ' tarea abierta' : ' tareas abiertas') : '') + '</div></a></li>';
+      }).join('') : '<li class="sc-vacio">' + (puedo('sala_crisis_dirigir') ? 'No hay salas de crisis abiertas ni cerradas en los últimos 30 días.' : 'No hay salas de crisis con tareas para tu usuario o tu equipo.') + '</li>';
+    }).catch(function (e) { $('lista').innerHTML = '<li class="sc-vacio">' + esc(e.message) + '</li>'; });
+  }
+
+  // ---------- La sala ----------
+  function pintar() {
+    var i = d.incidente, ahora = aFecha(d.ahora) || new Date();
+    document.title = i.codigo + ' · ' + i.titulo + ' · Helios';
+    $('u-chips').innerHTML = '<span class="sc-estado ' + esc(i.estado) + '">' + esc(EST_TXT[i.estado]) + '</span><span class="sev ' + esc(i.severidad) + '">' + esc(SEV_TXT[i.severidad]) + '</span>';
+    $('u-titulo').textContent = i.codigo + ' · ' + i.titulo;
+    var fin = i.estado === 'CERRADO' ? aFecha(i.cerrado) : i.mitigado ? aFecha(i.mitigado) : ahora;
+    $('u-sub').textContent = [i.cliente_id || 'Varios clientes', i.servicio_id ? SERV_TXT[i.servicio_id] || i.servicio_id : null].filter(Boolean).join(' · ') +
+      ' · Problema desde ' + fecha(i.inicio) + (i.estado === 'ABIERTO' ? ' (hace ' + dur(ahora - aFecha(i.inicio)) + ')' : ' · duró ' + dur(fin - aFecha(i.inicio)) + ' hasta ' + (i.mitigado ? 'mitigarse' : 'cerrarse')) +
+      (i.responsable ? ' · Dirige ' + i.responsable : '');
+    // Acciones de quien dirige
+    var p = d.puedo, acc = '';
+    if (p.dirigir) {
+      if (i.estado === 'ABIERTO') acc += '<button class="btn primario" data-est="MITIGADO">Servicio restablecido (mitigado)</button>';
+      if (i.estado === 'ABIERTO' || i.estado === 'MITIGADO') acc += '<button class="btn" data-est="RESUELTO">Marcar resuelto</button>';
+      if (i.estado !== 'ABIERTO') acc += '<button class="btn" data-est="ABIERTO">Volver a abierto</button>';
+      acc += '<button class="btn" data-est="CERRADO">Cerrar con causa raíz</button>';
+      acc += '<button class="btn" data-sc="escalar">Escalar</button><button class="btn" data-sc="sumar">Sumar alertas</button>';
+      var principal = (d.alertas.filter(function (a) { return a.estado !== 'RESUELTA'; })[0] || d.alertas[0]);
+      if (principal) acc += '<a class="btn" href="/alerta/' + esc(principal.alerta_id) + '?comunicar">Comunicar</a>';
+    }
+    if (i.estado === 'CERRADO') acc = '<p class="sc-vacio">Cerrado el ' + esc(fecha(i.cerrado)) + '. Causa raíz: ' + esc(i.causa_raiz || '') + '</p>';
+    $('u-acc').innerHTML = acc; $('u-acc').hidden = !acc;
+    // Alertas
+    $('u-alertas').innerHTML = d.alertas.length ? d.alertas.map(function (a) {
+      var est = a.estado === 'RESUELTA' ? 'Resuelta' : a.estado === 'RECONOCIDA' ? 'En curso' + (a.asignado_a ? ': ' + a.asignado_a : '') :
+        a.asignado_a || a.asignado_equipo ? 'Asignada a ' + [a.asignado_a, a.asignado_equipo ? 'equipo ' + a.asignado_equipo : null].filter(Boolean).join(' · ') + ', sin tomar' : 'Sin asignar';
+      return '<li><a href="/alerta/' + esc(a.alerta_id) + '">' + esc(FRASE[a.tipo_alerta] || a.tipo_alerta) + '</a><span>' + esc(dondeAlerta(a)) + '</span>' +
+        '<small>' + (a.severidad_maxima ? '<span class="sev ' + esc(a.severidad_maxima) + '">' + esc(SEV_TXT[a.severidad_maxima]) + '</span> ' : '') + esc(est) + ' · sumada ' + esc(hora(a.sumada)) + '</small></li>';
+    }).join('') : '<li class="sc-vacio">Sin alertas.</li>';
+    // Tareas
+    var abiertas = d.tareas.filter(function (t) { return t.estado === 'PENDIENTE' || t.estado === 'EN_CURSO'; }).length;
+    $('u-tareas-n').textContent = d.tareas.length ? '· ' + abiertas + (abiertas === 1 ? ' abierta' : ' abiertas') : '';
+    $('btn-tarea').hidden = !p.dirigir;
+    $('u-tareas').innerHTML = d.tareas.length ? d.tareas.map(function (t) {
+      var quien = [t.responsable, t.equipo ? 'equipo ' + t.equipo : null].filter(Boolean).join(' · ');
+      var lleva = (t.estado === 'PENDIENTE' || t.estado === 'EN_CURSO') ? ahora - aFecha(t.actualizada) : 0;
+      var dem = (t.estado === 'PENDIENTE' && lleva > 20 * 60000) || (t.estado === 'EN_CURSO' && lleva > 60 * 60000);
+      var bot = '';
+      var mia = t.mia || p.dirigir, abierta = t.estado === 'PENDIENTE' || t.estado === 'EN_CURSO';
+      if (abierta && mia && i.estado !== 'CERRADO' && !p.lectura) {
+        if (t.estado === 'PENDIENTE') bot += '<button class="btn chico" data-t="' + t.id + '" data-te="EN_CURSO">Empezar</button>';
+        bot += '<button class="btn chico" data-t="' + t.id + '" data-te="HECHA">Marcar hecha</button>';
+        if (p.dirigir) bot += '<button class="btn chico" data-t="' + t.id + '" data-te="CANCELADA">Cancelar</button>';
+      }
+      return '<li class="' + esc(t.estado) + (t.mia ? ' mia' : '') + '"><div class="t-cab"><b>' + esc(t.titulo) + (t.propuesta_por_asistente ? '<span class="sc-asist" title="La propuso el asistente y la confirmó una persona">Asistente</span>' : '') + '</b>' +
+        '<span class="sc-estado">' + esc(TAR_TXT[t.estado]) + '</span></div>' +
+        '<div class="t-meta">' + esc(quien || 'Sin responsable') + (t.componente ? ' · ' + esc(t.componente) : '') +
+        (abierta ? ' · hace ' + dur(lleva) + (dem ? ' · <span class="demorada">Demorada</span>' : '') : t.terminada ? ' · ' + esc(hora(t.terminada)) : '') + '</div>' +
+        (t.detalle ? '<div class="t-meta">' + esc(t.detalle) + '</div>' : '') +
+        (t.resultado ? '<p class="t-res">' + esc(t.resultado) + '</p>' : '') + (bot ? '<div class="t-acc">' + bot + '</div>' : '') + '</li>';
+    }).join('') : '<li class="sc-vacio">' + (p.dirigir ? 'Todavía no hay tareas. Asigná la primera o preguntale al asistente qué revisar primero.' : 'Todavía no hay tareas.') + '</li>';
+    // Línea de tiempo
+    $('f-nota').hidden = !p.notas;
+    $('u-linea').innerHTML = d.linea.map(function (l) {
+      return '<li class="' + esc(l.tipo) + '"><time>' + esc(hora(l.fecha)) + '</time><div class="txt"><span class="tipo">' + esc(LIN_TXT[l.tipo] || l.tipo) + '</span>' +
+        (l.usuario ? '<b>' + esc(l.usuario) + ':</b> ' : '') + esc(l.texto) + '</div></li>';
+    }).join('');
+    // Guía de diagnóstico
+    var g = d.guia, h = '';
+    if (!g.componentes.length) h = '<p class="sc-vacio">No hay componentes cargados para este servicio.</p>';
+    else h = '<ul class="sc-comp">' + g.componentes.map(function (c) {
+      return '<li' + (i.componente_causa_id === c.id ? ' class="causa"' : '') + '><b>' + esc(c.nombre) + '</b>' + (c.area ? '<span class="area">' + esc(c.area) + '</span>' : '') +
+        (c.que_revisar ? '<p>' + esc(c.que_revisar) + '</p>' : '') +
+        (c.depende_de.length ? '<div class="dep">' + c.depende_de.map(function (x) { return '<span>Depende de <b>' + esc(x.nombre) + '</b>' + (x.area ? ' · ' + esc(x.area) : '') + '</span>'; }).join('') + '</div>' : '') + '</li>';
+    }).join('') + '</ul>';
+    if (g.antecedentes.length) h += '<h3>Incidentes parecidos</h3><ul class="sc-ant">' + g.antecedentes.map(function (a) {
+      return '<li><b>IM-' + a.id + ' · ' + esc(a.titulo) + '</b>' + esc(fecha(a.inicio)) + (a.componente ? ' · ' + esc(a.componente) : '') + '<br>Causa raíz: ' + esc(a.causa_raiz || 'sin cargar') + '</li>';
+    }).join('') + '</ul>';
+    if (g.causas_alertas.length) h += '<h3>Causas frecuentes de este servicio (30 días)</h3><ul class="sc-ant">' + g.causas_alertas.map(function (c) { return '<li>' + esc(c.causa) + ' · ' + c.veces + (c.veces === 1 ? ' vez' : ' veces') + '</li>'; }).join('') + '</ul>';
+    $('u-guia').innerHTML = h;
+  }
+  function cargarUno() {
+    return pedir('/api/incidentes/' + ID).then(function (r) { d = r; pintar(); })
+      .catch(function (e) { $('u-titulo').textContent = 'No se pudo abrir la sala'; $('u-sub').textContent = e.message; });
+  }
+  function cargar() { return ID ? cargarUno() : cargarLista(); }
+
+  // ---------- Elegir alertas (abrir o sumar) ----------
+  function abrirAlertas(modo) {
+    modoAlertas = modo; errorForm('al-error');
+    $('al-titulo').textContent = modo === 'abrir' ? 'Abrir sala de crisis' : 'Sumar alertas a la sala';
+    $('al-ok').textContent = modo === 'abrir' ? 'Abrir sala' : 'Sumar';
+    $('al-tit-campo').hidden = $('al-desc-campo').hidden = modo !== 'abrir';
+    $('al-tit').value = ''; $('al-desc').value = '';
+    $('al-lista').innerHTML = '<li class="sc-vacio">Cargando…</li>';
+    $('dlg-alertas').showModal();
+    pedir('/api/incidentes/candidatas').then(function (r) {
+      var xs = r.alertas || [];
+      $('al-lista').innerHTML = xs.length ? xs.map(function (a) {
+        return '<li><label class="' + (a.en_sala ? 'no' : '') + '"><input type="checkbox" value="' + esc(a.alerta_id) + '"' + (a.en_sala ? ' disabled' : '') + '>' +
+          '<span><b>' + esc(a.problema) + '</b> · ' + esc(a.cliente_id) + ', ' + esc(a.servicio) + ' por ' + esc(a.canal) +
+          '<small><span class="sev ' + esc(a.severidad) + '">' + esc(SEV_TXT[a.severidad]) + '</span> desde ' + esc(fecha(a.desde)) + (a.en_sala ? ' · ya está en ' + esc(a.en_sala) : '') + '</small></span></label></li>';
+      }).join('') : '<li class="sc-vacio">No hay alertas abiertas para sumar.</li>';
+    }).catch(function (e) { $('al-lista').innerHTML = '<li class="sc-vacio">' + esc(e.message) + '</li>'; });
+  }
+  $('btn-abrir').addEventListener('click', function () { abrirAlertas('abrir'); });
+  $('f-alertas').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var ids = Array.prototype.map.call(document.querySelectorAll('#al-lista input:checked'), function (x) { return x.value; });
+    if (!ids.length) { errorForm('al-error', 'Elegí al menos una alerta.'); return; }
+    var b = $('al-ok'); b.disabled = true;
+    var p = modoAlertas === 'abrir' ? pedir('/api/incidentes', { alertas: ids, titulo: $('al-tit').value.trim() || null, descripcion: $('al-desc').value.trim() || null })
+      : pedir('/api/incidentes/' + ID + '/alertas', { alertas: ids });
+    p.then(function (r) {
+      $('dlg-alertas').close();
+      if (modoAlertas === 'abrir') location.href = '/incidente/' + r.incidente.id; else { toast('Alertas sumadas.'); cargar(); }
+    }).catch(function (e) { errorForm('al-error', e.message); }).then(function () { b.disabled = false; });
+  });
+
+  // ---------- Tareas, escalar, notas y estado ----------
+  function opciones(sel, xs, vacio) { sel.innerHTML = '<option value="">' + vacio + '</option>' + xs.map(function (x) { return '<option value="' + x.id + '">' + esc(x.nombre) + (x.perfil === 'ANALISTA' ? ' (analista)' : '') + '</option>'; }).join(''); }
+  function abrirTarea(modo) {
+    modoTarea = modo; errorForm('ta-error'); $('f-tarea').reset();
+    var o = d.opciones || { personas: [], equipos: [] };
+    opciones($('ta-persona'), o.personas, 'Nadie en particular'); opciones($('ta-equipo'), o.equipos, 'Ningún equipo'); opciones($('ta-comp'), d.componentes || [], 'Ninguno');
+    var esc_ = modo === 'escalar';
+    $('ta-titulo-dlg').textContent = esc_ ? 'Escalar el incidente' : 'Nueva tarea';
+    $('ta-tit-campo').hidden = esc_; $('ta-comp-campo').hidden = esc_;
+    $('ta-det-et').textContent = esc_ ? 'Por qué se escala' : 'Detalle (opcional)';
+    $('ta-ok').textContent = esc_ ? 'Escalar' : 'Asignar';
+    $('dlg-tarea').showModal();
+  }
+  $('btn-tarea').addEventListener('click', function () { abrirTarea('tarea'); });
+  $('f-tarea').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var c = { responsable_usuario_id: $('ta-persona').value || null, equipo_id: $('ta-equipo').value || null };
+    var url = '/api/incidentes/' + ID + (modoTarea === 'escalar' ? '/escalar' : '/tareas');
+    if (modoTarea === 'escalar') { c.usuario_id = c.responsable_usuario_id; c.motivo = $('ta-det').value.trim(); }
+    else { c.titulo = $('ta-tit').value.trim(); c.detalle = $('ta-det').value.trim() || null; c.componente_id = $('ta-comp').value || null; }
+    var b = $('ta-ok'); b.disabled = true;
+    pedir(url, c).then(function () { $('dlg-tarea').close(); toast(modoTarea === 'escalar' ? 'Escalado: le llegó el aviso.' : 'Tarea asignada: le llegó el aviso.'); cargar(); })
+      .catch(function (e) { errorForm('ta-error', e.message); }).then(function () { b.disabled = false; });
+  });
+  $('f-hecha').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var t = $('he-res').value.trim(); if (!t) { errorForm('he-error', 'Contá qué se encontró o qué se hizo.'); return; }
+    pedir('/api/incidentes/' + ID + '/tareas/' + tareaHecha, { estado: 'HECHA', resultado: t }).then(function () { $('dlg-hecha').close(); toast('Tarea hecha.'); cargar(); })
+      .catch(function (e) { errorForm('he-error', e.message); });
+  });
+  $('f-cerrar').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    pedir('/api/incidentes/' + ID + '/estado', { estado: 'CERRADO', causa_raiz: $('ce-causa').value.trim(), componente_causa_id: $('ce-comp').value || null, resumen_cierre: $('ce-res').value.trim() || null })
+      .then(function () { $('dlg-cerrar').close(); toast('Incidente cerrado.'); cargar(); }).catch(function (e) { errorForm('ce-error', e.message); });
+  });
+  $('f-nota').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var t = $('nota-txt').value.trim(); if (!t) return;
+    pedir('/api/incidentes/' + ID + '/notas', { texto: t }).then(function () { $('nota-txt').value = ''; cargar(); }).catch(function (e) { toast(e.message, true); });
+  });
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-est],[data-sc],[data-te]'); if (!b || !d) return;
+    if (b.dataset.sc === 'escalar') return abrirTarea('escalar');
+    if (b.dataset.sc === 'sumar') return abrirAlertas('sumar');
+    if (b.dataset.est === 'CERRADO') { $('f-cerrar').reset(); errorForm('ce-error'); opciones($('ce-comp'), d.componentes || [], 'No se sabe'); $('dlg-cerrar').showModal(); return; }
+    if (b.dataset.est) {
+      b.disabled = true;
+      return pedir('/api/incidentes/' + ID + '/estado', { estado: b.dataset.est }).then(function () { toast('Estado actualizado.'); cargar(); })
+        .catch(function (e) { b.disabled = false; toast(e.message, true); });
+    }
+    if (b.dataset.te === 'HECHA') { tareaHecha = Number(b.dataset.t); $('f-hecha').reset(); errorForm('he-error'); $('he-tarea').textContent = b.closest('li').querySelector('b').textContent; $('dlg-hecha').showModal(); return; }
+    if (b.dataset.te) {
+      b.disabled = true;
+      pedir('/api/incidentes/' + ID + '/tareas/' + b.dataset.t, { estado: b.dataset.te }).then(function () { cargar(); }).catch(function (e) { b.disabled = false; toast(e.message, true); });
+    }
+  });
+
+  pedir('/api/yo').then(function (r) {
+    yo = r.usuario; permisos = r.permisos || [];
+    if (yo.debe_cambiar) { location.href = '/'; return; }
+    $('avatar-ini').textContent = iniciales(yo.nombre);
+    $('menu-nombre').textContent = yo.nombre; $('menu-perfil').textContent = PERFIL_TXT[yo.perfil] || yo.perfil;
+    $('lnk-admin').hidden = !puedo('admin_panel');
+    $('lnk-seg').hidden = !puedo('seguimiento');
+    if ($('lnk-misal')) $('lnk-misal').hidden = !puedo('mis_alertas');
+    if ($('lnk-com')) $('lnk-com').hidden = !puedo('comunicados');
+    if ($('lnk-sala')) $('lnk-sala').hidden = !puedo('sala_crisis');
+    if (!puedo('tablero')) { $('lnk-tablero').hidden = true; $('lnk-marca').setAttribute('href', puedo('mis_alertas') ? '/mis-alertas' : '/incidentes'); }
+    if ($('btn-tablero')) $('btn-tablero').style.display = 'none';
+    if (!puedo('asistente')) { var ab = $('asis-boton'); if (ab) ab.style.display = 'none'; }
+    $('vista-lista').hidden = !!ID; $('vista-uno').hidden = !ID;
+    return cargar();
+  }).catch(function (e) { toast(e.message, true); });
+})();
+</script>

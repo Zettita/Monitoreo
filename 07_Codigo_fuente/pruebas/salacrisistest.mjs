@@ -68,6 +68,12 @@ const OTRA=q1("select alerta_id from alertas_historico where estado!='RESUELTA' 
 ok('hay otra alerta abierta para sumar', !!OTRA);
 { r=await call(ck.ana,'POST',`/api/incidentes/${IM}/alertas`,{alertas:[OTRA.alerta_id]}); ok('se suma una alerta de otro servicio', r.s===200 && n('select count(*) n from incidente_alertas where incidente_id=?',IM)===3, r.j); }
 
+// ---------- Alertas candidatas y páginas ----------
+r=await call(ck.sol,'GET','/api/incidentes/candidatas'); ok('Soporte no ve las alertas candidatas (403)', r.s===403);
+r=await call(ck.ana,'GET','/api/incidentes/candidatas'); ok('candidatas: una por grupo, graves primero, y marca las que ya están en IM-4', r.s===200 && r.j.alertas.length>0 && r.j.alertas.filter(a=>a.en_sala==='IM-4').length===n('select count(*) n from incidente_alertas where incidente_id=?',IM) && r.j.alertas[0].severidad==='CRITICA', r.j.alertas.slice(0,3));
+r=await call(ck.ana,'GET',`/incidente/${IM}`); ok('la página de la sala lleva el contexto para el asistente y el menú', r.s===200 && r.t.includes('window.ASIS_INCIDENTE = ID') && r.t.includes('id="lnk-sala"') && r.t.includes('Guía de diagnóstico'));
+r=await call(ck.ana,'GET',`/alerta/${A1}`); ok('el detalle de la alerta tiene el aviso de la sala, el botón y ?comunicar', r.t.includes('id="sala-aviso"') && r.t.includes('data-acc="sala"') && r.t.includes("helios_comunicar_msg"));
+
 // ---------- Quién ve qué ----------
 r=await call(ck.sol,'GET',`/api/incidentes/${IM}`); ok('Soporte sin tareas no entra a la sala (403)', r.s===403);
 r=await call(ck.sol,'GET','/api/incidentes'); ok('y no la ve en la lista', r.s===200 && r.j.incidentes.length===0);

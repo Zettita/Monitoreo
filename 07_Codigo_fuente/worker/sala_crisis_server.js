@@ -4,6 +4,7 @@
 //
 //   GET  /incidentes · /incidente/<id>                páginas
 //   GET  /api/incidentes                             lista (abiertos y cerrados de los últimos 30 días) y contador
+//   GET  /api/incidentes/candidatas                  alertas abiertas que se pueden sumar (Analista)
 //   GET  /api/incidentes/<id>                        la sala: incidente, alertas, tareas, línea de tiempo, guía, opciones
 //   POST /api/incidentes                             {alertas:[alerta_id], titulo?, descripcion?}         abrir (Analista)
 //   POST /api/incidentes/<id>/alertas                {alertas:[alerta_id]}                                sumar (Analista)
@@ -363,6 +364,23 @@ async function incidentesDeAlerta(env, alertaId) {
   } catch (e) { if (/no such table/i.test(e.message)) return []; throw e; }
 }
 
+// ---------- Alertas abiertas que se pueden sumar (una por grupo: tipo + serie), para abrir o sumar desde la página ----------
+async function candidatasIncidente(env) {
+  const r = await env.DB.batch([
+    env.DB.prepare(`SELECT MIN(alerta_id) AS alerta_id, tipo_alerta, cliente_id, servicio_id, canal_id, MIN(ventana_inicio) AS desde,
+        MIN(CASE severidad_maxima WHEN 'CRITICA' THEN 1 WHEN 'ALTA' THEN 2 ELSE 3 END) AS sev, MAX(asignado_usuario_id) AS asignado_usuario_id
+      FROM alertas_historico WHERE estado IN ('ABIERTA', 'RECONOCIDA') AND severidad_maxima <> 'BAJA'
+      GROUP BY tipo_alerta, ambiente, cliente_id, servicio_id, producto_id, canal_id, moneda_id, duracion_ventana_minutos ORDER BY sev, desde LIMIT 100`),
+    env.DB.prepare(`SELECT ia.incidente_id, ia.tipo_alerta, ia.cliente_id, ia.servicio_id, ia.canal_id FROM incidente_alertas ia
+      JOIN incidentes_mayores im ON im.id = ia.incidente_id AND im.estado <> 'CERRADO'`),
+  ]);
+  const en = new Map(r[1].results.map((x) => [[x.tipo_alerta, x.cliente_id, x.servicio_id, x.canal_id].join('|'), x.incidente_id]));
+  const SEV = ['', 'CRITICA', 'ALTA', 'MEDIA'];
+  return okJson({ alertas: r[0].results.map((a) => ({ alerta_id: a.alerta_id, problema: PUSH_FRASE[a.tipo_alerta] || a.tipo_alerta, tipo_alerta: a.tipo_alerta,
+    cliente_id: a.cliente_id, servicio: PUSH_SERVICIO[a.servicio_id] || a.servicio_id, canal: PUSH_CANAL[a.canal_id] || a.canal_id, desde: a.desde, severidad: SEV[a.sev],
+    en_sala: en.has([a.tipo_alerta, a.cliente_id, a.servicio_id, a.canal_id].join('|')) ? imCodigo(en.get([a.tipo_alerta, a.cliente_id, a.servicio_id, a.canal_id].join('|'))) : null })) });
+}
+
 // ---------- Rutas ----------
 async function rutasSalaCrisis(env, request, ruta, yo) {
   const m = request.method;
@@ -381,6 +399,10 @@ async function rutasSalaCrisis(env, request, ruta, yo) {
       return await abrirIncidente(env, request, yo);
     }
     if (ruta === '/api/incidentes/contador' && m === 'GET') return await contadorIncidentes(env, yo);
+    if (ruta === '/api/incidentes/candidatas' && m === 'GET') {
+      if (!puede(yo, 'sala_crisis_dirigir')) return jsonError('Solo un analista puede abrir o sumar alertas a una sala.', 403);
+      return await candidatasIncidente(env);
+    }
     const x = ruta.match(/^\/api\/incidentes\/(\d+)(?:\/(alertas|tareas|notas|estado|escalar)(?:\/(\d+))?)?$/);
     if (!x) return null;
     const id = Number(x[1]), que = x[2], tid = x[3] ? Number(x[3]) : null;

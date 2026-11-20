@@ -2,7 +2,7 @@
 
 > Primera etapa del **AICIM** (Asistente Inteligente de Coordinación de Incidentes Mayores), el que se presenta como "próxima capacidad" al final del video de demostración. Este documento lo leen el equipo y la IA de Ale: si algo cambia, se actualiza acá primero.
 >
-> **Estado (20/11):** decisiones confirmadas por Ale. Paso 3 hecho: script 24 generado y probado (ver sección 3). Sigue el paso 4 (`patch69.py`).
+> **Estado (20/11):** decisiones confirmadas por Ale. Pasos 3 y 4 hechos y probados en la rama `version-parche-69-sala-de-crisis` (sección 5.1). Siguen el paso 5 (escenas 20 a 22) y el 6 (modelo real y publicación). **Todavía no se publica:** `01_Worker/` sigue con el Worker del parche 68.
 
 ## 1. Qué es y qué no es la etapa 1
 
@@ -94,6 +94,15 @@ En este orden, cada paso con su prueba antes del siguiente:
 5. **Pantalla `/incidente/<id>`** (y la lista `/incidentes`): cabecera con estado, severidad, quién dirige y cuánto lleva; columnas de alertas, tareas y línea de tiempo; panel de diagnóstico; el asistente abierto en el contexto del incidente. Mismo tema que el resto (parche 58) y que funcione en el celular. Enlace "Sala de crisis" en el menú del usuario con el número de salas abiertas.
 
 **Cuidado del plan gratuito:** la sala se carga en un solo viaje (~6 consultas, decenas de filas); nada se recalcula en cada carga; cada acción escribe 2 o 3 filas (acción + línea de tiempo + auditoría). El asistente dentro de la sala usa las mismas cuotas de siempre.
+
+### 5.1 Cómo quedó (paso 4, 20/11)
+- **Archivos:** `sala_crisis_server.js` (rutas, permisos, línea de tiempo, avisos, guía), `sala_crisis_asistente.js` (herramientas y propuestas del asistente), `sala_crisis.html` (página) y `patch69.py` (los inserta y toca el detalle de la alerta, el menú, la campanita, el push, "Preparar demo" y el panel del asistente).
+- **Ruta extra** que no estaba en el plan: `GET /api/incidentes/candidatas` (Analista): las alertas abiertas que se pueden sumar, una por grupo, graves primero, marcando las que ya están en otra sala. La usa el diálogo "Abrir sala de crisis" / "Sumar alertas". También `GET /api/incidentes/contador`.
+- **Detalle de la alerta:** aviso "Es parte de la sala de crisis IM-N" (o "Fue parte", si se cerró), botón "Abrir sala de crisis" (Analista, si la alerta no está en una sala abierta) y `?comunicar`, que abre "Comunicar incidente" con el mensaje que armó el asistente. Comunicar una alerta que está en una sala abierta deja el renglón COMUNICADO en la línea de tiempo de la sala.
+- **Asistente:** las herramientas y propuestas de la sala se le ofrecen al modelo **solo si la pregunta se hace dentro de la sala** (`incidente_id`); afuera el asistente queda igual que antes (lo controla `salacrisistest`). Las tareas que propone y confirma una persona quedan marcadas ("Asistente" en la tarjeta, `propuesta_por_asistente = 1`, y "(propuesta del asistente)" en la auditoría).
+- **Avisos:** `TAREA_INCIDENTE` (tarea nueva o escalamiento) e `INCIDENTE` (tarea hecha, cambio de estado), con `alerta_id = 'i' + número`; la campanita y el push llevan a `/incidente/<id>`. Una tarea de un equipo le avisa a su gente de Soporte.
+- **Pantalla:** cabecera con estado, gravedad, desde cuándo y quién dirige; botones de quien dirige (mitigado, resuelto, volver a abierto, cerrar con causa raíz, escalar, sumar alertas, comunicar); tres columnas (alertas y guía · tareas · línea de tiempo con notas); en el celular, una debajo de la otra con las tareas primero. Gerente y Administrador la ven sin botones. Enlace "Sala de crisis" en el menú del usuario de todas las páginas.
+- **Probado:** `salacrisistest.mjs` (93 controles: permisos de los 4 perfiles, abrir y sumar, una alerta en una sola sala abierta, tareas a persona y a equipo, notas, escalar, comunicar, estados y cierre, auditoría y línea de tiempo de cada acción, guía y antecedentes, asistente con modelo simulado, candidatas, páginas, Preparar demo y sin el script 24); demo igual y toda la batería; pantallas en PC (Analista, Soporte, Gerente) y celular, sin errores de JavaScript ni desplazamiento horizontal.
 
 ## 6. Demo (paso 5)
 Escenas **20** "Se abre la sala de crisis" (el Analista agrupa la caída de CLI_006 y las alertas de aprobaciones), **21** "El asistente propone las tareas" (diagnóstico: gateway y proveedor; dos tareas a Soporte) y **22** "Servicio restablecido" (mitigado, comunicado y cierre con causa raíz). "Preparar demo" borra los incidentes mayores **abiertos** y los de la demo, y deja los 3 de historia.

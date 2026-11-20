@@ -53,7 +53,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 - `Helios_inventario_de_tablas.docx` — inventario y detalle de todas las tablas (estilo de los documentos del equipo).
 - `contexto_helios_para_ia.md` — contexto completo del proyecto para pasarle a otra IA.
 - `novedades_comunicados.md` — comunicar incidente por push (parche 46; desde el 63 con equipos en lugar de listas de difusión): perfil "Solo comunicados", equipos con rol por persona, Recibido y respuestas; cómo ponerlo en marcha y límites.
-- `plan_sala_crisis_etapa1.md` — plan de la sala de crisis (etapa 1 del AICIM, parche 69): qué incluye, decisiones, tablas, permisos, pasos y pruebas.
+- `plan_sala_crisis_etapa1.md` — plan de la sala de crisis (etapa 1 del AICIM, parche 69): qué incluye, decisiones, tablas, permisos, pasos, cómo quedó y pruebas.
 - `integracion_tickets.md` — Jira ya crea el issue en el proyecto KAN; InvGate sigue para completar. Qué recibe y devuelve cada función, cómo prenderlo y cómo probarlo.
 - `novedades_ticketera.md` — ticketera (14/11): detalle de cada alerta, evidencia adjunta y resolución con causa; cómo activarlo.
 - `novedades_avisos_push_y_app.md` — avisos push, app instalable y logo nuevo (12/11): guía por dispositivo y problemas comunes.
