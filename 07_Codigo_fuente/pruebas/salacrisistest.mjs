@@ -171,6 +171,16 @@ pedidos.length=0; respuestas=[{response:'Vamos bien.'}];
 r=await call(ck.ana,'POST','/api/asistente',{incidente_id:IM,pregunta:'¿Cómo vamos?'});
 m0=pedidos[0]?(pedidos[0].messages.find(x=>x.role==='user'&&String(x.content).includes('Datos de Helios'))||{}).content||'':'';
 ok('"¿Cómo vamos?": estado y tareas, sin guía ni lo de afuera, y sin botón', !m0.includes('"guia_diagnostico":') && !m0.includes('"contexto_externo":') && m0.includes('"tareas_incidente":') && m0.includes('"estado_incidente":') && (r.j.acciones||[]).length===0, m0.slice(0,300));
+// Parche 72: Gemma escribió la llamada como texto y la tarjeta parecía decir que Soporte era el proveedor
+respuestas=[{response:'Te sugiero escalar al proveedor de cobranza.\nsugerir_accion(tipo="escalar", incidente_id='+IM+', motivo="El problema de pagos (CLI_006) requiere revisión del proveedor de cobranza.")'}];
+r=await call(ck.ana,'POST','/api/asistente',{incidente_id:IM,pregunta:'¿Escalo esto al proveedor?'});
+const esc2=(r.j.acciones||[]).find(a=>a.tipo==='escalar');
+ok('la llamada escrita como texto no se muestra', r.s===200 && !/sugerir_accion|incidente_id=/.test(r.j.respuesta) && /^Te sugiero escalar/.test(r.j.respuesta), r.j.respuesta);
+ok('el botón Escalar usa el motivo que escribió el modelo y aclara que es una tarea de Soporte', esc2 && esc2.comentario.startsWith('El problema de pagos (CLI_006) requiere revisión del proveedor de cobranza.') && /persona de Soporte, que contacta al proveedor/.test(esc2.motivo) && /lo gestiona/.test(r.j.respuesta), [esc2, r.j.respuesta]);
+respuestas=[{response:'Hubo 3 incidentes (por cliente) en la semana.'}];
+r=await call(ck.ana,'POST','/api/asistente',{incidente_id:IM,pregunta:'¿Cómo vamos?'});
+ok('los paréntesis comunes no se toman como llamada', r.j.respuesta==='Hubo 3 incidentes (por cliente) en la semana.', r.j.respuesta);
+r=await call(ck.ana,'GET',`/incidente/${IM}`); ok('la tarjeta de escalar dice "lo gestiona"', r.t.includes("' · lo gestiona '"));
 delete env.CONTEXTO_EXTERNO;
 pedidos.length=0; r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿Cómo está la operación?'});
 const herr=JSON.stringify((pedidos[0]&&pedidos[0].tools)||[]);

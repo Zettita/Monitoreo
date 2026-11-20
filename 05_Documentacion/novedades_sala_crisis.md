@@ -38,6 +38,8 @@ Después, como **Gerente**: las mismas preguntas responden, pero sin botones. Co
 
 Fuera de la sala, el asistente tiene que responder igual que antes. Probar una pregunta sugerida del tablero.
 
+**Prueba completa:** el gold set `Helios_gold_set_asistente.docx` tiene 20 preguntas con la respuesta esperada y la planilla de puntaje.
+
 **En Observability**, revisar que no aparezcan `Asistente: respuesta vacía` ni `no aceptó enable_thinking`. Si algo no responde bien, anotar la pregunta, el perfil y la respuesta, para ajustar la guía de esa pregunta (`SALA_SUGERENCIAS` en `sala_crisis_asistente.js`).
 
 ## 4. Qué puede hacer cada perfil

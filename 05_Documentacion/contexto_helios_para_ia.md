@@ -479,6 +479,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Llamadas escritas como texto y "lo gestiona" en Escalar (20/11, parche 72; sin SQL, falta publicar)**
+
+- Gemma escribió la propuesta como texto (`sugerir_accion(…)`) y la tarjeta "Escalar el incidente a <persona de Soporte>" se leía como si esa persona fuera el proveedor. Ahora esas llamadas escritas se leen como llamadas y no se muestran, y la tarjeta dice "· lo gestiona <persona>" (escalar crea una tarea para quien contacta al proveedor).
+- Gold set del asistente: `Helios_gold_set_asistente.docx` (20 preguntas, 8 críticas, pasa con 34 de 40).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche72/`, ramas `respaldo-antes-parche-72` y `version-parche-72-asistente-llamadas-y-escalar`.
+
 **Asistente en la sala: preguntas libres (20/11, parche 71; sin SQL, falta publicar)**
 
 - Con Gemma, "¿Escalo esto al proveedor?" dentro de la sala respondía "dejame consultar…" sin consultar ni dejar botón. Ahora la pregunta libre en la sala lleva estado, tareas y, según las palabras, la guía de diagnóstico y el contexto externo; si se pregunta por escalar y el modelo no lo propuso ni dijo que no hace falta, el servidor deja el botón Escalar. En todo el asistente, si el modelo anuncia una consulta sin hacerla, se le insiste una vez.
@@ -933,7 +939,7 @@ Hugo quedó en mandar un documento; cuando llegue, se arma el plan y recién ah�
 - [ ] Definir advertencia vs. alerta (por ejemplo, `MEDIA` y `BAJA` = advertencia).
 - [x] Prioridad P1–P4 en "Mis alertas" y en Seguimiento.
 - [ ] Validar que los equipos tengan solo gente de Soporte (hoy se puede sumar un analista, que no va a poder tomar lo que se derive al equipo).
-- [x] Asistente de IA con Workers AI, por perfil, que propone y no ejecuta (13/11, parche 28). Publicado el 13/11. Falta: probar la calidad de las respuestas con el modelo real; armar un set de 20 o 30 preguntas de prueba.
+- [x] Asistente de IA con Workers AI, por perfil, que propone y no ejecuta (13/11, parche 28). Publicado el 13/11. Falta: probar la calidad de las respuestas con el modelo real con el gold set (`Helios_gold_set_asistente.docx`, 20/11).
 - [ ] Contexto externo del asistente (parche 29, publicado el 13/11): probar con las fuentes reales. Más adelante: que los eventos comerciales también ajusten lo esperado (hoy solo los usa el asistente).
 - [ ] Ideas de IA ya ofrecidas: resumen del incidente en lenguaje natural, índice de riesgo por cliente y, más adelante, un modelo de machine learning para comparar contra la línea base.
 - [ ] Simulación en vivo para la demo: botones que provoquen una caída, suban los rechazos o corten el envío, con ventanas de 1 minuto.
