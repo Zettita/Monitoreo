@@ -82,7 +82,7 @@ async function documentoCliente() {
     ['Datos', 'El resumen no sale de la empresa. No hay un tercero que lo procese.'],
     ['Para ponerla', 'Un servicio en el servidor propio que habla el mismo idioma que las opciones A y B. Helios cambia el destino de la consulta.'],
   ], true));
-  h.push(...H.nota('idea', 'La placa de video no es obligatoria', 'el desarrollo arranca con el procesador del servidor y un modelo mediano. Alcanza para construir y probar la integración. Para el chat, con varias personas a la vez, una placa de video deja la respuesta en pocos segundos; sin ella puede tardar bastante más. Se compra solo si una prueba de velocidad lo pide. Una de 32 GB cuesta hoy entre USD 6.200 y USD 11.900.'));
+  h.push(...H.nota('idea', 'La placa de video no es obligatoria', 'el desarrollo arranca con el procesador del servidor y un modelo mediano. Alcanza para construir y probar la integración. Para el chat, con varias personas a la vez, una placa de video deja la respuesta en pocos segundos; sin ella puede tardar bastante más. Se compra solo si una prueba de velocidad lo pide. La que conviene es una RTX PRO 4500 (32 GB, placa de trabajo, unos USD 4.600 a 5.900), no una o dos RTX 3090.'));
 
   h.push(H.titulo(2, 'D. Servidor propio, con un proveedor pago de respaldo'));
   h.push(H.P('El servidor propio atiende todas las consultas. Si no responde, o si seguridad habilita un caso difícil, Helios usa la opción B. Antes de salir, se sacan nombres de clientes y de personas.'));
@@ -119,7 +119,7 @@ async function documentoCliente() {
   h.push(H.P('El servidor propio no paga por consulta. Estos son los costos que sí puede tener, y cuáles hacen falta para empezar:'));
   h.push(...H.tabla(['Concepto', '¿Hace falta para empezar?', 'Valor orientativo'], cols(3.4, 2.4, 4.2), [
     ['Servidor propio', 'Sí. Ya está previsto', 'El de la máquina prevista (4 procesadores, 8 a 16 GB de memoria). Para un modelo mediano conviene 32 GB de memoria.'],
-    ['Placa de video de 32 GB', 'No. Solo si el chat queda lento', 'USD 6.200 a USD 11.900 hoy (lanzamiento: USD 1.999). Cotizar en el país.'],
+    ['Placa de video de 32 GB (RTX PRO 4500)', 'No. Solo si el chat queda lento', 'USD 4.600 a USD 5.900, nueva. La RTX 5090, del mismo tamaño, sale USD 6.200 a 11.900 y gasta casi el triple.'],
     ['Placa de 96 GB', 'No. Solo para un modelo más grande', 'A cotizar. Alquilada, cerca de USD 1.600 por mes.'],
     ['Electricidad de una placa', 'Solo si se compra', 'Estimado: unos 150 kWh por mes en reposo, más cuando responde.'],
     ['Horas de desarrollo', 'Sí', 'Las pone el equipo. Es la integración de la opción C.'],
@@ -145,6 +145,16 @@ async function documentoCliente() {
     'La luz del servidor propio son unos cientos de kWh por mes. En pesos hay que mirar la tarifa: al lado de la nube, es poco.',
   ]));
   h.push(...H.nota('regla', 'El precio no cambia la seguridad', 'hostear el modelo en AWS o en Google Cloud saca el resumen de la empresa, igual que la opción B. Pasa por la misma revisión de la sección 7.'));
+
+  h.push(H.titulo(2, '6.2 Si hay que escalar'));
+  h.push(H.P('Se sube de a un escalón, midiendo en cada uno. No se compra la placa de arriba por las dudas.'));
+  h.push(...vinetas([
+    '**1.** Medir en el servidor, sin placa, con consultas reales. Si el chat sirve, no se compra nada.',
+    '**2.** Si queda lento: una RTX PRO 4500 (32 GB). Alcanza para los modelos de esta propuesta. Una 3090 se queda corta (24 GB) y dos 3090 no se suman solas en una memoria de 48 GB.',
+    '**3.** Si el modelo no entra en esos 32 GB: una sola placa más grande (48 o 96 GB). No sumar 3090.',
+    '**4.** Si el modelo entra y responde bien, pero se encolan varias personas: un segundo servidor igual, con la misma placa.',
+    '**5.** Si la placa no se consigue o el pico dura pocas semanas: alquilar en AWS o Google Cloud, y apagarla cuando pase.',
+  ]));
 
   h.push(H.titulo(1, '7. Seguridad'));
   h.push(H.P('Esta sección está escrita para revisarla con seguridad informática. El control no está en el modelo: está en Helios, antes de armar el resumen y después de recibir la respuesta.'));
@@ -388,7 +398,7 @@ async function documentoIngenieria() {
   h.push(H.P('Para desarrollar no hace falta GPU. El servidor previsto (4 vCPU, 8 a 16 GB de RAM) alcanza para un modelo de 4 a 9 mil millones. Para Qwen3.6-35B-A3B en CPU hacen falta unos 32 GB de RAM. Si la prueba de chat no entra en la latencia, recién ahí se mira una GPU: su memoria tiene que alojar el modelo más la caché de cada consulta en paralelo.'));
   h.push(...H.tabla(['Nivel', 'GPU', 'Modelos que entran', 'Consultas en paralelo (contexto de 64.000)'], cols(1.2, 2.2, 3.8, 2.8), [
     ['0. Pruebas', '8 a 16 GB', 'Qwen3.5-9B (5,6 GB), gpt-oss-20b (12,1 GB)', 'Pocas; para ensayos y tareas livianas.'],
-    ['1. Producción chica', '24 a 32 GB (por ejemplo RTX 5090 de 32 GB)', 'Qwen3.6-35B-A3B (20,4 GB), GLM-4.7-Flash (18,2 GB), Gemma 4 26B-A4B (14,6 GB)', 'Con 32 GB, Qwen3.6-35B-A3B admite 5 consultas de 64.000 tokens (11 con caché de 8 bits). gpt-oss-20b admite 10.'],
+    ['1. Producción chica', '32 GB (RTX PRO 4500). La 3090, de 24 GB, queda justa', 'Qwen3.6-35B-A3B (20,4 GB), GLM-4.7-Flash (18,2 GB), Gemma 4 26B-A4B (14,6 GB)', 'Con 32 GB, Qwen3.6-35B-A3B admite 5 consultas de 64.000 tokens (11 con caché de 8 bits). En 24 GB entra el modelo y queda poco lugar para el contexto.'],
     ['2. Producción con margen', '96 GB (por ejemplo RTX PRO 6000 Blackwell)', 'gpt-oss-120b (63,4 GB), Mistral Small 4 (72 GB), Qwen3.5-122B-A10B', 'Más holgura para varias consultas a la vez; medir con el modelo elegido.'],
   ], true));
   h.push(H.P('Los tamaños y la concurrencia salen de un cálculo de terceros (vdf.ai). Los confirmamos con la GPU y el modelo elegidos.', { run: { size: 18, color: '5F5F5F' } }));
@@ -471,6 +481,30 @@ async function documentoIngenieria() {
     '**Los datos salen**, igual que en una API. El contrato de no entrenamiento, retención y país aplica también acá. Una GPU en la VPC del cliente no es lo mismo que un modelo en su servidor.',
   ]));
 
+  h.push(H.titulo(2, '8.6 RTX PRO 4500 en lugar de las 3090, y cómo escalar'));
+  h.push(H.P('Sí: para Helios conviene una RTX PRO 4500 y no una o dos RTX 3090. Las dos tienen un ancho de banda parecido (896 contra 936 GB/s), así que una consulta sola sale a una velocidad parecida. La diferencia está en la memoria, el consumo y que la PRO 4500 es una placa de trabajo.'));
+  h.push(...H.tabla(['Criterio', 'Una RTX 3090', 'Dos RTX 3090', 'RTX PRO 4500', 'RTX 5090'], cols(1.7, 2.1, 2.3, 2.3, 1.7), [
+    ['Memoria', '24 GB', '48 GB solo si el programa parte el modelo en dos', '32 GB, de una', '32 GB, de una'],
+    ['Consumo', '350 W', '700 W', '200 W', '575 W'],
+    ['Uso continuo', 'No. Sin ECC. Usada', 'Peor: dos usadas, el doble de calor', 'Sí. ECC, pensada para eso', 'No. Sin ECC'],
+    ['Precio, nov 2026', 'USD 1.600 a 1.800, usada', 'El doble', 'USD 4.600 a 5.900, nueva', 'USD 6.200 a 11.900'],
+    ['Para estos modelos', 'Entra justo y deja poco contexto', 'No evita el problema y complica la operación', '**La que conviene para empezar**', 'Más rápida, si la prueba lo pide'],
+  ], true));
+  h.push(H.P('Dos placas de 24 GB no se ven como una de 48 GB. Ollama y el servicio simple cargan el modelo en una sola. Partirlo en dos (vLLM en paralelo) es otra puesta en marcha, y sin un puente NVLink el cruce entre placas va por el bus de la máquina y se pierde buena parte de la velocidad. Una PRO 4500 deja unos 11 GB libres después de cargar Qwen3.6-35B-A3B (20,4 GB). Una 3090 deja unos 4 GB: entra el modelo y se queda sin lugar en cuanto hay contexto o una segunda consulta.'));
+  h.push(H.P('La PRO 4500 sale menos que la 5090 al precio de hoy, gasta un tercio y es la placa profesional que ya preferíamos para un servicio de todo el día. La 5090 sigue siendo el doble de rápida (1.792 GB/s). Se mira recién si una PRO 4500 responde bien de memoria pero no llega a los 8 segundos.'));
+  h.push(H.titulo(3, 'Pasos para escalar'));
+  h.push(H.P('Se sube de a un escalón y se vuelve a medir con las mismas consultas. No se compra el escalón de arriba por las dudas.'));
+  h.push(...vinetas([
+    '**Paso 1. Sin placa.** En el servidor de desarrollo, con 5 a 10 consultas de la demo. Anotar la mediana y si el modelo entra en la RAM. Si la mediana queda bajo 8 segundos, no se compra nada.',
+    '**Paso 2. Una RTX PRO 4500.** Si el chat no sirve. 32 GB, 200 W, ECC. No comprar 3090: ni una ni dos.',
+    '**Paso 3. Medir de nuevo**, con la misma prueba, ya con la placa. Tres resultados posibles, y uno solo decide el paso siguiente.',
+    '**Paso 4. Si el modelo no entra o el contexto se corta.** Una sola placa más grande: 48 GB (L40S) o 96 GB (RTX PRO 6000) según el modelo. No sumar otra de 24 GB.',
+    '**Paso 5. Si entra y responde lento con una sola persona.** Ahí sí comparar una RTX 5090 (más ancho de banda, 575 W, sin ECC) contra quedarse con la PRO 4500. Es un cambio de velocidad, no de capacidad.',
+    '**Paso 6. Si entra, responde bien y se encolan varias personas.** Un segundo servidor con la misma PRO 4500, y Helios reparte las consultas. No hace falta un modelo más grande ni partirlo en dos placas.',
+    '**Paso 7. Si la placa no se consigue, o el pico dura pocas semanas.** Alquilar el equivalente en AWS o GCP (sección 8.5) y apagarlo cuando pase. No comprar de más para un pico.',
+  ]));
+  h.push(...H.nota('decision', 'Qué se compra primero', 'una RTX PRO 4500, y solo después de medir en el servidor sin placa. El salto a 48 o 96 GB, a una 5090 o a un segundo servidor se decide con esa medición, no antes.'));
+
   h.push(H.titulo(1, '9. Plan de prueba comparativa'));
   h.push(H.P('Las comparaciones de terceros ordenan los candidatos pero no reemplazan una prueba con nuestros datos. Proponemos:'));
   h.push(H.titulo(2, '9.1 Set de prueba'));
@@ -516,7 +550,7 @@ async function documentoIngenieria() {
   h.push(...vinetas([
     '**Ahora:** Qwen3 30B-A3B en Workers AI, presupuestado en plan pago (`' + usdMesCorto(costoMes(M.wai_qwen, E[0])) + '` por mes con 150 consultas por día).',
     '**Ahora, en el servidor de desarrollo, pase lo que pase con el cliente:** servicio local con API compatible con OpenAI (Ollama o llama.cpp para empezar, vLLM si hay GPU). Desacoplar `env.AI.run` detrás de `llamarModelo` (sección 8.3). Medir latencia en CPU con 5 a 10 consultas de la demo.',
-    '**GPU:** solo si esa medición no entra en la meta (mediana menor a 8 segundos). Candidato: Qwen3.6-35B-A3B en 32 GB. 96 GB si la prueba pide un modelo mayor.',
+    '**GPU:** solo si esa medición no entra en la meta (mediana menor a 8 segundos). Primera placa: RTX PRO 4500 (32 GB), no una 3090. 48 o 96 GB solo si el modelo no entra. Segunda máquina igual si se encolan personas. Ver los pasos de la sección 8.6.',
     '**Respaldo externo:** plan pago, con filtro de datos y aprobación de seguridad. Nunca el plan gratuito.',
     '**Lo que definen el cliente y seguridad:** si los datos pueden salir, el tope mensual, el proveedor aceptado y si la opción local pasa a su ambiente.',
   ]));
@@ -530,7 +564,7 @@ async function documentoIngenieria() {
     'Google, precios de la API de Gemini y de Agent Platform (ai.google.dev/gemini-api/docs/pricing, cloud.google.com/model-garden/pricing).',
     'Cloudflare, precios de Workers AI (developers.cloudflare.com/workers-ai/platform/pricing), actualizada el 12/11/2026.',
     'Modelos locales y herramientas: vdf.ai (mejores modelos locales para agentes), zenn.dev (prueba de herramientas con modelos locales), jdhodges.com y alyx.pink (pruebas independientes de llamadas a herramientas). Son pruebas chicas de terceros, no concluyentes.',
-    'GPU: thundercompute.com (precio de la RTX 5090), cloud-gpus.com y novapod.io (alquiler de GPU), inferencehub.org y gpurentalprices.com (L40S).',
+    'GPU: thundercompute.com (precio de la RTX 5090), Dell y listados de noviembre 2026 (RTX PRO 4500, USD 4.600 a 5.900; una 3090 usada, USD 1.600 a 1.800), cloud-gpus.com y novapod.io (alquiler), inferencehub.org y gpurentalprices.com (L40S).',
     'Interno: `05_Documentacion/contexto_helios_para_ia.md` (secciones 7 y 14) y `novedades_asistente_ia.md`.',
   ]));
 
