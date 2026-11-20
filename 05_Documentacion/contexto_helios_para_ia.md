@@ -479,6 +479,11 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Aviso de prueba de Teams (20/11, parche 73; sin SQL, falta publicar)**
+
+- El canal de Teams "Plataforma Monitoreo" quedó conectado el 20/11 (secreto `TEAMS_WEBHOOK` cargado; llegó el aviso de prueba). El aviso de prueba ahora tiene su propia tarjeta, sin "IM-0" ni estado de sala.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche73/`, ramas `respaldo-antes-parche-73` y `version-parche-73-aviso-prueba-teams`.
+
 **Llamadas escritas como texto y "lo gestiona" en Escalar (20/11, parche 72; sin SQL, falta publicar)**
 
 - Gemma escribió la propuesta como texto (`sugerir_accion(…)`) y la tarjeta "Escalar el incidente a <persona de Soporte>" se leía como si esa persona fuera el proveedor. Ahora esas llamadas escritas se leen como llamadas y no se muestran, y la tarjeta dice "· lo gestiona <persona>" (escalar crea una tarea para quien contacta al proveedor).

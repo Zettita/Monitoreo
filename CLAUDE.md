@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py, patch69.py, patch70.py, patch71.py y patch72.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py, patch69.py, patch70.py, patch71.py, patch72.py y patch73.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch73.py          aviso de prueba de Teams con tarjeta propia (teamsTarjetaPrueba: "Aviso de prueba", quién lo mandó, "Abrir Helios"), sin "IM-0" ni estado. Sin SQL
     patch72.py          asistente: una llamada escrita como texto (sugerir_accion(tipo="escalar", …)) se lee como llamada y se borra del texto
                         (asistLlamadasEnTexto); la tarjeta de Escalar dice "· lo gestiona <persona de Soporte>" y el botón armado por el servidor usa el motivo del modelo. Sin SQL
     patch71.py          asistente dentro de la sala, pregunta libre: estado + tareas siempre, guía si habla de escalar / revisar / causas, contexto_externo si
@@ -191,7 +192,7 @@ SIN_ETAPA_3B=1 node --no-warnings ../worker/mkdb.mjs base.sqlite mig_a.sqlite &&
 # revisión incremental: la demo en dos bases (incremental y completa) tiene que dar lo mismo en cada escena
 node --no-warnings ../worker/mkdb.mjs base.sqlite inc_a.sqlite && node --no-warnings ../worker/mkdb.mjs base.sqlite inc_b.sqlite && node --no-warnings inctest.mjs inc_a.sqlite inc_b.sqlite                                                                   # cada una termina en "TODO OK" / "TODO IGUAL"
 ```
-Para un cambio nuevo: crear `patch73.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
+Para un cambio nuevo: crear `patch74.py` con una función `aplicar(s)` (como los anteriores), sumarlo al final de `build.py`, correr build + pruebas y recién después copiar el resultado a `01_Worker/`. Todo SQL nuevo se prueba antes en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`.
 
 ## Video de demostración (18/11) — carpeta `08_Video_demo/`
 Pedido de Uriel (para la dueña del proyecto, a partir del mensaje al cliente con los 6 puntos del desarrollo): un video de la app usada de punta a punta, con subtítulos y voz en off **separada del video** (para poder usarlo mudo). Se arma solo, con el Worker de siempre sobre una base SQLite local: `python grabar.py` (≈ 9 min) y `python armar.py` (ver `08_Video_demo/LEEME.md`). Simulados, y dicho en el LEEME: el push en el celular (dibujo con los textos reales del Worker), Outlook, el asistente de IA (`ia_guion.mjs`, redacta con los datos reales), el ticket de Jira (modo simulado), el contexto externo (proveedores y noticias de ejemplo) y el historial de días anteriores. No cambia el Worker ni la base: no lleva parche ni script. Si cambia la pantalla de la app, revisar `capitulos.py`; si cambian los textos, `guion.py`.
@@ -330,6 +331,10 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - **Asistente:** el modelo por defecto del código pasa a `@cf/google/gemma-4-26b-a4b-it` (la variable `ASISTENTE_MODELO` ya lo tiene en Cloudflare); `ASISTENTE_POR_DIA` por defecto 100; en "¿Qué está sin asignar y a quién lo derivo?" el **servidor** arma hasta 3 botones "Derivar" (cada uno a la persona de Soporte con menos problemas abiertos, repartiendo), sin depender de que el modelo pida la herramienta (`asistProponerDerivar`); pregunta nueva "¿Qué alertas llevan más tiempo abiertas?" (Analista y Administrador; `alertas_abiertas` suma `abierta_hace` y `cuantas.abiertas_hace_mas_de_24_h`).
 - **Marca "Abierta hace N h/días"** en rojo cuando una alerta lleva más de 24 h abierta, en Seguimiento y en el tablero (surgió del incidente de 231 horas abierto de la reunión con Hugo del 12/11). Solo página. En la demo no se ve salvo con datos de más de un día.
 - Probado: demo igual al Worker anterior, 19 pruebas por módulo, `asistest` con casos nuevos (botones Derivar con 4 sin asignar, reparto, alerta de 3 días); los scripts de las páginas se revisaron con `node --check` (no se pudo mirar en un navegador real desde acá). Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
+
+## Aviso de prueba de Teams (20/11, parche 73) — hecho en código, falta publicar (sin SQL)
+- Ale conectó el canal de Teams "Plataforma Monitoreo" (equipo Plataforma Monitoreo) el 20/11: el secreto `TEAMS_WEBHOOK` está cargado y el aviso de prueba llegó. Salía como "IM-0 · Aviso de prueba · Abierto · Importante" porque usaba la tarjeta de las salas: ahora tiene su propia tarjeta ("Aviso de prueba", quién lo mandó, "Abrir Helios"). La línea "<persona> used a Workflow template…" la agrega Teams y queda (Ale está de acuerdo con que figure su nombre).
+- Probado: `teamstest` (34 controles), demo igual y toda la batería. Respaldo: `99_Archivo_viejo/worker_antes_parche73/`, ramas `respaldo-antes-parche-73` y `version-parche-73-aviso-prueba-teams`.
 
 ## Llamadas escritas como texto y "lo gestiona" en Escalar (20/11, parche 72) — hecho en código, falta publicar (sin SQL)
 Ale probó con Gemma (sala IM-4, Analista): la respuesta mostró `sugerir_accion(tipo="escalar", incidente_id=4, motivo="…")` como texto, y la tarjeta "Escalar el incidente a Uriel Solnik" hacía parecer que Uriel (Soporte) era el proveedor.

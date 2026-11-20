@@ -65,7 +65,8 @@ r=await call(ck.ana,'GET','/api/admin/teams'); ok('el Analista no ve la configur
 // ---------- A · Con el secreto ----------
 env.TEAMS_WEBHOOK=WEBHOOK;
 r=await call(A,'GET','/api/admin/teams'); ok('Administración: conectado', r.j.configurado===true, r.j);
-r=await call(A,'POST','/api/admin/teams/probar',{}); ok('aviso de prueba al canal y auditoría TEAMS_PRUEBA', r.s===200 && enviados.length===1 && textos(enviados[0]).includes('aviso de prueba') && n("select count(*) n from auditoria where accion='TEAMS_PRUEBA'")===1, r.j);
+r=await call(A,'POST','/api/admin/teams/probar',{}); ok('aviso de prueba al canal y auditoría TEAMS_PRUEBA', r.s===200 && enviados.length===1 && textos(enviados[0]).includes('Aviso de prueba') && n("select count(*) n from auditoria where accion='TEAMS_PRUEBA'")===1, r.j);
+ok('el aviso de prueba no parece una sala (sin IM-0 ni estado) y lleva quién lo mandó y "Abrir Helios"', textos(enviados[0]).includes('Aviso de prueba') && !/IM-|Abierto|Importante/.test(textos(enviados[0])) && textos(enviados[0]).includes('Uriel Solnik') && tarjeta(enviados[0]).actions[0].title==='Abrir Helios' && tarjeta(enviados[0]).actions[0].url==='https://helios.test/inicio', textos(enviados[0]));
 enviados.length=0;
 r=await call(ck.ana,'POST',`/api/incidentes/${IM}/alertas`,{alertas:[A2]});
 ok('sumar una alerta: una tarjeta al canal', r.s===200 && enviados.length===1, enviados.length);

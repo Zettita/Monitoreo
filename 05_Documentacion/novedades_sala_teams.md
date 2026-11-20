@@ -21,7 +21,9 @@ Lo hace alguien que sea miembro del canal de Teams (no hace falta IT ni Azure):
 2. Elegir la plantilla **"Publicar en un canal cuando se recibe una solicitud de webhook"** (*Post to a channel when a webhook request is received*).
 3. Elegir el equipo y el canal → **Agregar flujo de trabajo**. Teams muestra una dirección larga (`https://…logic.azure.com/…` o `https://…powerplatform.com/…`). **Copiarla.** Esa dirección es como una clave: quien la tiene puede publicar en el canal. No mandarla por chat ni subirla a Git.
 4. En Cloudflare → Worker `worker-alertas-cron` → **Settings → Variables and Secrets → Add → Secret**, nombre `TEAMS_WEBHOOK`, valor: la dirección. Guardar (Deploy).
-5. En Helios, como Administrador → **Administración → Equipos**, abajo: **Avisos en Teams** tiene que decir "Conectado". Tocar **Mandar aviso de prueba**: tiene que llegar una tarjeta al canal.
+5. En Helios, como Administrador → **Administración → Equipos**, abajo: **Avisos en Teams** tiene que decir "Conectado". Tocar **Mandar aviso de prueba**: tiene que llegar una tarjeta "Aviso de prueba" al canal (desde el parche 73; antes salía como "IM-0").
+
+Conectado el 20/11 al canal **Plataforma Monitoreo** (equipo Plataforma Monitoreo). Teams agrega abajo de cada tarjeta "<quien creó el flujo> used a Workflow template…": no se puede sacar desde Helios; para que no figure una persona, el flujo se crea con una cuenta de servicio y se actualiza el secreto.
 
 ## 3. Probarlo con la demo
 
