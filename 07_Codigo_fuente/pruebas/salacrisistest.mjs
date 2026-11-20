@@ -117,6 +117,44 @@ ok('comunicar desde una alerta de la sala deja el renglón COMUNICADO en la sala
 r=await call(ck.ana,'GET',`/api/alertas/${A1}/detalle`); ok('el detalle de la alerta muestra la sala y deja abrir otra al Analista', r.j.incidentes_mayores.length===1 && r.j.incidentes_mayores[0].codigo==='IM-4' && r.j.puede_abrir_sala===true, [r.j.incidentes_mayores, r.j.puede_abrir_sala]);
 r=await call(ck.gero,'GET',`/api/alertas/${A1}/detalle`); ok('al Gerente no le ofrece abrir salas', r.j.puede_abrir_sala===false);
 
+// ---------- Asistente dentro de la sala (modelo simulado) ----------
+const pedidos=[]; let respuestas=[];
+env.AI={async run(modelo,p){pedidos.push(p); const x=respuestas.shift(); return x||{response:'Respuesta de prueba.'};}};
+r=await call(ck.ana,'GET','/api/asistente'); ok('el asistente ofrece las preguntas de la sala', r.j.sugerencias_sala.map(s=>s.id).join()==='sala_como_vamos,sala_que_reviso,sala_demorado', r.j);
+r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sala_que_reviso'}); ok('una pregunta de la sala sin incidente = 400', r.s===400);
+r=await call(ck.carla,'POST','/api/asistente',{incidente_id:IM,pregunta:'¿Cómo vamos?'}); ok('Soporte sin tareas en la sala no le pregunta por ella (403)', r.s===403);
+pedidos.length=0;
+r=await call(ck.ana,'POST','/api/asistente',{incidente_id:IM,sugerencia:'sala_que_reviso'});
+const enviado=JSON.stringify(pedidos[0]&&pedidos[0].messages);
+ok('"¿Qué reviso primero?": al modelo le llegan la guía y las tareas, ya en frases', r.s===200 && enviado.includes('Gateway de pagos') && enviado.includes('IM-1') && enviado.includes('Certificado vencido') && enviado.includes('Revisar errores del gateway'), r.j.error||enviado.slice(0,300));
+ok('y las instrucciones saben que está en la sala', enviado.includes('Estás dentro de una sala de crisis (incidente_id '+IM+')'));
+const ats=r.j.acciones||[];
+ok('el servidor deja hasta 2 botones de "Asignar tarea" para componentes que nadie revisó (no el gateway, ya revisado)', ats.length===2 && ats.every(a=>a.tipo==='asignar_tarea' && a.incidente_id===IM && a.usuario_id) && !ats.some(a=>a.componente_id===5) && ats[0].tarea.startsWith('Revisar '), ats);
+ok('auditoría del asistente con la sala', n("select count(*) n from auditoria where accion='ASISTENTE' and detalle like '[IM-"+IM+"]%'")===1);
+r=await call(ck.ana,'POST',`/api/incidentes/${IM}/tareas`,{titulo:ats[0].tarea,detalle:ats[0].comentario,responsable_usuario_id:ats[0].usuario_id,componente_id:ats[0].componente_id,propuesta_por_asistente:1});
+ok('la propuesta se hace por la ruta de siempre y queda marcada como del asistente', r.s===200 && q1('select propuesta_por_asistente p from incidente_tareas where id=?',r.j.tarea.id).p===1 && n("select count(*) n from auditoria where accion='CREAR_TAREA_INCIDENTE' and detalle like '%(propuesta del asistente)'")===1, r.j);
+r=await call(ck.gero,'POST','/api/asistente',{incidente_id:IM,sugerencia:'sala_que_reviso'}); ok('el Gerente pregunta en la sala pero no recibe propuestas', r.s===200 && (r.j.acciones||[]).length===0, r.j);
+// El modelo propone escalar y comunicar; el servidor las valida
+respuestas=[{response:'',tool_calls:[{name:'sugerir_accion',arguments:{tipo:'escalar',incidente_id:IM,equipo_id:PAGOS,motivo:'Sigue sin aprobarse nada',comentario:'Hace 40 minutos que no se aprueba ningún pago.'}},
+  {name:'sugerir_accion',arguments:{tipo:'comunicar',incidente_id:IM,motivo:'Avisar a atención al cliente'}},{name:'sugerir_accion',arguments:{tipo:'asignar_tarea',incidente_id:IM,titulo_tarea:'Revisar el balanceador',usuario_id:id('gero'),motivo:'x'}}]},
+  {response:'Te dejo dos propuestas.'}];
+r=await call(ck.ana,'POST','/api/asistente',{incidente_id:IM,pregunta:'¿Escalo esto?'});
+const tipos=(r.j.acciones||[]).map(a=>a.tipo).sort().join();
+ok('el modelo propone escalar y comunicar; asignar a un Gerente se rechaza', r.s===200 && tipos==='comunicar,escalar', r.j);
+const com=(r.j.acciones||[]).find(a=>a.tipo==='comunicar');
+ok('comunicar lleva la alerta principal de la sala y un mensaje armado', com && /^[0-9a-f]{32}$/.test(com.alerta_id) && /IM-4/.test(com.comentario), com);
+respuestas=[{response:'',tool_calls:[{name:'estado_incidente',arguments:{incidente_id:1}}]},{response:'Listo.'}];
+r=await call(ck.sol,'POST','/api/asistente',{incidente_id:IM,pregunta:'¿Y la sala 1?'});
+const ultima=JSON.stringify(pedidos[pedidos.length-1].messages);
+ok('Soporte no puede leer por el asistente una sala donde no tiene tareas', r.s===200 && ultima.includes('no está disponible para tu perfil'), ultima.slice(-400));
+respuestas=[{response:'',tool_calls:[{name:'sugerir_accion',arguments:{tipo:'escalar',incidente_id:IM,equipo_id:PAGOS,motivo:'x',comentario:'Escalar ya mismo'}}]},{response:'Listo.'}];
+r=await call(ck.sol,'POST','/api/asistente',{incidente_id:IM,pregunta:'¿Escalo?'}); ok('a Soporte no le llegan propuestas de la sala', (r.j.acciones||[]).length===0, r.j.acciones);
+pedidos.length=0; r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿Cómo está la operación?'});
+const herr=JSON.stringify((pedidos[0]&&pedidos[0].tools)||[]);
+const enHerr=(herr.match(/estado_incidente|tareas_incidente|guia_diagnostico|asignar_tarea|"escalar"|"comunicar"|incidente_id/g)||[]);
+ok('fuera de la sala, al modelo no le llegan las herramientas ni las propuestas de la sala', r.s===200 && /alertas_abiertas/.test(herr) && (!enHerr.length || enHerr.every(x=>x==='incidente_id')), enHerr);
+delete env.AI;
+
 // ---------- Estado y cierre ----------
 r=await call(ck.ana,'POST',`/api/incidentes/${IM}/estado`,{estado:'OTRO'}); ok('estado inválido = 400', r.s===400);
 r=await call(ck.ana,'POST',`/api/incidentes/${IM}/estado`,{estado:'MITIGADO'}); ok('pasa a mitigado con su hora', r.s===200 && inc().estado==='MITIGADO' && inc().mitigado);

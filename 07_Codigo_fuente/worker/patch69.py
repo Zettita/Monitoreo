@@ -78,11 +78,94 @@ def servidor(s):
              "    const id = Number(a.alerta_id.slice(1));\n"
              "    return { titulo: 'Helios · ' + a.texto, cuerpo: String(a.detalle || '').slice(0, 450), url: '/incidente/' + id, tag: 'helios-incidente-' + id + '-' + a.id };\n"
              "  }\n")
+    return asistente(s)
+
+
+# ---------- Asistente: herramientas de la sala, propuestas y preguntas sugeridas dentro de la sala ----------
+def asistente(s):
+    s = _rep(s, "async function rutasAsistente(env, request, ruta, yo) {",
+             _leer('sala_crisis_asistente.js') + "\nasync function rutasAsistente(env, request, ruta, yo) {")
+    s = _rep(s, "async function asistValidarAccion(env, yo, a) {\n",
+             "async function asistValidarAccion(env, yo, a) {\n  if (a && SALA_ACCIONES[a.tipo]) return await asistValidarAccionSala(env, yo, a);   // propuestas de la sala de crisis (parche 69)\n")
+    # Fuera de una sala, el asistente queda igual que antes: las herramientas y propuestas de la sala se ofrecen solo adentro
+    s = _rep(s, "  const disponibles = asistDisponibles(yo);\n  const schemas = asistSchemas(disponibles, yo);",
+             "  const enSala = !!entrada.incidente_id;\n  const disponibles = asistDisponibles(yo).filter((n) => enSala || !ASIST_HERRAMIENTAS[n].soloSala);\n  const schemas = asistSchemas(disponibles, yo, enSala);")
+    s = _rep(s, "function asistSchemas(nombres, yo) {", "function asistSchemas(nombres, yo, enSala) {")
+    s = _rep(s, "  const acc = Object.keys(ASIST_ACCIONES).filter((k) => ASIST_ACCIONES[k].ok(yo));",
+             "  const acc = Object.keys(ASIST_ACCIONES).filter((k) => ASIST_ACCIONES[k].ok(yo) && (enSala || !ASIST_ACCIONES[k].soloSala));")
+    s = _rep(s, "description: 'Propone una acción sobre una alerta para que la persona la confirme con un botón.",
+             "description: 'Propone una acción sobre una alerta' + (enSala ? ' o la sala de crisis' : '') + ' para que la persona la confirme con un botón.")
+    s = _rep(s, "    parameters: { type: 'object', required: ['tipo', 'alerta_id', 'motivo'], properties: {\n      tipo: { type: 'string', enum: acc }, alerta_id: { type: 'string', description: 'alerta_id de la alerta' },\n",
+             "    parameters: { type: 'object', required: enSala ? ['tipo', 'motivo'] : ['tipo', 'alerta_id', 'motivo'], properties: {\n      tipo: { type: 'string', enum: acc }, alerta_id: { type: 'string', description: 'alerta_id de la alerta' },\n"
+             "      ...(enSala ? { incidente_id: { type: 'integer', description: 'Sala de crisis: número del incidente (asignar_tarea, escalar, comunicar)' },\n"
+             "        titulo_tarea: { type: 'string', description: 'Solo para asignar_tarea: qué hay que hacer' }, componente_id: { type: 'integer', description: 'Solo para asignar_tarea: componente a revisar' } } : {}),\n")
+    s = _rep(s, "      if (!acciones.some((x) => x.tipo === p.tipo && x.alerta_id === p.alerta_id)) acciones.push(p);",
+             "      if (!acciones.some((x) => x.tipo === p.tipo && (x.clave || x.alerta_id) === (p.clave || p.alerta_id))) acciones.push(p);")
+    s = _rep(s, "  const mensajes = [{ role: 'system', content: asistSistema(yo, ahora, disponibles) }];",
+             "  const mensajes = [{ role: 'system', content: asistSistema(yo, ahora, disponibles) + (entrada.incidente_id ? '\\n' + ASIST_REGLA_SALA.replace('{ID}', entrada.incidente_id) : '') }];")
+    s = _rep(s, "  if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);\n",
+             "  if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);\n"
+             "  if (entrada.incidente_id && !entrada.sugerencia) directas.push(['estado_incidente', { incidente_id: entrada.incidente_id }]);   // pregunta libre dentro de la sala\n")
+    # Ruta: incidente_id (validado con la regla de la sala) y las preguntas sugeridas de la sala
+    s = _rep(s, "      sugerencias: (ASIST_SUGERENCIAS[yo.perfil] || []).map((s) => ({ id: s.id, texto: s.texto })), restantes: uso ? uso.restantes : 0,",
+             "      sugerencias: (ASIST_SUGERENCIAS[yo.perfil] || []).map((s) => ({ id: s.id, texto: s.texto })), restantes: uso ? uso.restantes : 0,\n"
+             "      sugerencias_sala: puede(yo, 'sala_crisis') ? SALA_SUGERENCIAS.map((s) => ({ id: s.id, texto: s.texto })) : [],")
+    s = _rep(s, "    const sugerencia = b.sugerencia ? (ASIST_SUGERENCIAS[yo.perfil] || []).find((s) => s.id === String(b.sugerencia)) : null;\n",
+             "    // Dentro de una sala de crisis (parche 69): se valida con la misma regla de la sala y se usan sus preguntas sugeridas\n"
+             "    const incidenteId = b.incidente_id == null || b.incidente_id === '' ? null : aId(b.incidente_id);\n"
+             "    if (b.incidente_id != null && b.incidente_id !== '' && !incidenteId) return jsonError('Sala inválida.', 400);\n"
+             "    if (incidenteId) {\n"
+             "      if (!puede(yo, 'sala_crisis')) return jsonError('Tu perfil no tiene acceso a la sala de crisis.', 403);\n"
+             "      let rolSala;\n"
+             "      try { rolSala = await rolEnIncidente(env, yo, incidenteId); } catch (e) { if (/no such table/i.test(e.message)) return jsonError(FALTA_SCRIPT_24, 503); throw e; }\n"
+             "      if (rolSala.error) return rolSala.error;\n"
+             "    }\n"
+             "    const salaSug = b.sugerencia && /^sala_/.test(String(b.sugerencia)) ? SALA_SUGERENCIAS.find((s) => s.id === String(b.sugerencia)) : null;\n"
+             "    if (salaSug && !incidenteId) return jsonError('Esa pregunta es de una sala de crisis.', 400);\n"
+             "    const sugerencia = salaSug ? Object.assign({}, salaSug, { args: Object.fromEntries(salaSug.herramientas.map((n) => [n, { incidente_id: incidenteId }])),\n"
+             "        proponer: salaSug.proponer ? (d) => salaSug.proponer(d, incidenteId) : null })\n"
+             "      : b.sugerencia ? (ASIST_SUGERENCIAS[yo.perfil] || []).find((s) => s.id === String(b.sugerencia)) : null;\n")
+    s = _rep(s, "(alertaId ? '[alerta ' + alertaId.slice(0, 8) + '] ' : '') + pregunta.slice(0, 300)),",
+             "(alertaId ? '[alerta ' + alertaId.slice(0, 8) + '] ' : '') + (incidenteId ? '[' + imCodigo(incidenteId) + '] ' : '') + pregunta.slice(0, 300)),")
+    s = _rep(s, "{ pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId }",
+             "{ pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId, incidente_id: incidenteId }")
     return s
+
+
+# ---------- Panel del asistente (en todas las páginas): contexto de la sala y propuestas de la sala ----------
+def panel(h):
+    if 'var ACC_TXT = {' not in h:
+        return h
+    h = _rep(h, "var ACC_TXT = { derivar: 'Derivar', tomar: 'Tomar', comentar: 'Comentar', devolver: 'Devolver', resolver: 'Resolver' };\n  var ACC_OBLIG = { devolver: 1, resolver: 1 };",
+             "var ACC_TXT = { derivar: 'Derivar', tomar: 'Tomar', comentar: 'Comentar', devolver: 'Devolver', resolver: 'Resolver', asignar_tarea: 'Asignar tarea', escalar: 'Escalar', comunicar: 'Comunicar' };\n"
+             "  var ACC_OBLIG = { devolver: 1, resolver: 1, escalar: 1, comunicar: 1 };\n"
+             "  var SALA = window.ASIS_INCIDENTE || null;   // dentro de una sala de crisis (parche 69): número del incidente")
+    h = _rep(h, "if (r.sugerencias.length) {\n        var s = agregar('asis-sug', r.sugerencias.map(",
+             "var sugs = SALA ? (r.sugerencias_sala || []) : r.sugerencias;\n"
+             "      if (sugs.length) {\n        var s = agregar('asis-sug', sugs.map(")
+    h = _rep(h, "if (!cuerpo.sugerencia && !cuerpo.alerta_id) cuerpo.historia = historia.slice(-6);",
+             "if (!cuerpo.sugerencia && !cuerpo.alerta_id) cuerpo.historia = historia.slice(-6);\n    if (SALA && !cuerpo.alerta_id) cuerpo.incidente_id = SALA;")
+    h = _rep(h, "'<div class=\"q\">' + escA(p.alerta) + (p.motivo ? '<br>' + escA(p.motivo) : '') + '</div>' +",
+             "'<div class=\"q\">' + escA(p.alerta) + (p.motivo ? '<br>' + escA(p.motivo) : '') + '</div>' +\n"
+             "      (p.tipo === 'comunicar' ? '<div class=\"q\">Se abre «Comunicar incidente» con este mensaje para elegir a quién le llega.</div>' : '') +")
+    h = _rep(h, "      var cuerpo = { comentario: comentario || null };\n      if (p.tipo === 'derivar') { cuerpo.usuario_id = p.usuario_id; cuerpo.equipo_id = p.equipo_id; }\n"
+                "      // La acción va por la ruta de siempre: con sus permisos, historial y auditoría\n      api('/api/alertas/' + p.alerta_id + '/' + p.tipo, cuerpo).then(",
+             "      var cuerpo = { comentario: comentario || null };\n      if (p.tipo === 'derivar') { cuerpo.usuario_id = p.usuario_id; cuerpo.equipo_id = p.equipo_id; }\n"
+             "      // Sala de crisis: comunicar abre el diálogo de la alerta con el mensaje; tarea y escalamiento van por las rutas de la sala\n"
+             "      if (p.tipo === 'comunicar') {\n"
+             "        try { sessionStorage.setItem('helios_comunicar_msg', comentario); } catch (e) { /* sin almacenamiento: se abre igual */ }\n"
+             "        location.href = '/alerta/' + p.alerta_id + '?comunicar'; return;\n"
+             "      }\n"
+             "      var url = '/api/alertas/' + p.alerta_id + '/' + p.tipo;\n"
+             "      if (p.tipo === 'asignar_tarea') { url = '/api/incidentes/' + p.incidente_id + '/tareas'; cuerpo = { titulo: p.tarea, detalle: comentario || null, responsable_usuario_id: p.usuario_id, equipo_id: p.equipo_id, componente_id: p.componente_id || null, propuesta_por_asistente: 1 }; }\n"
+             "      if (p.tipo === 'escalar') { url = '/api/incidentes/' + p.incidente_id + '/escalar'; cuerpo = { motivo: comentario, usuario_id: p.usuario_id, equipo_id: p.equipo_id }; }\n"
+             "      // La acción va por la ruta de siempre: con sus permisos, historial y auditoría\n      api(url, cuerpo).then(")
+    return h
 
 
 def aplicar(s):
     s = servidor(s)
     for n in PAGINAS:
         s = _html(s, n, destino_avisos)
+        s = _html(s, n, panel)
     return s
