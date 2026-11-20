@@ -8,6 +8,7 @@
 //   GET  /api/incidentes/<id>                        la sala: incidente, alertas, tareas, línea de tiempo, guía, opciones
 //   POST /api/incidentes                             {alertas:[alerta_id], titulo?, descripcion?}         abrir (Analista)
 //   POST /api/incidentes/<id>/alertas                {alertas:[alerta_id]}                                sumar (Analista)
+//   POST /api/incidentes/<id>/alertas/<alerta_id>/quitar   {motivo?}                                  quitar una alerta de la sala (Analista; la sala conserva al menos una)
 //   POST /api/incidentes/<id>/tareas                 {titulo, detalle?, responsable_usuario_id?, equipo_id?, componente_id?, vence?, propuesta_por_asistente?}
 //   POST /api/incidentes/<id>/tareas/<t>             {estado, resultado?}   Analista: cualquiera; Soporte: las suyas o de su equipo
 //   POST /api/incidentes/<id>/notas                  {texto}                Analista o quien tiene una tarea en la sala
@@ -229,6 +230,29 @@ async function sumarAlertas(env, request, yo, rol) {
   return okJson({ sumadas: v.alertas.length });
 }
 
+// Quitar una alerta de la sala (parche 74): se sumó por error o no tiene que ver con el incidente. La alerta sigue abierta y vuelve a
+// poder sumarse a otra sala; queda el renglón en la línea de tiempo (tipo ALERTA_SUMADA: el script 24 solo admite esos tipos), el
+// comentario en la conversación de la alerta y la auditoría. La sala conserva al menos una alerta: si ya no hace falta, se cierra.
+async function quitarAlerta(env, request, yo, rol, alertaId) {
+  const b = await leerCuerpo(request);
+  const motivo = opcional(b.motivo, 300);
+  const a = await env.DB.prepare('SELECT alerta_id, tipo_alerta, cliente_id, servicio_id, canal_id FROM incidente_alertas WHERE incidente_id = ?1 AND alerta_id = ?2').bind(rol.inc.id, alertaId).first();
+  if (!a) return jsonError('Esa alerta no está en esta sala.', 404);
+  const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM incidente_alertas WHERE incidente_id = ?1').bind(rol.inc.id).first()).n;
+  if (n <= 1) return jsonError('La sala necesita al menos una alerta. Si el incidente ya no hace falta, cerrala con la causa raíz.', 409);
+  const cod = imCodigo(rol.inc.id);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM incidente_alertas WHERE incidente_id = ?1 AND alerta_id = ?2').bind(rol.inc.id, alertaId),
+    // La gravedad de la sala sigue a las alertas que quedan: Grave solo si alguna lo es
+    env.DB.prepare(`UPDATE incidentes_mayores SET actualizado = ${AHORA_SIM}, severidad = CASE WHEN EXISTS (SELECT 1 FROM alertas_historico h
+        WHERE h.alerta_id IN (SELECT alerta_id FROM incidente_alertas WHERE incidente_id = ?1) AND h.severidad_maxima = 'CRITICA') THEN 'CRITICA' ELSE 'ALTA' END WHERE id = ?1`).bind(rol.inc.id),
+    lineaSQL(env, rol.inc.id, yo, 'ALERTA_SUMADA', 'Quitó la alerta: ' + fraseAlerta(a) + (motivo ? '. Motivo: ' + motivo : '.'), a.alerta_id),
+    eventoComentario(env, yo, a.alerta_id, 'Quitó la alerta de la sala de crisis ' + cod + (motivo ? '. Motivo: ' + motivo : '.')),
+    auditoriaSQL(env, yo, 'QUITAR_ALERTA_INCIDENTE', cod + ': ' + fraseAlerta(a) + (motivo ? ' · ' + motivo : '')),
+  ]);
+  return okJson({ quitada: true, quedan: n - 1 });
+}
+
 // ---------- Tareas ----------
 async function destinoTarea(env, b) {
   const uid = b.responsable_usuario_id == null || b.responsable_usuario_id === '' ? null : aId(b.responsable_usuario_id);
@@ -402,6 +426,15 @@ async function rutasSalaCrisis(env, request, ruta, yo) {
     if (ruta === '/api/incidentes/candidatas' && m === 'GET') {
       if (!puede(yo, 'sala_crisis_dirigir')) return jsonError('Solo un analista puede abrir o sumar alertas a una sala.', 403);
       return await candidatasIncidente(env);
+    }
+    const q = ruta.match(/^\/api\/incidentes\/(\d+)\/alertas\/([0-9a-f]{32})\/quitar$/);
+    if (q) {
+      if (m !== 'POST') return null;
+      const rolQ = await rolEnIncidente(env, yo, Number(q[1]));
+      if (rolQ.error) return rolQ.error;
+      if (!rolQ.abierto) return jsonError('El incidente está cerrado: ya no se puede cambiar.', 409);
+      if (!rolQ.dirige) return jsonError('Solo el analista que dirige la sala puede hacer esto.', 403);
+      return await quitarAlerta(env, request, yo, rolQ, q[2]);
     }
     const x = ruta.match(/^\/api\/incidentes\/(\d+)(?:\/(alertas|tareas|notas|estado|escalar)(?:\/(\d+))?)?$/);
     if (!x) return null;

@@ -479,6 +479,13 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Asistente más cómodo y alertas que se quitan de la sala (20/11, parche 74; sin SQL, falta publicar)**
+
+- Las preguntas sugeridas del asistente quedan fijas abajo del panel, arriba del cuadro de texto, para usarlas en cualquier momento de la conversación.
+- Los saludos y agradecimientos sueltos ("hola", "gracias", "de nada", "ok", "chau") se contestan con una frase fija, sin llamar al modelo: no gastan neuronas, no cuentan en el límite de preguntas y no dejan registro. Si el mensaje trae algo de trabajo ("hola, ¿cómo está CLI_004?") va al modelo como siempre.
+- Sala de crisis: "Quitar de la sala" en cada alerta (el Analista que dirige; la sala conserva al menos una). Ruta `POST /api/incidentes/<id>/alertas/<alerta_id>/quitar` con `{motivo?}`. La alerta sigue abierta y puede sumarse otra vez; queda en la línea de tiempo, en la conversación de la alerta y en la auditoría (`QUITAR_ALERTA_INCIDENTE`).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche74/`, ramas `respaldo-antes-parche-74` y `version-parche-74-asistente-y-sala`.
+
 **Aviso de prueba de Teams (20/11, parche 73; sin SQL, falta publicar)**
 
 - El canal de Teams "Plataforma Monitoreo" quedó conectado el 20/11 (secreto `TEAMS_WEBHOOK` cargado; llegó el aviso de prueba). El aviso de prueba ahora tiene su propia tarjeta, sin "IM-0" ni estado de sala.

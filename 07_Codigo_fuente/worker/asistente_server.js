@@ -737,6 +737,38 @@ async function asistResponder(env, yo, entrada) {
   return { respuesta: texto.slice(0, 4000), acciones, herramientas: usadas };
 }
 
+// ---------- Saludos y agradecimientos sueltos (parche 74): se contestan sin llamar al modelo ----------
+// Un "hola", un "gracias" o un "de nada" no es una pregunta de la operación: no gasta neuronas ni cuenta en el límite de preguntas,
+// y no deja registro. Solo cuenta si TODAS las palabras son de cortesía; con cualquier palabra de trabajo ("hola, ¿cómo está CLI_004?") va al modelo.
+const ASIST_CORTESIA = {
+  gracias: ['gracias', 'agradezco', 'agradecido', 'agradecida', 'muchas', 'mil', 'muchisimas', 'muchisimo', 'mucho', 'ayuda', 'respuesta', 'info', 'informacion', 'util', 'amable', 'rapido', 'excelente', 'genial', 'barbaro', 'perfecto', 'joya', 'de', 'nada', 'por', 'la', 'el', 'lo', 'todo', 'favor', 'muy', 'te', 'ya', 'entendi', 'entendido', 'listo'],
+  chau: ['chau', 'chao', 'adios', 'hasta', 'luego', 'pronto', 'manana', 'nos', 'vemos', 'saludos', 'buen', 'buena', 'buenas', 'dia', 'dias', 'tarde', 'tardes', 'noche', 'noches', 'turno', 'descanso', 'que', 'tengas', 'tenga', 'un', 'una'],
+  saludo: ['hola', 'holi', 'holis', 'buenas', 'buen', 'buena', 'bueno', 'buenos', 'dia', 'dias', 'tarde', 'tardes', 'noche', 'noches', 'que', 'tal', 'como', 'estas', 'andas', 'va', 'todo', 'bien', 'hey', 'ey', 'helios', 'asistente', 'saludos'],
+  asentir: ['ok', 'okey', 'okay', 'oka', 'dale', 'listo', 'perfecto', 'genial', 'excelente', 'barbaro', 'joya', 'entendido', 'claro', 'bien', 'bueno', 'vale', 'jaja', 'jeje', 'jajaja', 'buenisimo', 'de', 'acuerdo', 'ya', 'esta'],
+};
+const ASIST_CORTESIA_TODAS = new Set([].concat(...Object.values(ASIST_CORTESIA)));
+const ASIST_RESP_CORTESIA = {
+  gracias: 'De nada. Si necesitás algo más de la operación, preguntame.',
+  chau: 'Hasta luego.',
+  saludo: 'Hola. Preguntame por la operación de Helios: lo que está abierto, lo pendiente o qué pasa con una alerta.',
+  asentir: 'Perfecto. Cuando necesites algo de la operación, preguntame.',
+  vacia: 'Escribí una pregunta sobre la operación de Helios: alertas, pre-alertas, clientes o carga de los equipos.',
+};
+function asistCortesia(texto) {
+  const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z\s]/g, ' ').replace(/(.)\1{2,}/g, '$1');
+  if (t.length > 80) return null;
+  const palabras = t.split(/\s+/).filter(Boolean);
+  if (!palabras.length) return ASIST_RESP_CORTESIA.vacia;               // solo signos, números o emojis
+  if (palabras.length > 8 || !palabras.every((p) => ASIST_CORTESIA_TODAS.has(p))) return null;
+  // "¿Todo bien?" puede ser una pregunta por el estado de la operación: va al modelo (salvo "gracias por todo")
+  if (palabras.includes('todo') && !palabras.some((p) => ['gracias', 'agradezco', 'agradecido', 'agradecida', 'muchisimas', 'muchisimo'].includes(p))) return null;
+  for (const tipo of ['gracias', 'chau', 'saludo']) {
+    const claves = tipo === 'gracias' ? ['gracias', 'agradezco', 'agradecido', 'agradecida', 'muchisimas', 'muchisimo', 'nada'] : tipo === 'chau' ? ['chau', 'chao', 'adios', 'hasta', 'vemos', 'tengas', 'tenga'] : ['hola', 'holi', 'holis', 'hey', 'ey', 'buenas', 'buenos', 'buen', 'buena', 'dia', 'dias', 'tarde', 'tardes', 'noche', 'noches', 'tal', 'estas', 'andas', 'va', 'todo', 'saludos', 'helios', 'asistente'];
+    if (palabras.some((p) => claves.includes(p))) return ASIST_RESP_CORTESIA[tipo];
+  }
+  return ASIST_RESP_CORTESIA.asentir;
+}
+
 // ---------- Rutas ----------
 function asistHistoria(h) {
   if (!Array.isArray(h)) return [];
@@ -764,6 +796,8 @@ async function rutasAsistente(env, request, ruta, yo) {
     let pregunta = sugerencia ? sugerencia.texto : alertaId ? '¿Qué está pasando con esta alerta, qué revisaría primero y qué sugerís hacer?' : String(b.pregunta || '').trim();
     if (!pregunta) return jsonError('Escribí una pregunta.', 400);
     if (pregunta.length > ASIST_MAX_PREGUNTA) return jsonError('La pregunta es muy larga (máximo ' + ASIST_MAX_PREGUNTA + ' caracteres).', 400);
+    // Saludos y agradecimientos sueltos: respuesta fija, sin modelo, sin gastar del límite y sin registro (parche 74)
+    if (!sugerencia && !alertaId) { const corta = asistCortesia(pregunta); if (corta) return okJson({ respuesta: corta, acciones: [], herramientas: [], sin_ia: true, restantes: null }); }
     // Límite de uso: por persona y por hora, y en total por día (cupo gratuito de Workers AI)
     let uso;
     try { uso = await asistUso(env, yo); }

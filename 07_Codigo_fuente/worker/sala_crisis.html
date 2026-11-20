@@ -32,6 +32,7 @@
 .sc-alertas li:last-child { border-bottom: 0; padding-bottom: 0; }
 .sc-alertas a { color: var(--link, var(--accent)); font-weight: 600; text-decoration: none; }
 .sc-alertas small { color: var(--ink-3); font-size: 12.5px; }
+.sc-alertas li .quitar { justify-self: start; margin-top: 4px; }
 .sc-tareas li { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 4px; padding: 10px 12px; font-size: 14px; display: grid; gap: 4px; }
 .sc-tareas li.EN_CURSO { border-left-color: var(--accent); } .sc-tareas li.HECHA { border-left-color: var(--ok); } .sc-tareas li.CANCELADA { opacity: .6; }
 .sc-tareas li.mia { background: var(--track); }
@@ -120,6 +121,16 @@
     <label class="campo" id="ta-comp-campo"><span>Componente a revisar (opcional)</span><select id="ta-comp"></select></label>
     <p class="error-form" id="ta-error" hidden></p>
     <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="ta-ok">Asignar</button></div>
+  </form>
+</dialog>
+<dialog id="dlg-quitar">
+  <form id="f-quitar" method="dialog">
+    <h2>Quitar alerta de la sala</h2>
+    <p class="bajada" id="qu-alerta"></p>
+    <p class="bajada">La alerta sigue abierta y se puede sumar de nuevo, a esta sala o a otra. Queda anotado en la línea de tiempo y en la conversación de la alerta.</p>
+    <label class="campo"><span>Motivo (opcional)</span><textarea id="qu-motivo" maxlength="300" placeholder="Por ejemplo: se sumó por error o es otro problema"></textarea></label>
+    <p class="error-form" id="qu-error" hidden></p>
+    <div class="acc-dlg"><button type="button" class="btn" data-cerrar>Cancelar</button><button type="submit" class="btn primario" id="qu-ok">Quitar de la sala</button></div>
   </form>
 </dialog>
 <dialog id="dlg-hecha">
@@ -236,7 +247,8 @@
       var est = a.estado === 'RESUELTA' ? 'Resuelta' : a.estado === 'RECONOCIDA' ? 'En curso' + (a.asignado_a ? ': ' + a.asignado_a : '') :
         a.asignado_a || a.asignado_equipo ? 'Asignada a ' + [a.asignado_a, a.asignado_equipo ? 'equipo ' + a.asignado_equipo : null].filter(Boolean).join(' · ') + ', sin tomar' : 'Sin asignar';
       return '<li><a href="/alerta/' + esc(a.alerta_id) + '">' + esc(FRASE[a.tipo_alerta] || a.tipo_alerta) + '</a><span>' + esc(dondeAlerta(a)) + '</span>' +
-        '<small>' + (a.severidad_maxima ? '<span class="sev ' + esc(a.severidad_maxima) + '">' + esc(SEV_TXT[a.severidad_maxima]) + '</span> ' : '') + esc(est) + ' · sumada ' + esc(hora(a.sumada)) + '</small></li>';
+        '<small>' + (a.severidad_maxima ? '<span class="sev ' + esc(a.severidad_maxima) + '">' + esc(SEV_TXT[a.severidad_maxima]) + '</span> ' : '') + esc(est) + ' · sumada ' + esc(hora(a.sumada)) + '</small>' +
+        (p.dirigir && d.alertas.length > 1 ? '<button type="button" class="btn chico quitar" data-quitar="' + esc(a.alerta_id) + '">Quitar de la sala</button>' : '') + '</li>';
     }).join('') : '<li class="sc-vacio">Sin alertas.</li>';
     // Tareas
     var abiertas = d.tareas.filter(function (t) { return t.estado === 'PENDIENTE' || t.estado === 'EN_CURSO'; }).length;
@@ -342,6 +354,14 @@
     pedir(url, c).then(function () { $('dlg-tarea').close(); toast(modoTarea === 'escalar' ? 'Escalado: le llegó el aviso.' : 'Tarea asignada: le llegó el aviso.'); cargar(); })
       .catch(function (e) { errorForm('ta-error', e.message); }).then(function () { b.disabled = false; });
   });
+  var alertaQuitar = null;
+  $('f-quitar').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var b = $('qu-ok'); b.disabled = true;
+    pedir('/api/incidentes/' + ID + '/alertas/' + alertaQuitar + '/quitar', { motivo: $('qu-motivo').value.trim() || null })
+      .then(function () { $('dlg-quitar').close(); toast('Alerta quitada de la sala.'); cargar(); })
+      .catch(function (e) { errorForm('qu-error', e.message); }).then(function () { b.disabled = false; });
+  });
   $('f-hecha').addEventListener('submit', function (ev) {
     ev.preventDefault();
     var t = $('he-res').value.trim(); if (!t) { errorForm('he-error', 'Contá qué se encontró o qué se hizo.'); return; }
@@ -359,6 +379,12 @@
     pedir('/api/incidentes/' + ID + '/notas', { texto: t }).then(function () { $('nota-txt').value = ''; cargar(); }).catch(function (e) { toast(e.message, true); });
   });
   document.addEventListener('click', function (ev) {
+    var q = ev.target.closest('[data-quitar]');
+    if (q && d) {
+      alertaQuitar = q.getAttribute('data-quitar'); $('f-quitar').reset(); errorForm('qu-error');
+      var li = q.closest('li'); $('qu-alerta').textContent = li ? li.querySelector('a').textContent + ' · ' + li.querySelector('span').textContent : '';
+      $('dlg-quitar').showModal(); return;
+    }
     var b = ev.target.closest('[data-est],[data-sc],[data-te]'); if (!b || !d) return;
     if (b.dataset.sc === 'escalar') return abrirTarea('escalar');
     if (b.dataset.sc === 'sumar') return abrirAlertas('sumar');

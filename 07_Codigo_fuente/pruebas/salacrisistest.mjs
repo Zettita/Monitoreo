@@ -68,6 +68,32 @@ const OTRA=q1("select alerta_id from alertas_historico where estado!='RESUELTA' 
 ok('hay otra alerta abierta para sumar', !!OTRA);
 { r=await call(ck.ana,'POST',`/api/incidentes/${IM}/alertas`,{alertas:[OTRA.alerta_id]}); ok('se suma una alerta de otro servicio', r.s===200 && n('select count(*) n from incidente_alertas where incidente_id=?',IM)===3, r.j); }
 
+// ---------- Quitar alertas de la sala (parche 74) ----------
+{
+  const quitar=(ckk,aid,body)=>call(ckk,'POST',`/api/incidentes/${IM}/alertas/${aid}/quitar`,body===undefined?{}:body);
+  const enSala=()=>n('select count(*) n from incidente_alertas where incidente_id=?',IM);
+  r=await quitar(ck.sol,OTRA.alerta_id); ok('Soporte no quita alertas (403)', r.s===403, r.j);
+  r=await quitar(ck.gero,OTRA.alerta_id); ok('el Gerente no quita alertas (403)', r.s===403, r.j);
+  r=await quitar(ck.ana,'0'.repeat(32)); ok('una alerta que no está en la sala = 404', r.s===404 && /no está en esta sala/.test(r.j.error), r.j);
+  r=await call(ck.ana,'POST',`/api/incidentes/${IM}/alertas/nada/quitar`,{}); ok('un id mal escrito no es una ruta (no se quita nada)', r.s!==200 && enSala()===3, r.s);
+  const lin0=n('select count(*) n from incidente_linea_tiempo where incidente_id=?',IM), aud1=n('select count(*) n from auditoria');
+  r=await quitar(ck.ana,OTRA.alerta_id,{motivo:'Es de otro problema'});
+  ok('el Analista quita una alerta con su motivo', r.s===200 && r.j.quedan===2 && enSala()===2, r.j);
+  ok('línea de tiempo: queda "Quitó la alerta" con el motivo', n("select count(*) n from incidente_linea_tiempo where incidente_id=? and tipo='ALERTA_SUMADA' and texto like 'Quitó la alerta:%Motivo: Es de otro problema%'",IM)===1 && n('select count(*) n from incidente_linea_tiempo where incidente_id=?',IM)===lin0+1);
+  ok('la conversación de la alerta lo cuenta', n("select count(*) n from alerta_eventos where alerta_id=? and comentario like 'Quitó la alerta de la sala de crisis IM-4. Motivo: Es de otro problema'",OTRA.alerta_id)===1);
+  ok('auditoría QUITAR_ALERTA_INCIDENTE', n("select count(*) n from auditoria where accion='QUITAR_ALERTA_INCIDENTE'")===1 && n('select count(*) n from auditoria')===aud1+1);
+  r=await call(ck.ana,'GET',`/api/incidentes/${IM}`); ok('la sala ya no la muestra', r.j.alertas.length===2 && !r.j.alertas.some(a=>a.alerta_id===OTRA.alerta_id), r.j.alertas.length);
+  ok('la alerta sigue abierta (solo salió de la sala)', q1('select estado from alertas_historico where alerta_id=?',OTRA.alerta_id).estado!=='RESUELTA');
+  r=await call(ck.ana,'GET',`/alerta/${A1}`); ok('la página de la alerta sigue andando', r.s===200);
+  r=await call(ck.ana,'GET','/api/incidentes/candidatas'); ok('vuelve a figurar como candidata, fuera de toda sala', r.j.alertas.some(a=>a.alerta_id===OTRA.alerta_id && !a.en_sala), r.j.alertas.length);
+  r=await quitar(ck.ana,OTRA.alerta_id); ok('quitarla otra vez = 404', r.s===404);
+  r=await call(ck.ana,'POST',`/api/incidentes/${IM}/alertas`,{alertas:[OTRA.alerta_id]}); ok('se puede volver a sumar', r.s===200 && enSala()===3, r.j);
+  // la sala conserva al menos una alerta
+  r=await quitar(ck.ana,OTRA.alerta_id); r=await quitar(ck.ana,A2); ok('se pueden quitar hasta dejar una', r.s===200 && enSala()===1, r.j);
+  r=await quitar(ck.ana,A1); ok('la última no se quita (409): si ya no hace falta, se cierra la sala', r.s===409 && /al menos una alerta/.test(r.j.error) && enSala()===1, r.j);
+  r=await call(ck.ana,'POST',`/api/incidentes/${IM}/alertas`,{alertas:[A2,OTRA.alerta_id]}); ok('vuelven las dos para seguir con la prueba', r.s===200 && enSala()===3, r.j);
+}
+
 // ---------- Alertas candidatas y páginas ----------
 r=await call(ck.sol,'GET','/api/incidentes/candidatas'); ok('Soporte no ve las alertas candidatas (403)', r.s===403);
 r=await call(ck.ana,'GET','/api/incidentes/candidatas'); ok('candidatas: una por grupo, graves primero, y marca las que ya están en IM-4', r.s===200 && r.j.alertas.length>0 && r.j.alertas.filter(a=>a.en_sala==='IM-4').length===n('select count(*) n from incidente_alertas where incidente_id=?',IM) && r.j.alertas[0].severidad==='CRITICA', r.j.alertas.slice(0,3));
