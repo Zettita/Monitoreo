@@ -231,6 +231,16 @@ async function moverDerivacion(env, request, yo, id) {
   return okJson({});
 }
 
+async function borrarDerivacion(env, yo, id) {
+  const r = await env.DB.prepare('SELECT id, nombre FROM reglas_derivacion WHERE id = ?1').bind(id).first();
+  if (!r) return jsonError('La regla no existe.', 404);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM reglas_derivacion WHERE id = ?1').bind(id),
+    env.DB.prepare('INSERT INTO auditoria (usuario_id, accion, detalle) VALUES (?1, ?2, ?3)').bind(yo.id, 'BORRAR_DERIVACION', r.nombre),
+  ]);
+  return okJson({});
+}
+
 async function rutasDerivacion(env, request, p, yo) {
   const m = request.method;
   let x;
@@ -238,5 +248,6 @@ async function rutasDerivacion(env, request, p, yo) {
   if (m === 'POST' && p === '/derivacion') return await guardarDerivacion(env, request, yo, null);
   if (m === 'POST' && (x = p.match(/^\/derivacion\/(\d+)$/))) return await guardarDerivacion(env, request, yo, Number(x[1]));
   if (m === 'POST' && (x = p.match(/^\/derivacion\/(\d+)\/mover$/))) return await moverDerivacion(env, request, yo, Number(x[1]));
+  if (m === 'POST' && (x = p.match(/^\/derivacion\/(\d+)\/borrar$/))) return await borrarDerivacion(env, yo, Number(x[1]));
   return null;
 }

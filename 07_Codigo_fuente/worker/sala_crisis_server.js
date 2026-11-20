@@ -186,8 +186,9 @@ async function abrirIncidente(env, request, yo) {
   if (titulo.length < 4) return jsonError('Escribí un título para la sala de crisis.', 400);
   const descripcion = textoLargo(b.descripcion, 2000) || null;
   const inicio = als.map((a) => a.desde).filter(Boolean).sort()[0] || null;
-  const inc = await env.DB.prepare(`INSERT INTO incidentes_mayores (titulo, descripcion, estado, severidad, cliente_id, servicio_id, responsable_usuario_id, abierto_por,
-      inicio, abierto, origen, actualizado) VALUES (?1, ?2, 'ABIERTO', ?3, ?4, ?5, ?6, ?6, COALESCE(?7, ${AHORA_SIM}), ${AHORA_SIM}, 'HELIOS', ${AHORA_SIM}) RETURNING id`)
+  // El número es el siguiente al más alto que hay (parche 75): aunque el contador interno de D1 haya avanzado, la primera sala de la demo es siempre IM-4
+  const inc = await env.DB.prepare(`INSERT INTO incidentes_mayores (id, titulo, descripcion, estado, severidad, cliente_id, servicio_id, responsable_usuario_id, abierto_por,
+      inicio, abierto, origen, actualizado) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM incidentes_mayores), ?1, ?2, 'ABIERTO', ?3, ?4, ?5, ?6, ?6, COALESCE(?7, ${AHORA_SIM}), ${AHORA_SIM}, 'HELIOS', ${AHORA_SIM}) RETURNING id`)
     .bind(titulo, descripcion, severidad, clientes.size === 1 ? p.cliente_id : null, servicios.size === 1 ? p.servicio_id : null, yo.id, inicio).first();
   const id = inc.id;
   try {

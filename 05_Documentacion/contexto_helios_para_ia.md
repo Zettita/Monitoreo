@@ -356,6 +356,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `GET /api/admin/eventos` · `POST /api/admin/eventos` · `POST /api/admin/eventos/borrar` | Eventos comerciales (solo Administrador, parche 29). Alta: `{nombre, fecha_desde, fecha_hasta?, cliente_id?, servicio_id?, efecto_esperado, nota?}`; baja: `{id}`. Quedan en auditoría |
 | `GET /admin` · `/api/admin/usuarios`, `/equipos`, `/reglas`, `/derivacion`, `/modelo`, `/auditoria` | Administración |
 | `GET /api/admin/umbrales` · `GET /api/admin/umbrales/recomendacion?cliente=&servicio=` · `POST /api/admin/umbrales` · `POST /api/admin/umbrales/borrar` | Umbrales (solo Administrador). El POST recibe `cliente_id`, `servicio_id` (vacíos = general) y los campos de `umbrales_config` en fracciones (0,25 = 25 %, 1 = banda del modelo); vacío = hereda |
+| `POST /api/admin/usuarios/{id}/borrar` · `/reglas/{id}/borrar` · `/derivacion/{id}/borrar` · `POST /api/admin/catalogo-resolucion` con `{id, borrar: true}` | Eliminar (parche 75). Usuarios y reglas de alerta: solo Administrador; reglas de derivación: Administrador y Analista. Usuarios: 409 si tiene alertas abiertas asignadas, tareas abiertas en una sala o dirige una sala abierta; 400 si es uno mismo o el último administrador. Auditoría `BORRAR_*` |
 | `POST /api/admin/umbrales/disponibilidad` | Pesos de la disponibilidad (solo Administrador, parche 45): `{pesos_gravedad:{CRITICA,ALTA,MEDIA}` en fracciones de 0 a 1, `pesos_criticidad:{ALTA,MEDIA,BAJA}}` de 0,1 a 100. Valida el orden. 409 si falta el script 20. Auditoría `EDITAR_DISPONIBILIDAD` |
 | `GET /api/demo` · `POST /api/demo/preparar` · `POST /api/demo/siguiente` | Modo demo (`/?demo`) |
 
@@ -478,6 +479,12 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**El Administrador elimina lo que crea y las salas de la demo se reinician (20/11, parche 75; sin SQL, falta publicar)**
+
+- Administración: se pueden eliminar **usuarios** (no uno mismo, ni el último administrador, ni quien tiene alertas o tareas de sala abiertas; lo que hizo queda en el historial sin su nombre), **equipos** (ahora también con historial; se borran sus integrantes y reglas de derivación), **reglas de alerta personalizadas** (y las reglas de derivación que las usaban), **reglas de derivación** y **causas y acciones para resolver**. Rutas `POST /api/admin/usuarios/<id>/borrar`, `/reglas/<id>/borrar`, `/derivacion/<id>/borrar` y `/catalogo-resolucion` con `{id, borrar: true}`. Cada una queda en la auditoría (`BORRAR_USUARIO`, `BORRAR_EQUIPO`, `BORRAR_REGLA`, `BORRAR_DERIVACION`, `BORRAR_CATALOGO_RESOLUCION`).
+- «Preparar demo» deja la numeración de las salas de crisis en el último antecedente importado: la primera sala de la demo es siempre IM-4 (antes subía IM-7, IM-8…).
+- Respaldo: `99_Archivo_viejo/worker_antes_parche75/`, ramas `respaldo-antes-parche-75` y `version-parche-75-eliminar-y-salas-demo`.
 
 **Asistente más cómodo y alertas que se quitan de la sala (20/11, parche 74; sin SQL, falta publicar)**
 

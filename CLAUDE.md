@@ -35,7 +35,7 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
 07_Codigo_fuente/
   worker/
     originales/worker_alertas_cron_original.js   punto de partida (no tocar)
-    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py, patch69.py, patch70.py, patch71.py, patch72.py, patch73.py, patch74.py, patch72.py y patch73.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
+    build.py            aplica demo_server.js y patch9.py … patch48.py, patch50.py, patch51.py, patch52.py, patch55.py, patch56.py, patch57.py, patch58.py, patch60.py, patch61.py, patch62.py, patch63.py, patch64.py, patch65.py, patch66.py, patch67.py, patch68.py, patch69.py, patch70.py, patch71.py, patch72.py, patch73.py, patch74.py y patch75.py → w.mjs (más fecha_ui.py, el campo de fecha compartido)
                         (no hay patch49.py ni patch53.py: el 49 fue la primera rama de Jira y el 53 completa crearTicketJira en tickets_integracion.js)
     patchNN.py          cada parche inyecta código y páginas; las páginas HTML viven en el Worker como
                         constantes JSON: HTML, ADMIN_HTML, MIS_ALERTAS_HTML, SEGUIMIENTO_HTML, LOGIN_HTML
@@ -55,6 +55,8 @@ El Worker publicado (`01_Worker/worker_alertas_cron.js`) **no se edita a mano**:
                         Se prende con TICKETS_JIRA = real y los secretos JIRA_USUARIO y JIRA_TOKEN. Opcionales: JIRA_URL, JIRA_PROYECTO y JIRA_TIPO
                         (por defecto Task). Etiquetas helios / prioridad / tipo de alerta, con un reintento si el proyecto no las tiene. InvGate sigue simulado.
                         Sin SQL. Prueba: pruebas/jiratest.mjs. Guía: 05_Documentacion/integracion_tickets.md
+    patch75.py          el Administrador elimina lo que crea (usuarios, equipos con historial, reglas de alerta personalizadas, reglas de derivación, causas y acciones; servidores en
+                        admin_server.js, avisos_server.js y ticketera_server.js, botones en Administración) y «Preparar demo» reinicia el número de las salas (la primera es IM-4). Sin SQL.
     patch74.py          panel del asistente: las preguntas sugeridas quedan fijas abajo (arriba del cuadro de texto); saludos y agradecimientos sueltos se contestan sin modelo (asistCortesia, en asistente_server.js);
                         quitar una alerta de una sala de crisis (sala_crisis_server.js y sala_crisis.html). Sin SQL.
     patch73.py          aviso de prueba de Teams con tarjeta propia (teamsTarjetaPrueba: "Aviso de prueba", quién lo mandó, "Abrir Helios"), sin "IM-0" ni estado. Sin SQL
@@ -185,7 +187,7 @@ node --no-warnings mkdb.mjs ../pruebas/base.sqlite prueba.sqlite
 node --no-warnings test_auth.mjs prueba.sqlite > salida.txt            # debe ser igual a ../pruebas/out_a.txt
 
 cd ../pruebas
-for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest comunicadostest jiratest textostest correousuariostest salacrisistest teamstest; do
+for t in umbtest segtest fertest admtest asigtest avtest cachetest perftest pushtest asistest ctxtest tickettest correotest integraciontest gerentetest periodotest disponibilidadtest comunicadostest jiratest textostest correousuariostest salacrisistest teamstest eliminartest; do
   node --no-warnings ../worker/mkdb.mjs base.sqlite $t.sqlite && node --no-warnings $t.mjs $t.sqlite
 done
 # etapa 3b: migración a mitad de camino (esquema viejo -> scripts 16 y 17 -> Worker nuevo); necesita w_anterior.mjs
@@ -333,6 +335,18 @@ Pedido de Uriel al ver la sección "Disponibilidad y resumen del período": barr
 - **Asistente:** el modelo por defecto del código pasa a `@cf/google/gemma-4-26b-a4b-it` (la variable `ASISTENTE_MODELO` ya lo tiene en Cloudflare); `ASISTENTE_POR_DIA` por defecto 100; en "¿Qué está sin asignar y a quién lo derivo?" el **servidor** arma hasta 3 botones "Derivar" (cada uno a la persona de Soporte con menos problemas abiertos, repartiendo), sin depender de que el modelo pida la herramienta (`asistProponerDerivar`); pregunta nueva "¿Qué alertas llevan más tiempo abiertas?" (Analista y Administrador; `alertas_abiertas` suma `abierta_hace` y `cuantas.abiertas_hace_mas_de_24_h`).
 - **Marca "Abierta hace N h/días"** en rojo cuando una alerta lleva más de 24 h abierta, en Seguimiento y en el tablero (surgió del incidente de 231 horas abierto de la reunión con Hugo del 12/11). Solo página. En la demo no se ve salvo con datos de más de un día.
 - Probado: demo igual al Worker anterior, 19 pruebas por módulo, `asistest` con casos nuevos (botones Derivar con 4 sin asignar, reparto, alerta de 3 días); los scripts de las páginas se revisaron con `node --check` (no se pudo mirar en un navegador real desde acá). Respaldo: `99_Archivo_viejo/worker_antes_parche55/`, ramas `respaldo-antes-parche-55` y `version-parche-55-asistente-y-abiertas-largas`.
+
+## Eliminar lo que crea el Administrador y salas de la demo (20/11, parche 75) — hecho en código, falta publicar (sin SQL)
+Pedido de Uriel (dos cambios):
+- **El Administrador elimina lo que crea.** Antes solo se podían borrar plantillas de correo, eventos comerciales, feriados, excepciones de umbrales, listas de difusión y equipos sin historial. Ahora también:
+  - **Usuarios** (`POST /api/admin/usuarios/<id>/borrar`, solo Administrador; botón «Eliminar usuario» en «Editar usuario»): se borran el usuario, sus sesiones, avisos, push, uso del asistente y pertenencia a equipos; sus referencias (responsable de equipo, creador de reglas, tickets, comunicados, tareas y salas ya cerradas) quedan vacías; una regla de derivación que mandaba solo a esa persona se borra (si tenía también equipo, queda con el equipo). **Lo que hizo queda en el historial pero sin su nombre** (alertas, conversaciones, auditoría no tienen clave foránea). No se puede eliminar a uno mismo ni al último administrador activo, ni a quien tiene **alertas abiertas asignadas, tareas abiertas en una sala o dirige una sala abierta** (409 con cuántas; primero se deriva, se resuelve o se cierra, o se desactiva). Auditoría `BORRAR_USUARIO` con usuario y nombre.
+  - **Equipos** (ya existía): ahora **también con historial**. Se borra el equipo, sus integrantes y sus reglas de derivación (la que tenía también persona queda con la persona). 409 si tiene alertas abiertas asignadas o tareas abiertas en una sala. Auditoría `BORRAR_EQUIPO`.
+  - **Reglas de alerta personalizadas** (`POST /api/admin/reglas/<id>/borrar`, Administrador; botón «Eliminar regla» al editarla): se borra la regla y las reglas de derivación que la nombraban; sus alertas abiertas se cierran solas en la próxima revisión. Las reglas del sistema no se borran (solo se apagan). Auditoría `BORRAR_REGLA`.
+  - **Reglas de derivación** (`POST /api/admin/derivacion/<id>/borrar`, Administrador y Analista, que también las crean): botón «Eliminar regla». Auditoría `BORRAR_DERIVACION`.
+  - **Causas y qué se hizo** (`POST /api/admin/catalogo-resolucion` con `{id, borrar: true}`, Administrador; botón «Eliminar» en cada opción): lo ya resuelto conserva el nombre. Auditoría `BORRAR_CATALOGO_RESOLUCION`.
+  - Cada botón pide confirmación y dice qué se borra. Las tablas de scripts opcionales (sala de crisis, comunicados, tickets, push, asistente) se limpian solo si existen.
+- **«Preparar demo» reinicia la numeración de las salas.** Borraba las salas abiertas en Helios pero el contador de números (`sqlite_sequence`) seguía: cada vuelta daba un IM-N más alto (IM-7). Ahora lo deja en el último antecedente importado y, además, **la sala nueva toma el número siguiente al más alto que hay** (`MAX(id) + 1` al abrirla), así que la primera sala de la demo es siempre **IM-4** aunque D1 no deje tocar el contador. Las tareas y la línea de tiempo también reinician su contador.
+- Probado: `eliminartest.mjs` nueva (53 controles: permisos, auto-eliminación, alertas y tareas abiertas, limpieza de sesiones / avisos / push / reglas, sin referencias rotas con `PRAGMA foreign_key_check`, auditoría, 404, equipos con historial, reglas, derivación, causas y tres «Preparar demo» seguidos con IM-4 cada vez) sumada a la batería; demo igual y todo en verde; pantallas de Administración en el navegador. Respaldo: `99_Archivo_viejo/worker_antes_parche75/`, ramas `respaldo-antes-parche-75` y `version-parche-75-eliminar-y-salas-demo`.
 
 ## Preguntas abajo, sin gastar en saludos y quitar alertas de la sala (20/11, parche 74) — hecho en código, falta publicar (sin SQL)
 Pedido de Uriel (tres cambios):

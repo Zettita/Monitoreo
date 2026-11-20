@@ -278,6 +278,68 @@ async function adminAuditoria(env, url) {
 
 // ---------- Rutas ----------
 // Devuelve una respuesta si la ruta es de administración, o null si no lo es.
+// ---------- Eliminar (parche 75): el Administrador puede borrar lo que crea ----------
+// Se borra el registro y lo que cuelga de él; lo que ya pasó (alertas, conversaciones, auditoría) queda como historial.
+// No se borra lo que dejaría trabajo abierto sin dueño (alertas abiertas asignadas, tareas de una sala): primero se deriva o se cierra.
+async function contarSiExiste(env, sql, ...args) {
+  try { return (await env.DB.prepare(sql).bind(...args).first()).n; }
+  catch (e) { if (/no such (table|column)/i.test(e.message)) return 0; throw e; }   // tablas de scripts que todavía no se corrieron
+}
+async function limpiarSiExiste(env, sql, ...args) {
+  try { await env.DB.prepare(sql).bind(...args).run(); }
+  catch (e) { if (!/no such (table|column)/i.test(e.message)) throw e; }
+}
+const SQL_ABIERTAS_DE = (col) => `SELECT COUNT(*) AS n FROM (SELECT DISTINCT tipo_alerta, ambiente, cliente_id, servicio_id, producto_id, canal_id, moneda_id FROM alertas_historico
+  WHERE ${col} = ?1 AND estado IN ('ABIERTA', 'RECONOCIDA'))`;
+async function adminBorrarUsuario(env, yo, id) {
+  const u = await env.DB.prepare('SELECT id, usuario, nombre, perfil, activo FROM usuarios WHERE id = ?1').bind(id).first();
+  if (!u) return jsonError('El usuario no existe.', 404);
+  if (u.id === yo.id) return jsonError('No podés eliminar tu propio usuario. Pedíselo a otro administrador.', 400);
+  if (u.perfil === 'ADMIN' && u.activo && !(await hayOtroAdmin(env, u.id))) return jsonError('Tiene que quedar al menos un administrador activo.', 400);
+  const alertas = (await env.DB.prepare(SQL_ABIERTAS_DE('asignado_usuario_id')).bind(id).first()).n;
+  const tareas = await contarSiExiste(env, "SELECT COUNT(*) AS n FROM incidente_tareas WHERE responsable_usuario_id = ?1 AND estado IN ('PENDIENTE', 'EN_CURSO')", id);
+  const salas = await contarSiExiste(env, "SELECT COUNT(*) AS n FROM incidentes_mayores WHERE responsable_usuario_id = ?1 AND estado <> 'CERRADO'", id);
+  const pendientes = [alertas ? alertas + (alertas === 1 ? ' alerta abierta asignada' : ' alertas abiertas asignadas') : null,
+    tareas ? tareas + (tareas === 1 ? ' tarea abierta en una sala de crisis' : ' tareas abiertas en salas de crisis') : null,
+    salas ? 'dirige ' + salas + (salas === 1 ? ' sala de crisis abierta' : ' salas de crisis abiertas') : null].filter(Boolean);
+  if (pendientes.length) return jsonError('No se puede eliminar: tiene ' + pendientes.join(', ') + '. Derivalas, resolvelas o cerralas primero (o desactivá al usuario).', 409);
+  // Lo que cuelga de la persona y vive en tablas de scripts opcionales (si la tabla no existe, no hay nada que limpiar)
+  const sueltas = [
+    'DELETE FROM suscripciones_push WHERE usuario_id = ?1', 'DELETE FROM asistente_uso WHERE usuario_id = ?1', 'DELETE FROM comunicado_destinatarios WHERE usuario_id = ?1',
+    'UPDATE comunicados_incidente SET enviado_por = NULL WHERE enviado_por = ?1', 'UPDATE tickets_alerta SET creado_por = NULL WHERE creado_por = ?1',
+    'UPDATE eventos_comerciales SET creado_por = NULL WHERE creado_por = ?1',
+    'UPDATE incidente_tareas SET responsable_usuario_id = NULL WHERE responsable_usuario_id = ?1', 'UPDATE incidente_tareas SET creada_por = NULL WHERE creada_por = ?1',
+    'UPDATE incidente_alertas SET sumada_por = NULL WHERE sumada_por = ?1', 'UPDATE incidente_linea_tiempo SET usuario_id = NULL WHERE usuario_id = ?1',
+    'UPDATE incidentes_mayores SET abierto_por = NULL WHERE abierto_por = ?1', 'UPDATE incidentes_mayores SET responsable_usuario_id = NULL WHERE responsable_usuario_id = ?1',
+  ];
+  for (const q of sueltas) await limpiarSiExiste(env, q, id);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM sesiones WHERE usuario_id = ?1').bind(id),
+    env.DB.prepare('DELETE FROM avisos WHERE usuario_id = ?1').bind(id),
+    env.DB.prepare('DELETE FROM equipo_miembros WHERE usuario_id = ?1').bind(id),
+    env.DB.prepare('UPDATE equipos SET responsable_id = NULL WHERE responsable_id = ?1').bind(id),
+    // Una regla de derivación que solo mandaba a esta persona se borra; si también tenía equipo, queda con el equipo
+    env.DB.prepare('DELETE FROM reglas_derivacion WHERE usuario_id = ?1 AND equipo_id IS NULL').bind(id),
+    env.DB.prepare('UPDATE reglas_derivacion SET usuario_id = NULL WHERE usuario_id = ?1').bind(id),
+    env.DB.prepare('UPDATE reglas_derivacion SET creada_por = NULL WHERE creada_por = ?1').bind(id),
+    env.DB.prepare('UPDATE reglas_alerta SET creada_por = NULL WHERE creada_por = ?1').bind(id),
+    env.DB.prepare('DELETE FROM usuarios WHERE id = ?1').bind(id),
+    env.DB.prepare('INSERT INTO auditoria (usuario_id, accion, detalle) VALUES (?1, ?2, ?3)').bind(yo.id, 'BORRAR_USUARIO', u.usuario + ' (' + u.nombre + ')'),
+  ]);
+  return okJson({});
+}
+// Regla personalizada: se borra la regla y las reglas de derivación que la nombraban. Sus alertas abiertas se cierran solas en la próxima revisión.
+async function adminBorrarRegla(env, yo, id) {
+  const r = await env.DB.prepare("SELECT id, nombre FROM reglas_alerta WHERE id = ?1 AND tipo = 'PERSONALIZADA'").bind(id).first();
+  if (!r) return jsonError('La regla no existe.', 404);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM reglas_derivacion WHERE tipo_alerta = ?1').bind('PERS_' + id),
+    env.DB.prepare("DELETE FROM reglas_alerta WHERE id = ?1 AND tipo = 'PERSONALIZADA'").bind(id),
+    env.DB.prepare('INSERT INTO auditoria (usuario_id, accion, detalle) VALUES (?1, ?2, ?3)').bind(yo.id, 'BORRAR_REGLA', r.nombre),
+  ]);
+  return okJson({});
+}
+
 async function rutasAdmin(env, request, ruta, url, yo) {
   const m = request.method;
   if (ruta === '/admin') {
@@ -296,6 +358,7 @@ async function rutasAdmin(env, request, ruta, url, yo) {
     if (m === 'POST' && p === '/usuarios') return await adminCrearUsuario(env, request, yo);
     if (m === 'POST' && (x = p.match(/^\/usuarios\/(\d+)$/))) return await adminEditarUsuario(env, request, yo, Number(x[1]));
     if (m === 'POST' && (x = p.match(/^\/usuarios\/(\d+)\/resetear-clave$/))) return await adminResetearClave(env, yo, Number(x[1]));
+    if (m === 'POST' && (x = p.match(/^\/usuarios\/(\d+)\/borrar$/))) return await adminBorrarUsuario(env, yo, Number(x[1]));
     if (m === 'POST' && (x = p.match(/^\/usuarios\/(\d+)\/desbloquear$/))) return await adminDesbloquear(env, yo, Number(x[1]));
     if (m === 'POST' && p === '/equipos') return await adminGuardarEquipo(env, request, yo, null);
     if (m === 'POST' && (x = p.match(/^\/equipos\/(\d+)$/))) return await adminGuardarEquipo(env, request, yo, Number(x[1]));
@@ -306,6 +369,7 @@ async function rutasAdmin(env, request, ruta, url, yo) {
     if (m === 'POST' && (x = p.match(/^\/reglas\/base\/([A-Z_]{2,40})$/))) return await adminActivarReglaBase(env, request, yo, x[1]);
     if (m === 'POST' && p === '/reglas') return await adminGuardarRegla(env, request, yo, null);
     if (m === 'POST' && (x = p.match(/^\/reglas\/(\d+)$/))) return await adminGuardarRegla(env, request, yo, Number(x[1]));
+    if (m === 'POST' && (x = p.match(/^\/reglas\/(\d+)\/borrar$/))) return await adminBorrarRegla(env, yo, Number(x[1]));
   }
   if (p === '/modelo') {
     if (!puede(yo, 'admin_modelo')) return sinPermiso();

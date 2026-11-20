@@ -351,6 +351,16 @@ async function catalogoResolucion(env, request, yo) {
   const nombre = opcional(b.nombre, 80);
   const id = b.id == null || b.id === '' ? null : aId(b.id);
   const activo = b.activo === 0 || b.activo === false || b.activo === '0' ? 0 : 1;
+  if (b.borrar) {   // Eliminar una causa o una acción (parche 75): lo ya resuelto conserva el nombre de entonces
+    const lista = id && o.causas.find((c) => c.id === id) ? o.causas : id && o.acciones.find((c) => c.id === id) ? o.acciones : null;
+    if (!lista) return jsonError('Esa opción no existe.', 404);
+    const borrada = lista.splice(lista.findIndex((c) => c.id === id), 1)[0];
+    await env.DB.batch([
+      env.DB.prepare('UPDATE alerta_parametros SET opciones_resolucion = ?1 WHERE id = 1').bind(JSON.stringify({ causas: o.causas, acciones: o.acciones })),
+      env.DB.prepare('INSERT INTO auditoria (usuario_id, accion, detalle) VALUES (?1, ?2, ?3)').bind(yo.id, 'BORRAR_CATALOGO_RESOLUCION', 'Borró "' + borrada.nombre + '"'),
+    ]);
+    return okJson({});
+  }
   if (!nombre || nombre.length < 2) return jsonError('Escribí el nombre (al menos 2 letras).', 400);
   if (/·/.test(nombre)) return jsonError('El nombre no puede tener el signo "·".', 400);
   let lista, x = null;
