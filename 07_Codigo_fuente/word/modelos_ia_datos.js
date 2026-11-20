@@ -51,7 +51,26 @@ function usdMesCorto(n) {
 }
 const mil = (n) => nf(n, 0);
 
-module.exports = { FECHA, FECHA_PRECIOS, SUPUESTO, ESCENARIOS, DIAS_MES, MODELOS, M, costoConsulta, neuronasConsulta, costoMes, usdConsulta, usdMes, usdMesCorto, mil, nf };
+// Hosting de la GPU. Precios de lista al 20/11/2026, Linux, regiones baratas (AWS us-east-1, GCP us-central1), sin impuestos.
+// 730 h = un mes prendido. 220 h = horario de trabajo (10 h x 22 días). El "resto" del servidor local es una estimación, no una cotización.
+const HORAS_MES = 730;
+const HORAS_HABIL = 220;
+const LOCAL_GPU = { min: 6200, max: 11900 };
+const LOCAL_RESTO = { min: 1500, max: 2500 };
+const LOCAL_MESES = 36;
+const NUBE = {
+  awsL4: 0.8048,       // g6.xlarge, 1x L4 de 24 GB
+  awsL4_3a: 0.3694,    // la misma, reservada 3 años sin pago inicial
+  gcpL4: 0.7068,       // g2-standard-4, 1x L4 de 24 GB
+  gcpL4_3a: 0.318,     // la misma, compromiso a 3 años
+  awsL40: 1.861,       // g6e.xlarge, 1x L40S de 48 GB
+  awsL40_3a: 0.804,    // la misma, reservada 3 años sin pago inicial
+  gcp96: 4.50,         // g4-standard-48, 1x RTX PRO 6000 de 96 GB
+};
+const localMes = (alto) => ((alto ? LOCAL_GPU.max : LOCAL_GPU.min) + (alto ? LOCAL_RESTO.max : LOCAL_RESTO.min)) / LOCAL_MESES;
+const porHoras = (precioHora, horas) => precioHora * horas;
+
+module.exports = { FECHA, FECHA_PRECIOS, SUPUESTO, ESCENARIOS, DIAS_MES, MODELOS, M, costoConsulta, neuronasConsulta, costoMes, usdConsulta, usdMes, usdMesCorto, mil, nf, HORAS_MES, HORAS_HABIL, NUBE, localMes, porHoras };
 
 if (require.main === module) {
   console.log('neuronas por consulta (Qwen):', neuronasConsulta(M.wai_qwen).toFixed(1));

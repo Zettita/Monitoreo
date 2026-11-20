@@ -4,7 +4,8 @@
 const path = require('path');
 const H = require('./helios_docx.js');
 const D = require('./modelos_ia_datos.js');
-const { M, ESCENARIOS: E, usdConsulta, usdMes, usdMesCorto, costoConsulta, costoMes, mil, nf } = D;
+const { M, ESCENARIOS: E, usdConsulta, usdMes, usdMesCorto, costoConsulta, costoMes, mil, nf, NUBE, HORAS_MES, HORAS_HABIL, localMes, porHoras } = D;
+const usdH = (precio, horas) => usdMesCorto(porHoras(precio, horas));
 
 const salida = process.argv[2] || '.';
 const w = H.ANCHO;
@@ -124,6 +125,26 @@ async function documentoCliente() {
     ['Horas de desarrollo', 'Sí', 'Las pone el equipo. Es la integración de la opción C.'],
   ], true));
   h.push(...H.nota('idea', 'Cómo leerlo', `con el uso actual, el servidor propio no ahorra plata frente a un modelo chico (${usdMesCorto(costoMes(M.haiku, E[0]))} por mes). Lo que aporta es que los datos no salen. La placa de video se justifica frente a un modelo grande con uso intenso (${usdMesCorto(costoMes(M.sonnet, E[2]))} por mes), y solo si la prueba de velocidad la pide.`));
+
+  h.push(H.titulo(2, '6.1 Hostear el modelo en AWS o en Google Cloud'));
+  h.push(H.P('El servidor justo para los modelos de esta propuesta es uno con una placa de 32 GB: entran Qwen3.6 y los de su tamaño, con varias consultas a la vez. En la nube se alquila una máquina parecida y se paga por hora. Estos precios son de lista, de noviembre de 2026, en las regiones baratas de Estados Unidos, sin impuestos de Argentina.'));
+  h.push(...H.tabla(['Dónde', 'Placa', 'Prendida todo el mes', 'Solo horario de trabajo'], cols(3.2, 1.6, 2.6, 2.6), [
+    ['Servidor propio, compra repartida en 3 años', '32 GB', usdMesCorto(localMes(false)) + ' a ' + usdMesCorto(localMes(true)), 'Lo mismo: la máquina ya está comprada'],
+    ['AWS, por hora (g6, una L4)', '24 GB', usdH(NUBE.awsL4, HORAS_MES), usdH(NUBE.awsL4, HORAS_HABIL)],
+    ['AWS, reservada 3 años', '24 GB', usdH(NUBE.awsL4_3a, HORAS_MES), 'Se paga igual, esté apagada o no'],
+    ['Google Cloud, por hora (g2, una L4)', '24 GB', usdH(NUBE.gcpL4, HORAS_MES), usdH(NUBE.gcpL4, HORAS_HABIL)],
+    ['Google, compromiso a 3 años', '24 GB', usdH(NUBE.gcpL4_3a, HORAS_MES), 'Se paga igual, esté apagada o no'],
+    ['AWS, la holgada (g6e, una L40S)', '48 GB', usdH(NUBE.awsL40, HORAS_MES), usdH(NUBE.awsL40, HORAS_HABIL)],
+    ['AWS, esa reservada 3 años', '48 GB', usdH(NUBE.awsL40_3a, HORAS_MES), 'Se paga igual, esté apagada o no'],
+  ], true));
+  h.push(H.P('La de 24 GB entra justa: el modelo ocupa unos 20 GB y queda poco lugar para varias personas a la vez. La de 48 GB es la equivalente cómoda. Una de 96 GB en Google Cloud sale unos ' + usdMesCorto(porHoras(NUBE.gcp96, HORAS_MES)) + ' por mes y no hace falta para estos modelos.'));
+  h.push(...vinetas([
+    '**Prendida todo el mes**, que es lo que pide un monitoreo, la nube sale entre una vez y media y seis veces el servidor propio.',
+    '**Con una reserva a 3 años de la placa chica**, la nube sale parecido a comprar hoy la de 32 GB. La diferencia: la máquina no queda propia y los datos salen de la empresa, igual que con un proveedor de IA.',
+    '**Si se apaga fuera del horario de trabajo** (unas 220 horas por mes), AWS o Google pueden salir más baratos que comprar. Para un asistente que también se usa de noche, la cuenta justa es la de siempre prendida.',
+    'La luz del servidor propio son unos cientos de kWh por mes. En pesos hay que mirar la tarifa: al lado de la nube, es poco.',
+  ]));
+  h.push(...H.nota('regla', 'El precio no cambia la seguridad', 'hostear el modelo en AWS o en Google Cloud saca el resumen de la empresa, igual que la opción B. Pasa por la misma revisión de la sección 7.'));
 
   h.push(H.titulo(1, '7. Seguridad'));
   h.push(H.P('Esta sección está escrita para revisarla con seguridad informática. El control no está en el modelo: está en Helios, antes de armar el resumen y después de recibir la respuesta.'));
@@ -427,6 +448,27 @@ async function documentoIngenieria() {
     '**Falla de la GPU:** el asistente avisa que no está disponible y Helios sigue igual (hoy ya es así sin el enlace `AI`). Con respaldo externo, solo si está habilitado.',
     '**Licencias:** guardar la licencia de cada modelo usado (Apache 2.0 o MIT en los candidatos); revisar las políticas de uso de gpt-oss.',
     '**Para la revisión de seguridad:** el resumen es dato de operación (clientes, servicios, métricas, comentarios), no una credencial. En A, B y el respaldo de D, plan pago con contrato de no entrenamiento, retención, borrado, subencargados y país. Lista cerrada de campos que salen. En C, el control es el acceso al servidor y que el puerto no esté publicado.',
+  ]));
+
+  h.push(H.titulo(2, '8.5 AWS y GCP contra el servidor propio'));
+  h.push(H.P('El servidor óptimo para los modelos de la sección 5.5 es una GPU de 32 GB (Qwen3.6-35B-A3B a 4 bits ocupa 20,4 GB y deja lugar para la caché). En la nube, lo parecido es una L4 de 24 GB, justa, o una L40S de 48 GB, holgada. Precios de lista al 20/11/2026, Linux, AWS us-east-1 y GCP us-central1, sin disco ni impuestos. Un mes prendido son 730 horas. El horario de trabajo son 220 horas (10 por 22 días).'));
+  h.push(...H.tabla(['Dónde', 'Instancia', 'GPU', '730 h', '220 h'], cols(2.4, 2.6, 1.4, 1.8, 1.8), [
+    ['Local, compra en 3 años', 'GPU de 32 GB más el resto del servidor', '32 GB', usdMesCorto(localMes(false)) + ' a ' + usdMesCorto(localMes(true)), 'Igual'],
+    ['AWS, por hora', 'g6.xlarge', 'L4 24 GB', usdH(NUBE.awsL4, HORAS_MES), usdH(NUBE.awsL4, HORAS_HABIL)],
+    ['AWS, reservada 3 años', 'g6.xlarge', 'L4 24 GB', usdH(NUBE.awsL4_3a, HORAS_MES), 'Se paga el mes'],
+    ['GCP, por hora', 'g2-standard-4', 'L4 24 GB', usdH(NUBE.gcpL4, HORAS_MES), usdH(NUBE.gcpL4, HORAS_HABIL)],
+    ['GCP, compromiso 3 años', 'g2-standard-4', 'L4 24 GB', usdH(NUBE.gcpL4_3a, HORAS_MES), 'Se paga el mes'],
+    ['AWS, por hora', 'g6e.xlarge', 'L40S 48 GB', usdH(NUBE.awsL40, HORAS_MES), usdH(NUBE.awsL40, HORAS_HABIL)],
+    ['AWS, reservada 3 años', 'g6e.xlarge', 'L40S 48 GB', usdH(NUBE.awsL40_3a, HORAS_MES), 'Se paga el mes'],
+    ['GCP, por hora', 'g4-standard-48', 'PRO 6000 96 GB', usdH(NUBE.gcp96, HORAS_MES), usdH(NUBE.gcp96, HORAS_HABIL)],
+  ], true));
+  h.push(H.P('La fila local reparte la compra en 36 meses: la placa a USD 6.200–11.900 más USD 1.500–2.500 estimados de procesador, 64 GB de RAM, disco y fuente. No es una cotización. La electricidad (unos cientos de kWh) va aparte y, en dólares, es chica al lado de estas cifras. Hay que mirarla en pesos con la tarifa real.'));
+  h.push(...vinetas([
+    '**Siempre prendida**, la L4 sale 1,3 a 2,8 veces el local y la L40S sale 3 a 6 veces. Una reserva a 3 años de la L4 (USD ' + nf(porHoras(NUBE.gcpL4_3a, HORAS_MES), 0) + ' a ' + nf(porHoras(NUBE.awsL4_3a, HORAS_MES), 0) + ' por mes) empata con comprar la de 32 GB al precio de hoy.',
+    '**Apagada fuera de horario**, la L4 baja a unos ' + usdMesCorto(porHoras(NUBE.gcpL4, HORAS_HABIL)) + '–' + usdMesCorto(porHoras(NUBE.awsL4, HORAS_HABIL)) + ' y puede salir más barata que comprar. Para Helios la comparación justa es 730 horas: el asistente también se usa de noche.',
+    '**La de 96 GB no es el óptimo** de esta propuesta. En GCP sale unos ' + usdMesCorto(porHoras(NUBE.gcp96, HORAS_MES)) + ' por mes. Alquilar una RTX PRO 6000 anda en USD 1.600.',
+    '**San Pablo y otras regiones salen más caras** y no siempre tienen estas GPUs. Los números de arriba son el piso.',
+    '**Los datos salen**, igual que en una API. El contrato de no entrenamiento, retención y país aplica también acá. Una GPU en la VPC del cliente no es lo mismo que un modelo en su servidor.',
   ]));
 
   h.push(H.titulo(1, '9. Plan de prueba comparativa'));
