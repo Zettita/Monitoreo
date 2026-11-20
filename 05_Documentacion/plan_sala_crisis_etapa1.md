@@ -2,7 +2,7 @@
 
 > Primera etapa del **AICIM** (Asistente Inteligente de Coordinación de Incidentes Mayores), el que se presenta como "próxima capacidad" al final del video de demostración. Este documento lo leen el equipo y la IA de Ale: si algo cambia, se actualiza acá primero.
 >
-> **Estado (20/11):** plan escrito y rama creada. Falta confirmar las decisiones de la sección 2; recién después se programa.
+> **Estado (20/11):** decisiones confirmadas por Ale. Paso 3 hecho: script 24 generado y probado (ver sección 3). Sigue el paso 4 (`patch69.py`).
 
 ## 1. Qué es y qué no es la etapa 1
 
@@ -21,7 +21,7 @@ El asistente de IA lee todo eso, explica, y **propone** asignar una tarea, comun
 - Correlación automática de alertas (depende de las definiciones de Hugo sobre servicios de acceso y tipo de impacto).
 - SLAs por prioridad y escalamiento automático por tiempo (también de Hugo).
 
-## 2. Decisiones a confirmar antes del paso 3
+## 2. Decisiones (confirmadas por Ale el 20/11)
 
 | # | Pregunta | Propuesta |
 |---|---|---|
@@ -31,9 +31,9 @@ El asistente de IA lee todo eso, explica, y **propone** asignar una tarea, comun
 | 4 | ¿Los antecedentes de la guía, de dónde salen? | De lo que ya existe: alertas resueltas con causa (`alertas_historico.causa_resolucion`) e incidentes mayores cerrados con su causa raíz. Para la demo, el script 24 carga 3 incidentes mayores **cerrados** del mes anterior como historia ficticia (igual que el perfil se entrenó con historia ficticia). |
 | 5 | ¿Cómo entra en la demo sin romper las 19 escenas? | Escenas nuevas **20 a 22** al final (abrir la sala con la caída de CLI_006, tareas y propuesta del asistente, restablecimiento y cierre). Las 19 actuales tienen que dar exactamente lo mismo: `test_auth` se compara escena por escena hasta la 19 y `out_a.txt` se regenera solo con el agregado del final. |
 
-## 3. Diseño de datos (borrador del paso 3)
+## 3. Diseño de datos (paso 3, hecho)
 
-Script **`24_sala_crisis_d1.txt`** (fuente `sala_crisis_d1.sql`): una sentencia por línea, sin comentarios, probado en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`. Solo crea tablas e índices y carga el ejemplo: **no toca ninguna tabla existente**. Pasa de 26 a **32 tablas**. Sin el script, Helios funciona igual y la sala avisa que falta.
+Script **`24_sala_crisis_d1.txt`** (fuente `sala_crisis_d1.sql`; los dos los genera `07_Codigo_fuente/worker/sala_crisis_sql.py`, 30 bloques): una sentencia por línea, sin comentarios, probado en SQLite con `SQLITE_LIMIT_COMPOUND_SELECT = 2`. Solo crea tablas e índices y carga el ejemplo: **no toca ninguna tabla existente**. Pasa de 26 a **32 tablas**. Sin el script, Helios funciona igual y la sala avisa que falta.
 
 ### `incidentes_mayores`
 | Columna | Tipo | Qué es |
@@ -43,31 +43,36 @@ Script **`24_sala_crisis_d1.txt`** (fuente `sala_crisis_d1.sql`): una sentencia 
 | `descripcion` | TEXT | Qué se sabe al abrir |
 | `estado` | TEXT | `ABIERTO` → `MITIGADO` (servicio restablecido, se sigue mirando) → `RESUELTO` → `CERRADO` (con causa raíz y revisión) |
 | `severidad` | TEXT | `CRITICA` o `ALTA` (las mismas palabras de Helios: Grave / Importante) |
-| `cliente_id` | TEXT | Cliente principal; NULL si afecta a varios |
+| `cliente_id` · `servicio_id` | TEXT | Cliente y servicio principales; NULL si afecta a varios. El servicio arranca la guía de diagnóstico |
 | `responsable_usuario_id` | INTEGER | Quien dirige la sala (un Analista) |
 | `abierto_por` | INTEGER | Quien la abrió |
 | `inicio` | TEXT | Desde cuándo se ve el problema (la primera ventana de las alertas), UTC ISO |
 | `abierto` · `mitigado` · `resuelto` · `cerrado` | TEXT | Cuándo pasó a cada estado |
 | `causa_raiz` | TEXT | Al cerrar (obligatoria para `CERRADO`) |
+| `componente_causa_id` | INTEGER | Componente donde estuvo la causa (al cerrar): con esto la guía encuentra los antecedentes |
 | `resumen_cierre` | TEXT | Qué se hizo y qué queda por mejorar |
+| `origen` | TEXT | `HELIOS` (abierto en Helios) o `IMPORTADO` (antecedente cargado de antes). "Preparar demo" solo borra los `HELIOS` |
+| `actualizado` | TEXT | Último cambio |
 
-Índices: `ix_incidentes_mayores_estado` (`estado`, `abierto`).
+Índices: `ix_incidentes_mayores_estado` (`estado`, `abierto`) e `ix_incidentes_mayores_componente` (`componente_causa_id`, `cerrado`).
 
 ### `incidente_alertas`
 Qué grupos de alertas agrupa cada incidente. Se guarda **una** `alerta_id` del grupo (como hace el tablero) y la clave para mostrarlo sin releer `alertas_historico`.
 `incidente_id`, `alerta_id`, `tipo_alerta`, `cliente_id`, `servicio_id`, `canal_id`, `sumada_por`, `sumada`. PK (`incidente_id`, `alerta_id`). Índice por `alerta_id` (para mostrar "es parte de IM-12" en el detalle de la alerta).
 
 ### `incidente_tareas`
-`id`, `incidente_id`, `titulo`, `detalle`, `responsable_usuario_id`, `equipo_id` (uno o los dos), `estado` (`PENDIENTE`, `EN_CURSO`, `HECHA`, `CANCELADA`), `resultado` (al terminar), `creada_por`, `creada`, `vence` (opcional), `actualizada`, `terminada`, `propuesta_por_asistente` (0/1). Índices: (`incidente_id`, `estado`) y (`responsable_usuario_id`, `estado`) para "Mis tareas".
+`id`, `incidente_id`, `titulo`, `detalle`, `responsable_usuario_id`, `equipo_id` (uno o los dos), `estado` (`PENDIENTE`, `EN_CURSO`, `HECHA`, `CANCELADA`), `componente_id` (qué componente revisa, opcional), `resultado` (al terminar), `creada_por`, `creada`, `vence` (opcional), `actualizada`, `terminada`, `propuesta_por_asistente` (0/1). Índices: (`incidente_id`, `estado`) y (`responsable_usuario_id`, `estado`) para "Mis tareas".
 
 ### `incidente_linea_tiempo`
 `id`, `incidente_id`, `fecha`, `usuario_id` (NULL = Helios), `tipo` (`APERTURA`, `ALERTA_SUMADA`, `ESTADO`, `TAREA`, `NOTA`, `COMUNICADO`, `ESCALAMIENTO`, `CIERRE`), `texto`, `referencia` (id de tarea o de comunicado). Índice (`incidente_id`, `fecha`). Se escribe en el mismo `batch` que cada acción: nunca queda una acción sin su renglón.
 
 ### Para la guía de diagnóstico
-- **`componentes_infraestructura`**: `id`, `nombre` ("Gateway de pagos", "Base de cuentas", "Autenticación", "Proveedor de recargas"), `tipo` (`GATEWAY`, `BASE_DE_DATOS`, `AUTENTICACION`, `PROVEEDOR_EXTERNO`, `RED`, `APLICACION`), `descripcion`, `equipo_id` (quién lo atiende), `que_revisar` (pasos concretos), `activo`.
-- **`componente_dependencias`**: une servicios y componentes, y componentes entre sí. `cliente_id` (NULL = todos), `servicio_id` (NULL = es una dependencia entre componentes), `componente_id`, `depende_de_componente_id`. Con eso la guía arma "Pago de servicios de CLI_006 → Gateway de pagos → Proveedor externo".
+- **`componentes_infraestructura`**: `id`, `nombre` (único), `tipo` (`GATEWAY`, `BASE_DE_DATOS`, `AUTENTICACION`, `PROVEEDOR_EXTERNO`, `RED`, `APLICACION`), `descripcion`, `area_responsable` (texto: "Pagos y transferencias", "Plataforma"…), `equipo_id` (opcional: el equipo de Helios que lo atiende, cuando exista), `que_revisar` (pasos concretos), `activo`.
+- **`componente_dependencias`**: cada fila es "un servicio depende de un componente" (`servicio_id` lleno, `componente_id` vacío) o "un componente depende de otro" (`componente_id` lleno, `servicio_id` vacío); lo controla un CHECK. `cliente_id` NULL = vale para todos los clientes. Índice único (no se duplica al repetir la carga) e índice por servicio. Con eso la guía arma "Pago de servicios de CLI_006 → Gateway de pagos → Proveedor de cobranza".
 
-Ejemplo cargado: unos 8 componentes y 20 dependencias para los 4 servicios de la demo; 3 incidentes mayores cerrados del mes anterior (gateway de CLI_002, autenticación de CLI_001, proveedor de recargas de CLI_003), con su línea de tiempo resumida y causa raíz.
+Ejemplo cargado: **9 componentes** (Autenticación, Core de cuentas y saldos, Motor de transferencias, Red interbancaria, Gateway de pagos, Proveedor de cobranza de servicios, Proveedor de recargas de celular, Proveedor de carga de transporte, Balanceador y red de entrada) y **18 dependencias** para los 4 servicios de la demo (una particular de CLI_006); **3 incidentes mayores cerrados** de septiembre (IM-1 certificado vencido en el gateway de CLI_002, IM-2 demora de SMS en la autenticación de CLI_001, IM-3 mantenimiento del proveedor de recargas de CLI_003), con su línea de tiempo resumida y causa raíz. Los incidentes nuevos siguen desde IM-4.
+
+**Probado** (SQLite con el límite de dos `SELECT` unidos y claves foráneas activas): crea las 6 tablas (quedan 32), repetir el script no duplica nada, la consulta de la guía usa el índice por servicio, los CHECK rechazan estados, severidades, tipos y dependencias mal armadas, y toda la batería y la demo dan igual con el script cargado.
 
 ## 4. Permisos (tabla `PERMISOS`)
 | Permiso | Perfiles |

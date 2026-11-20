@@ -23,6 +23,7 @@ if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('disponibilidad_d1.sql'
 if (!sinUmbrales && !process.env.SIN_ETAPA_3B) arch.push('comunicados_d1.sql');   // parche 46: comunicar incidente (script 21)
 if (!sinUmbrales && !process.env.SIN_ETAPA_3B && !process.env.SIN_SCRIPT_22) arch.push('equipos_comunicados_d1.sql');   // parche 63: equipos y listas de difusión unificados (script 22)
 if (!sinUmbrales && !process.env.SIN_ETAPA_3B && !process.env.SIN_SCRIPT_23) arch.push('correo_usuarios_d1.sql');   // parche 68: correo de cada usuario (script 23)
+if (!sinUmbrales && !process.env.SIN_ETAPA_3B && !process.env.SIN_SCRIPT_24) arch.push('sala_crisis_d1.sql');   // parche 69: sala de crisis (script 24)
 for (const f of arch)
   for (const l of fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8').split('\n')) if (l.trim()) db.exec(l);
 console.log('db lista', dst, sinUmbrales ? '(sin umbrales)' : '');

@@ -32,6 +32,8 @@ Del 1 al 22 ya están aplicados (el 23 es nuevo: falta correrlo): sirven para re
 
 22. `22_equipos_y_comunicados_d1.txt` — **ya corrido (parche 63).** Equipos y listas de difusión en uno: rol de cada persona en los comunicados (`equipo_miembros.rol_comunicado`) y para qué alertas sirve el equipo (`equipos.alcance_cliente_id`); pasa las listas que había a equipos. Siguen 26 tablas. Se corre antes de publicar el Worker.
 
+24. `24_sala_crisis_d1.txt` — **nuevo (parche 69, en desarrollo): todavía no correrlo.** Sala de crisis: 6 tablas para los incidentes mayores (tareas, línea de tiempo, componentes y dependencias), un catálogo de ejemplo y 3 antecedentes. Pasa de 26 a 32 tablas. Se corre antes de publicar el Worker del parche 69.
+
 23. `23_correo_usuarios_d1.txt` — **nuevo (parche 68), falta correrlo.** Una columna, `usuarios.correo`: el correo de cada persona, para elegir destinatarios al enviar correos desde una alerta. Siguen 26 tablas. Se corre antes de publicar el Worker; sin él todo anda como antes.
 
 ## 03_Modelo_v2_perfil — modelo nuevo (día de la semana × franja de 15 min × tercio del mes: días 1-10, 11-20, 21 a fin)
