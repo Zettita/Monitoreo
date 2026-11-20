@@ -5363,7 +5363,9 @@ async function asistResponder(env, yo, entrada) {
   const directas = [];
   let datosDirectos = null;
   if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);
-  if (entrada.incidente_id && !entrada.sugerencia) directas.push(['estado_incidente', { incidente_id: entrada.incidente_id }]);   // pregunta libre dentro de la sala
+  const salaLibre = !!(entrada.incidente_id && !entrada.sugerencia);
+  if (salaLibre) for (const n of salaElegir(entrada.pregunta, disponibles))   // pregunta libre dentro de la sala (parche 71)
+    directas.push([n, n === 'contexto_externo' ? ASIST_ARGS.contexto_externo(entrada.pregunta) : { incidente_id: entrada.incidente_id }]);
   if (entrada.sugerencia) for (const n of entrada.sugerencia.herramientas) directas.push([n, (entrada.sugerencia.args || {})[n] || {}]);
   if (!directas.length) for (const n of asistElegir(entrada.pregunta, yo.perfil, disponibles)) directas.push([n, ASIST_ARGS[n] ? ASIST_ARGS[n](entrada.pregunta) : {}]);
   if (directas.length) {
@@ -5373,12 +5375,13 @@ async function asistResponder(env, yo, entrada) {
     // Propuesta armada por el servidor (por ejemplo, "Tomar" la primera de Soporte): no depende de que el modelo la pida
     if (entrada.sugerencia && entrada.sugerencia.proponer) { const p = entrada.sugerencia.proponer(datos); for (const x of (Array.isArray(p) ? p : p ? [p] : [])) await correrHerramienta('sugerir_accion', x); }
     pregunta += '\n\nDatos de Helios para responder (JSON):\n' + JSON.stringify(datos);
+    if (salaLibre) pregunta += '\n\nCómo responder: ' + SALA_GUIA_LIBRE;
     if (entrada.sugerencia && entrada.sugerencia.guia) pregunta += '\n\nCómo responder: ' + entrada.sugerencia.guia + (acciones.length ? ' (Ya le dejamos a la persona el botón "Hacerlo" para: ' + acciones.map((x) => x.titulo.toLowerCase()).join(', ') + '.)' : '');
   }
   if (/qwen3/i.test(asistNombreModelo(env))) pregunta += ' /no_think';
   mensajes.push({ role: 'user', content: pregunta });
 
-  let texto = '', crudo = '';
+  let texto = '', crudo = '', insistio = false;
   for (let vuelta = 0; vuelta < ASIST_MAX_VUELTAS; vuelta++) {
     const ultima = vuelta === ASIST_MAX_VUELTAS - 1;
     let r = await asistModelo(env, mensajes, ultima ? null : schemas, ultima ? null : schemas.map((x) => x.function.name));
@@ -5387,6 +5390,11 @@ async function asistResponder(env, yo, entrada) {
       // Repitió la definición de las herramientas en vez de usarlas: se pide la respuesta con los datos que ya hay
       r = await asistModelo(env, mensajes.concat([{ role: 'user', content: 'Respondé la pregunta en español, con los datos que ya tenés. No escribas herramientas ni JSON.' }]), null, null);
       texto = r.texto; break;
+    }
+    if (!r.llamadas.length && !ultima && !insistio && ASIST_PROMESA.test(r.texto || '')) {
+      insistio = true;
+      mensajes.push({ role: 'assistant', content: r.texto }, { role: 'user', content: 'No anuncies consultas: si te falta un dato, pedí la herramienta ahora; si no, respondé ya con lo que tenés.' });
+      continue;
     }
     if (!r.llamadas.length || ultima) { texto = r.texto; break; }
     mensajes.push({ role: 'assistant', content: r.texto || '', tool_calls: r.llamadas.map((l) => ({ id: l.id, type: 'function', function: { name: l.nombre, arguments: JSON.stringify(l.args) } })) });
@@ -5398,6 +5406,12 @@ async function asistResponder(env, yo, entrada) {
     }
     // Si solo propuso acciones y ya había escrito la respuesta, no hace falta otra vuelta
     if (soloAcciones && r.texto) { texto = r.texto; break; }
+  }
+  if (salaLibre && /escal/i.test(entrada.pregunta) && !acciones.some((a) => a.tipo === 'escalar') && !/no (hace falta|conviene|es necesario|corresponde|har[ií]a falta) escalar/i.test(texto || '')) {
+    const p = salaProponerEscalar(datosDirectos, entrada.incidente_id);
+    const antes = acciones.length;
+    if (p) await correrHerramienta('sugerir_accion', p);
+    if (acciones.length > antes && texto) texto += '\n\nTe dejo el botón para escalar: revisá a quién y el texto antes de confirmarlo.';
   }
   texto = asistLimpiarTexto(texto);
   if (Object.keys(enlaces).length) texto = asistEnlaces(texto, enlaces);
@@ -5514,6 +5528,28 @@ Object.assign(ASIST_HERRAMIENTAS, {
     },
   },
 });
+
+// ---------- Pregunta libre dentro de la sala (parche 71) ----------
+const SALA_PALABRAS_GUIA = /escal|proveedor|revis|causa|componente|depend|antecedente|parecid|diagn|por d[oó]nde|empiez|qu[eé] hago|qu[eé] miro|tercer/i;
+const SALA_PALABRAS_AFUERA = /proveedor|extern|afuera|cloudflare|twilio|tercer|noticia|paro|corte/i;
+function salaElegir(pregunta, disponibles) {
+  const out = ['estado_incidente', 'tareas_incidente'];
+  if (SALA_PALABRAS_GUIA.test(pregunta)) out.push('guia_diagnostico');
+  if (SALA_PALABRAS_AFUERA.test(pregunta)) out.push('contexto_externo');
+  return out.filter((n) => disponibles.includes(n)).slice(0, 4);
+}
+const SALA_GUIA_LIBRE = 'Respondé con estos datos de la sala, en pocas frases y en español. No digas que vas a consultar algo: ya lo tenés. Si falta un dato, decí cuál. ' +
+  'Si preguntan si conviene escalar: decidilo con las tareas hechas y abiertas, las dependencias de la guía (por ejemplo, el proveedor) y, si está, lo de afuera; si conviene, proponelo con sugerir_accion (tipo escalar).';
+// "¿Escalo…?": botón armado por el servidor si el modelo no lo dejó (a la persona de Soporte con menos tareas abiertas en salas)
+function salaProponerEscalar(d, incidenteId) {
+  const t = (d && d.tareas_incidente) || {}, e = (d && d.estado_incidente) || {};
+  const personas = ((t.opciones_asignacion || {}).personas_soporte || []).slice().sort((x, y) => x.tareas_abiertas - y.tareas_abiertas);
+  if (!personas.length) return null;
+  const motivo = (e.sala || 'La sala') + ' sigue ' + String(e.estado || 'abierta').toLowerCase() + (e.problema_desde ? '; el problema empezó ' + e.problema_desde : '') + '.';
+  return { tipo: 'escalar', incidente_id: incidenteId, usuario_id: personas[0].usuario_id, motivo, comentario: motivo + ' Hace falta escalarlo (por ejemplo, al proveedor).' };
+}
+// El modelo anunció que iba a consultar algo en vez de pedir la herramienta
+const ASIST_PROMESA = /\b(d[eé]jame|voy a|necesito|tengo que|perm[ií]teme|d[eé]jenme|vamos a)\s+(consultar|revisar|buscar|usar|chequear|verificar|mirar|ver)\b/i;
 
 // ---------- Propuestas de la sala ----------
 const SALA_ACCIONES = {

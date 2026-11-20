@@ -479,6 +479,11 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Asistente en la sala: preguntas libres (20/11, parche 71; sin SQL, falta publicar)**
+
+- Con Gemma, "¿Escalo esto al proveedor?" dentro de la sala respondía "dejame consultar…" sin consultar ni dejar botón. Ahora la pregunta libre en la sala lleva estado, tareas y, según las palabras, la guía de diagnóstico y el contexto externo; si se pregunta por escalar y el modelo no lo propuso ni dijo que no hace falta, el servidor deja el botón Escalar. En todo el asistente, si el modelo anuncia una consulta sin hacerla, se le insiste una vez.
+- Respaldo: `99_Archivo_viejo/worker_antes_parche71/`, ramas `respaldo-antes-parche-71` y `version-parche-71-asistente-sala-preguntas-libres`.
+
 **Sala de crisis en Teams (20/11, parche 70; sin SQL, falta publicar)**
 
 - **A:** las novedades de cada sala (apertura, alertas sumadas, tareas nuevas y hechas, escalamientos, estado, comunicados y cierre; no las notas) llegan a un canal de Teams como tarjeta con "Abrir sala en Helios". Se conecta con un flujo de Workflows de Teams y su dirección en el secreto `TEAMS_WEBHOOK`; sin él no hace nada. Administración > Equipos: "Avisos en Teams" con aviso de prueba (solo Administrador; rutas `GET /api/admin/teams` y `POST /api/admin/teams/probar`, auditoría `TEAMS_PRUEBA`).
