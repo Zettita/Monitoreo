@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import worker from '../worker/w.mjs';
 // Prueba de la revisión incremental (parche 37, etapa 3).
-//   1. La demo de 19 escenas corre a la vez en dos bases: una con revisión incremental (lo normal) y otra forzada a
+//   1. La demo de 22 escenas corre a la vez en dos bases: una con revisión incremental (lo normal) y otra forzada a
 //      revisión completa (como antes). Después de cada escena tienen que dar lo mismo: alertas, pre-alertas, series
 //      del tablero y avisos (sin contar cuántas veces se volvió a detectar cada ventana, que es justo lo que se ahorra).
 //   2. Casos que solo existen en incremental: dato tardío que cierra "dejaron de llegar datos", dato corregido que hace
@@ -51,7 +51,7 @@ const Q = {
 await A.call(ckA.adm, 'POST', '/api/demo/preparar', {}); await B.call(ckB.adm, 'POST', '/api/demo/preparar', {});
 const modos = [], nuevos = [];
 let todoIgual = true;
-for (let e = 1; e <= 19; e++) {
+for (let e = 1; e <= 22; e++) {   // las 19 de la guardia y las 3 de la sala de crisis (parche 69)
   const marca = A.db.prepare('SELECT revisado_hasta FROM alerta_parametros WHERE id = 1').get().revisado_hasta;
   const ra = await A.call(ckA.adm, 'POST', '/api/demo/siguiente', {}); await B.call(ckB.adm, 'POST', '/api/demo/siguiente', {});
   modos.push((ra.j.proceso && ra.j.proceso.modo) || '?');
@@ -70,7 +70,7 @@ for (let e = 1; e <= 19; e++) {
   if (e === 14) { try { fs.unlinkSync('inc_c.sqlite'); } catch (x) {} A.db.exec("VACUUM INTO 'inc_c.sqlite'"); }   // copia para el caso del dato corregido
   if (sinId(da.j.incidentes) !== sinId(db.j.incidentes)) { todoIgual = false; ok('escena ' + e + ': incidentes del tablero iguales', false); }
 }
-ok('las 19 escenas dan lo mismo en incremental y en completa (alertas, pre-alertas, series, avisos e incidentes)', todoIgual);
+ok('las 22 escenas dan lo mismo en incremental y en completa (alertas, pre-alertas, series, avisos e incidentes)', todoIgual);
 ok('escena 1 completa (primera revisión) y de la 2 en adelante incremental', modos[0] === 'completa' && modos.slice(1).every((m) => m === 'incremental'), modos.join(' '));
 console.log('     datos que mira cada escena (incremental / ventana de 25 h de la completa): ' + nuevos.map((x) => x[0] + '/' + x[1]).join(' '));
 ok('el modo incremental mira solo los datos nuevos de la escena', nuevos.slice(1).every((x) => x[0] <= 20));

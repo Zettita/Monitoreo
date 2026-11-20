@@ -185,9 +185,33 @@ r=await call(ck.sol,'GET','/mis-alertas'); ok('la campanita de Mis alertas lleva
 await call(A,'POST','/api/demo/preparar');
 ok('Preparar demo borra las salas de Helios y deja los antecedentes', n("select count(*) n from incidentes_mayores where origen='HELIOS'")===0 && n("select count(*) n from incidentes_mayores where origen='IMPORTADO'")===3 && n('select count(*) n from incidente_tareas')===0 && n('select count(*) n from incidente_linea_tiempo where incidente_id>3')===0);
 
+// ---------- Escenas 20 a 22 de la demo: el gateway de pagos cae en tres clientes ----------
+for(let i=0;i<19;i++) await call(A,'POST','/api/demo/siguiente');
+r=await call(A,'POST','/api/demo/siguiente'); ok('escena 20: se cae el gateway de pagos', r.j.escena===20 && /gateway/.test(r.j.titulo), r.j);
+r=await call(ck.ana,'GET','/api/incidentes/candidatas');
+const g20=r.j.alertas.filter(a=>['CLI_002','CLI_005','CLI_006'].includes(a.cliente_id) && a.servicio==='Pago de servicios');
+ok('escena 20: aparecen alertas de Pago de servicios en CLI_002, CLI_005 y CLI_006, las graves primero', new Set(g20.map(a=>a.cliente_id)).size===3 && r.j.alertas[0].severidad==='CRITICA' && r.j.alertas[0].cliente_id==='CLI_006', g20.map(a=>a.cliente_id+':'+a.severidad));
+const grave=g20.find(a=>a.cliente_id==='CLI_006' && a.tipo_alerta==='SIN_EXITOS');
+r=await call(ck.ana,'POST','/api/incidentes',{alertas:[grave.alerta_id]}); const IMD=r.j.incidente.id;
+ok('el Analista abre la sala desde la alerta grave', r.s===200 && q1('select cliente_id c, servicio_id s from incidentes_mayores where id=?',IMD).s==='PAGO_SERVICIOS', r.j);
+r=await call(ck.ana,'POST',`/api/incidentes/${IMD}/alertas`,{alertas:g20.filter(a=>a.cliente_id!=='CLI_006').map(a=>a.alerta_id)});
+ok('y suma las de los otros dos clientes: la sala queda de varios clientes', r.s===200 && n('select count(*) n from incidente_alertas where incidente_id=?',IMD)===3, r.j);
+r=await call(ck.ana,'GET',`/api/incidentes/${IMD}`);
+ok('la guía arranca por Pago de servicios (gateway y proveedor de cobranza) y trae IM-1 como antecedente', r.j.guia.componentes.some(c=>c.nombre==='Gateway de pagos') && r.j.guia.antecedentes[0] && r.j.guia.antecedentes[0].id===1, r.j.guia.antecedentes.map(a=>a.id));
+r=await call(A,'POST','/api/demo/siguiente'); ok('escena 21: el gateway sigue caído', r.j.escena===21);
+r=await call(ck.ana,'GET',`/api/incidentes/${IMD}`); ok('escena 21: las alertas de la sala siguen abiertas', r.j.alertas.every(a=>a.estado!=='RESUELTA'), r.j.alertas.map(a=>a.estado));
+r=await call(A,'POST','/api/demo/siguiente'); ok('escena 22: servicio restablecido', r.j.escena===22 && r.j.total===22);
+r=await call(ck.ana,'GET',`/api/incidentes/${IMD}`);
+ok('escena 22: las alertas se resolvieron solas y la sala sigue abierta hasta que el Analista la cierre', r.j.alertas.every(a=>a.estado==='RESUELTA') && r.j.incidente.estado==='ABIERTO', [r.j.alertas.map(a=>a.estado), r.j.incidente.estado]);
+r=await call(ck.ana,'POST',`/api/incidentes/${IMD}/estado`,{estado:'MITIGADO'}); ok('se marca mitigado', r.s===200);
+r=await call(ck.ana,'POST',`/api/incidentes/${IMD}/estado`,{estado:'CERRADO',causa_raiz:'El gateway de pagos perdió la conexión con el proveedor de cobranza.',componente_causa_id:5});
+ok('y se cierra con causa raíz: queda como antecedente del gateway', r.s===200 && n("select count(*) n from incidentes_mayores where estado='CERRADO' and componente_causa_id=5")>=2);
+r=await call(A,'POST','/api/demo/siguiente'); ok('después de la 22 la demo termina', r.s!==200 || r.j.ok===false);
+
 // ---------- Sin el script 24 ----------
 for (const t of ['incidente_alertas','incidente_tareas','incidente_linea_tiempo','incidentes_mayores','componente_dependencias','componentes_infraestructura']) db.exec('DROP TABLE '+t);
 r=await call(ck.ana,'GET','/api/incidentes'); ok('sin el script 24 la lista avisa qué falta (503)', r.s===503 && /24_sala_crisis_d1/.test(r.j.error), r.j);
+r=await call(A,'POST','/api/demo/preparar'); ok('sin el script 24, Preparar demo anda igual', r.s===200 && r.j.ok===true, r.j);
 for(let i=0;i<9;i++) await call(A,'POST','/api/demo/siguiente');
 const X=q1("select alerta_id from alertas_historico where estado!='RESUELTA' limit 1");
 r=await call(ck.ana,'GET',`/api/alertas/${X.alerta_id}/detalle`); ok('y el detalle de la alerta sigue andando', r.s===200 && Array.isArray(r.j.incidentes_mayores) && r.j.incidentes_mayores.length===0, r.j.error);

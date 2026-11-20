@@ -2,7 +2,7 @@
 
 > Primera etapa del **AICIM** (Asistente Inteligente de Coordinación de Incidentes Mayores), el que se presenta como "próxima capacidad" al final del video de demostración. Este documento lo leen el equipo y la IA de Ale: si algo cambia, se actualiza acá primero.
 >
-> **Estado (20/11):** decisiones confirmadas por Ale. Pasos 3 y 4 hechos y probados en la rama `version-parche-69-sala-de-crisis` (sección 5.1). Siguen el paso 5 (escenas 20 a 22) y el 6 (modelo real y publicación). **Todavía no se publica:** `01_Worker/` sigue con el Worker del parche 68.
+> **Estado (20/11):** decisiones confirmadas por Ale. Pasos 3, 4 y 5 hechos y probados en la rama `version-parche-69-sala-de-crisis` (secciones 5.1 y 6). Sigue el paso 6 (modelo real y publicación). **Todavía no se publica:** `01_Worker/` sigue con el Worker del parche 68.
 
 ## 1. Qué es y qué no es la etapa 1
 
@@ -104,8 +104,13 @@ En este orden, cada paso con su prueba antes del siguiente:
 - **Pantalla:** cabecera con estado, gravedad, desde cuándo y quién dirige; botones de quien dirige (mitigado, resuelto, volver a abierto, cerrar con causa raíz, escalar, sumar alertas, comunicar); tres columnas (alertas y guía · tareas · línea de tiempo con notas); en el celular, una debajo de la otra con las tareas primero. Gerente y Administrador la ven sin botones. Enlace "Sala de crisis" en el menú del usuario de todas las páginas.
 - **Probado:** `salacrisistest.mjs` (93 controles: permisos de los 4 perfiles, abrir y sumar, una alerta en una sola sala abierta, tareas a persona y a equipo, notas, escalar, comunicar, estados y cierre, auditoría y línea de tiempo de cada acción, guía y antecedentes, asistente con modelo simulado, candidatas, páginas, Preparar demo y sin el script 24); demo igual y toda la batería; pantallas en PC (Analista, Soporte, Gerente) y celular, sin errores de JavaScript ni desplazamiento horizontal.
 
-## 6. Demo (paso 5)
-Escenas **20** "Se abre la sala de crisis" (el Analista agrupa la caída de CLI_006 y las alertas de aprobaciones), **21** "El asistente propone las tareas" (diagnóstico: gateway y proveedor; dos tareas a Soporte) y **22** "Servicio restablecido" (mitigado, comunicado y cierre con causa raíz). "Preparar demo" borra los incidentes mayores **abiertos** y los de la demo, y deja los 3 de historia.
+## 6. Demo (paso 5, hecho)
+Las escenas traen **los datos**; las acciones de la sala las hace **quien presenta**, desde la pantalla (como derivar o resolver en las 19 de antes). El texto de cada escena dice qué tocar.
+- **20 · Se cae el gateway de pagos** (17:45): CLI_006 Pago de servicios por API sin aprobaciones (3 alertas graves) y errores leves en CLI_002 (web) y CLI_005 (app). Quien presenta, como Analista, abre la sala desde la alerta grave y suma las otras dos.
+- **21 · La sala de crisis trabaja** (18:00): sigue caído. En la sala, "¿Qué reviso primero?" al asistente: propone las tareas con la guía (gateway, proveedor de cobranza; IM-1 como antecedente) y el Analista las confirma.
+- **22 · Servicio restablecido** (18:15): llega todo normal y las alertas se cierran solas; la sala sigue abierta hasta que el Analista la marca mitigada, comunica y la cierra con la causa raíz (queda como antecedente).
+- Las 19 escenas de antes dan exactamente lo mismo: `out_a.txt` solo suma las líneas E20 a E22 (y "estado 22"); `test_auth` recorre ahora todas las escenas. `inctest` compara las 22 en incremental y en completa; `migtest` sigue con 19 (compara contra el Worker de antes del parche 38). `salacrisistest` recorre las 22 con la sala (106 controles).
+- "Preparar demo" borra las salas abiertas en Helios (`origen = 'HELIOS'`) y deja los 3 antecedentes importados.
 
 ## 7. Pruebas y publicación (paso 6)
 1. `build.py` + toda la batería + **`salacrisistest.mjs`** nueva: permisos por perfil (Soporte sin tarea no entra; Gerente lee y no escribe), una alerta no puede estar en dos incidentes abiertos, cada acción deja su renglón y su auditoría, cerrar exige causa raíz, avisos de tarea, herramientas del asistente rechazadas fuera del permiso, propuestas validadas, sin el script 24 todo sigue andando.

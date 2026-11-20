@@ -23,7 +23,7 @@ await call('POST', '/api/login', { usuario: 'admin', clave: 'ClaveSegura123' });
 let r = await call('POST', '/api/demo/preparar');
 console.log('preparar', r.ok, r.inicio, r.alertas_borradas, r.observadas_borradas, r.error || '');
 const prev = new Set();
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 30; i++) {   // todas las escenas (19 de la guardia + 3 de la sala de crisis, parche 69) y un paso más que avisa el fin
   r = await call('POST', '/api/demo/siguiente');
   if (!r.ok) { console.log('fin:', r.error); break; }
   const al = db.prepare("select alerta_id, tipo_alerta, cliente_id, canal_id, servicio_id, severidad, estado from alertas_historico").all();

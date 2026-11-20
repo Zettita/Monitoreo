@@ -232,7 +232,24 @@ def panel(h):
     return h
 
 
+# ---------- Demo: escenas 20 a 22 (sala de crisis) ----------
+# Las escenas traen los datos (el gateway de pagos se cae en tres clientes, sigue caído y se recupera); las acciones de la
+# sala las hace quien presenta desde la pantalla, como derivar o resolver. Las 19 escenas de antes no cambian.
+ESCENAS_SALA = """  { titulo: 'Cierre de la guardia', texto: 'Todo vuelve a la normalidad y se cierran las alertas pendientes.', eventos: [] },
+  { titulo: 'Se cae el gateway de pagos', texto: 'Ningún pago de servicios por API se aprueba en CLI_006 y suben los errores en CLI_002 y CLI_005: es el mismo gateway. Como Analista: tocá «Abrir sala de crisis» en la alerta grave de CLI_006 (o en Sala de crisis) y sumá las otras dos.',
+    eventos: [[CLI006_PAG_API, 'SIN_EXITOS'], [CLI002_PAG_WEB, 'ERROR_ALTO'], [CLI005_PAG_MOB, 'ERROR_ALTO']] },
+  { titulo: 'La sala de crisis trabaja', texto: 'El gateway sigue caído. En la sala, preguntale al asistente «¿Qué reviso primero?»: propone las tareas con la guía de diagnóstico y el Analista las confirma; a Soporte le llega el aviso y las actualiza desde la sala.',
+    eventos: [[CLI006_PAG_API, 'SIN_EXITOS'], [CLI002_PAG_WEB, 'ERROR_ALTO'], [CLI005_PAG_MOB, 'ERROR_ALTO']] },
+  { titulo: 'Servicio restablecido', texto: 'Los pagos vuelven a aprobarse y las alertas se cierran solas. En la sala: «Servicio restablecido (mitigado)», «Comunicar» a los equipos y «Cerrar con causa raíz» (queda como antecedente para la próxima).', eventos: [] },
+];"""
+
+
+def demo(s):
+    return _rep(s, "  { titulo: 'Cierre de la guardia', texto: 'Todo vuelve a la normalidad y se cierran las alertas pendientes.', eventos: [] },\n];", ESCENAS_SALA)
+
+
 def aplicar(s):
+    s = demo(s)
     for n in PAGINAS:
         s = _html(s, n, destino_avisos)
         s = _html(s, n, panel)
