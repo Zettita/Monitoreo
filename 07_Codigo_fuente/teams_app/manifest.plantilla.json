@@ -26,7 +26,7 @@
         {
           "scopes": ["personal", "team", "groupChat"],
           "commands": [
-            { "title": "IM-4 ¿Cómo vamos con este incidente?", "description": "Estado de una sala de crisis: alertas, tareas y qué falta" },
+            { "title": "IM-4 ¿Cómo vamos?", "description": "Estado de una sala de crisis: alertas, tareas y qué falta" },
             { "title": "IM-4 ¿Qué reviso primero?", "description": "Qué componentes revisar, con la guía de diagnóstico y casos parecidos" },
             { "title": "¿Qué está sin asignar?", "description": "Alertas abiertas sin responsable" }
           ]
