@@ -2,7 +2,7 @@
 # Uso:  python armar_paquete.py <BOT_ID> [--nombre Gemma] [--url https://worker-alertas-cron.developers-hs-842.workers.dev] [--salida carpeta]
 #   --nombre = cómo se lo menciona en Teams (@Gemma). Tiene que ser el mismo nombre con que IT registró el bot.
 #   BOT_ID = el Bot ID / Microsoft App ID que entrega el registro del bot (un GUID). Se usa también como id de la app.
-# Después lo sube IT al Teams admin center (Teams apps > Manage apps > Upload new app) o se importa en el Developer Portal (Apps > Import app).
+# Después lo sube IT al Teams admin center (Teams apps > Manage apps > Upload new app; el manifiesto es 1.25 con supportsChannelFeatures = tier1, que Teams exige por el alcance «team») o se importa en el Developer Portal (Apps > Import app).
 import argparse, json, os, re, sys, zipfile
 from urllib.parse import urlparse
 
