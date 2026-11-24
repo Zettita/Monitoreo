@@ -17,7 +17,7 @@ MUSICA = os.path.join(AQUI, 'musica', 'Steady_Pulse.mp3')
 PROC = os.path.join(AQUI, 'salida', 'audio_procesado')
 LUFS_MUSICA = -39.0
 FADE_IN, FADE_OUT = 1.5, 2.5
-DUCK = dict(threshold=0.125, ratio=2, attack=40, release=450, knee=3, makeup=1)   # medido: la música baja ~3 dB al hablar y no se mueve en las pausas
+DUCK = dict(threshold=0.09, ratio=2, attack=40, release=450, knee=3, makeup=1)   # medido: la música baja ~3 dB al hablar y no se mueve en las pausas
 
 
 def correr(cmd):
@@ -85,7 +85,8 @@ def mezclar(carpeta, salida):
     print('Voz...')
     voz = pista_de_voz(T, total)
     voz_wav = os.path.join(salida, 'Helios_demo_voz_limpia.wav')
-    escribir(voz_wav, np.repeat(voz, 2, axis=1))
+    # la voz es mono (-16 LUFS); al pasarla a estéreo igual en L y R sube 3 dB de sonoridad: se baja para que el estéreo quede en -16 LUFS
+    escribir(voz_wav, np.repeat(voz, 2, axis=1) * 10 ** (-3.0103 / 20.0))
     print('Música...')
     mus = musica_en_bucle(total)
     tmp = os.path.join(salida, '_musica_cruda.wav'); escribir(tmp, mus)
