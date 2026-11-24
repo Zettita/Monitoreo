@@ -114,15 +114,10 @@ def armar_subtitulos():
 wav = os.path.join(salida, 'Helios_demo_voz_en_off.wav')
 armar_audio(wav)
 correr([FF, '-y', '-loglevel', 'error', '-i', wav, '-codec:a', 'libmp3lame', '-b:a', '160k', os.path.join(salida, 'Helios_demo_voz_en_off.mp3')])
-# voz + música de fondo suave (la música baja sola mientras habla la voz y llena las transiciones)
-from musica import generar as _musica
-musica_wav = os.path.join(salida, 'Helios_demo_musica_base.wav')
-_musica(musica_wav, duracion + 1.0)
-mezcla = os.path.join(salida, 'Helios_demo_voz_y_musica.wav')
-correr([FF, '-y', '-loglevel', 'error', '-i', wav, '-i', musica_wav, '-filter_complex',
-        '[0:a]aresample=44100,asplit[v][k];[1:a]aresample=44100,volume=0.3[m];'
-        '[m][k]sidechaincompress=threshold=0.015:ratio=5:attack=60:release=900:makeup=1[md];'
-        '[v][md]amix=inputs=2:normalize=0:duration=first,alimiter=limit=0.7:level=disabled[o]', '-map', '[o]', '-ac', '1', mezcla])
+# voz limpia + música de fondo (Steady_Pulse a -39 LUFS, con ducking): ver mezclar_audio.py; WAV 48 kHz 24 bits y AAC 320 kb/s
+import mezclar_audio
+_mez = mezclar_audio.mezclar(carpeta, salida)
+mezcla = _mez['aac']
 lista, blanco = armar_subtitulos()
 pantalla = os.path.join(carpeta, 'pantalla.webm')
 x264 = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', '30', '-movflags', '+faststart']
@@ -132,7 +127,7 @@ sin_audio = os.path.join(salida, 'Helios_demo_con_subtitulos_sin_audio.mp4')
 correr([FF, '-y', '-loglevel', 'error', '-i', pantalla, '-f', 'concat', '-safe', '0', '-i', lista, '-filter_complex',
         '[1:v]fps=30,setpts=PTS-STARTPTS[s];[0:v]fps=30[v];[v][s]vstack=inputs=2:shortest=1[o]', '-map', '[o]', '-t', '%.3f' % duracion, *x264, '-an', sin_audio])
 # con subtítulos y voz
-correr([FF, '-y', '-loglevel', 'error', '-i', sin_audio, '-i', mezcla, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest',
+correr([FF, '-y', '-loglevel', 'error', '-i', sin_audio, '-i', mezcla, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'copy', '-shortest',
         os.path.join(salida, 'Helios_demo_completo_con_voz_y_subtitulos.mp4')])
 # sin subtítulos ni voz (la franja de abajo queda vacía)
 correr([FF, '-y', '-loglevel', 'error', '-i', pantalla, '-f', 'lavfi', '-i', 'color=c=0x091E42:s=%dx%d:r=30' % (ANCHO, ALTO_FRANJA), '-filter_complex',
@@ -151,7 +146,7 @@ def tramo():
     ini = max(0.0, fr[i][0] - 0.4); fin = min(duracion, fr[j][0] + fr[j][3] + 0.8); dur = fin - ini
     pre = os.path.join(salida, 'Helios_tramo_AICIM_Teams_')
     cortar = lambda origen, destino, extra: correr([FF, '-y', '-loglevel', 'error', '-ss', '%.3f' % ini, '-i', origen, '-t', '%.3f' % dur, *extra, destino])
-    cortar(os.path.join(salida, 'Helios_demo_completo_con_voz_y_subtitulos.mp4'), pre + 'con_audios_y_subtitulos.mp4', x264[:-2] + ['-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart'])
+    cortar(os.path.join(salida, 'Helios_demo_completo_con_voz_y_subtitulos.mp4'), pre + 'con_audios_y_subtitulos.mp4', x264[:-2] + ['-c:a', 'aac', '-b:a', '320k', '-movflags', '+faststart'])
     cortar(os.path.join(salida, 'Helios_demo_con_subtitulos_sin_audio.mp4'), pre + 'con_subtitulos_sin_audio.mp4', x264[:-2] + ['-an', '-movflags', '+faststart'])
     cortar(os.path.join(salida, 'Helios_demo_sin_subtitulos_ni_audio.mp4'), pre + 'sin_subtitulos_ni_audio.mp4', x264[:-2] + ['-an', '-movflags', '+faststart'])
     cortar(wav, pre + 'audios.wav', [])
