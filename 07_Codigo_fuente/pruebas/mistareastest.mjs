@@ -93,4 +93,30 @@ ok('la página se llama «Mis alertas/tareas» y tiene las secciones de tareas',
 ok('el menú de la sala y de Administración también', (await call(ck.carla,'GET',`/incidente/${IM}`)).t.includes('>Mis alertas/tareas</a>') && (await call(A,'GET','/admin')).t.includes('>Mis alertas/tareas</a>'));
 r=await call(ck.carla,'GET',`/alerta/${A2}`); ok('y el detalle de la alerta', r.s===200 && r.t.includes('>Mis alertas/tareas</a>') && !/>Mis alertas<\/a>/.test(r.t));
 
+// ---------- Alertas y tareas bien separadas (parche 81) ----------
+r=await call(ck.carla,'GET','/mis-alertas');
+ok('Mis alertas/tareas tiene dos grupos con títulos propios: Alertas y Tareas de salas de crisis', r.t.includes('id="g-alertas"') && r.t.includes('id="g-tareas"') && r.t.indexOf('id="g-alertas"')<r.t.indexOf('id="g-tareas"'));
+ok('…y títulos específicos: «Alertas resueltas…» y «Tareas hechas…» (ya no hay «Resueltas…» a secas)', r.t.includes('<h2>Alertas resueltas en las últimas 24 horas</h2>') && r.t.includes('<h2>Tareas hechas en las últimas 24 horas</h2>') && !r.t.includes('<h2>Resueltas en las últimas 24 horas</h2>') && r.t.includes('<h2>Alertas en curso</h2>') && r.t.includes('<h2>Alertas para tomar</h2>') && r.t.includes('<h2>Tareas pendientes</h2>'));
+ok('…el resumen de arriba va en dos filas (Alertas / Tareas)', r.t.includes('<span class="res-rot">Alertas</span>') && r.t.includes('<span class="res-rot">Tareas</span>'));
+ok('…y no está la variante de solo tareas', !r.t.includes('window.SOLO_TAREAS = true'));
+
+// ---------- Mis tareas del Analista (parche 81) ----------
+r=await call(ck.ana,'POST',`/api/incidentes/${IM}/tareas`,{titulo:'Coordinar con el proveedor de cobranza',responsable_usuario_id:id('ana')});
+const TA=r.j.id || q1("select id from incidente_tareas where titulo like 'Coordinar%'").id;
+r=await call(ck.ana,'GET','/api/yo'); ok('el Analista tiene el permiso mis_tareas y Soporte no', r.j.permisos.includes('mis_tareas') && !(await call(ck.carla,'GET','/api/yo')).j.permisos.includes('mis_tareas'), r.j.permisos);
+r=await call(ck.ana,'GET','/api/mis-tareas');
+ok('el Analista ve la tarea que tiene en la sala, con su sala', r.s===200 && r.j.tareas.length===1 && r.j.tareas[0].codigo==='IM-'+IM && /Coordinar/.test(r.j.tareas[0].titulo) && r.j.tareas[0].persona==='Ana Lista', r.j.tareas);
+ok('…con la misma forma que Mis alertas (sin alertas)', Array.isArray(r.j.abiertas) && r.j.abiertas.length===0 && typeof r.j.ahora==='string' && r.j.mis_pendientes===1, Object.keys(r.j));
+for (const [u,cod] of [['carla',403],['sol',403],['gero',403]]) { r=await call(ck[u],'GET','/api/mis-tareas'); ok('/api/mis-tareas para '+u+' no corresponde ('+cod+')', r.s===cod, r.s); }
+r=await call(ck.ana,'GET','/mis-tareas');
+ok('la página «Mis tareas» del Analista: título, solo tareas y sus propios datos', r.s===200 && r.t.includes('<h1>Mis tareas</h1>') && r.t.includes('<title>Helios · Mis tareas</title>') && r.t.includes('window.SOLO_TAREAS = true') && r.t.includes("pedir('/api/mis-tareas')") && r.t.includes("puedo('mis_tareas')") && r.t.includes('id="b-tareas"'));
+r=await call(ck.carla,'GET','/mis-tareas'); ok('Soporte no entra a /mis-tareas (lo lleva a su página)', r.s===302, r.s);
+r=await call(ck.gero,'GET','/mis-tareas'); ok('el Gerente tampoco', r.s===302);
+ok('el menú del usuario tiene «Mis tareas» (solo se muestra al Analista) en el tablero, Seguimiento, la sala y el detalle de la alerta',
+  (await call(ck.ana,'GET','/')).t.includes('id="lnk-mistareas"') && (await call(ck.ana,'GET','/seguimiento')).t.includes('id="lnk-mistareas"') && (await call(ck.ana,'GET',`/incidente/${IM}`)).t.includes('id="lnk-mistareas"')
+  && (await call(ck.ana,'GET',`/alerta/${A2}`)).t.includes('id="lnk-mistareas"') && (await call(A,'GET','/admin')).t.includes("$('lnk-mistareas').hidden = !puedo('mis_tareas')"));
+r=await call(ck.ana,'POST',`/api/incidentes/${IM}/tareas/${TA}`,{estado:'EN_CURSO'}); ok('(el Analista que tiene la tarea la toma)', r.s===200, r.j);
+r=await call(ck.ana,'POST',`/api/incidentes/${IM}/tareas/${TA}`,{estado:'HECHA',resultado:'El proveedor ya lo está resolviendo'});
+r=await call(ck.ana,'GET','/api/mis-tareas'); ok('al terminarla pasa a «hechas» (24 h) y deja de ser pendiente', r.j.tareas.length===1 && r.j.tareas[0].estado==='HECHA' && r.j.mis_pendientes===0 && /ya lo está resolviendo/.test(r.j.tareas[0].resultado), r.j);
+
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');
