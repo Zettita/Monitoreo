@@ -44,6 +44,9 @@ python grabar.py --seco                              # pasada de prueba rápida,
 ## Audios grabados (24/11)
 `audios/voz_<clave>.m4a` (una por frase de `guion.py`, ya limpiados con ffmpeg: `highpass=80`, `afftdn`, `loudnorm=-18 LUFS`). Con `python grabar.py` + `python armar.py <ruta absoluta de salida/trabajo> <ruta absoluta de salida>` el video usa esas voces y el tiempo en pantalla sigue su duración. Sin audio: `sala1` a `sala5` y `teams2` a `teams4` (voz de relleno en silencio); el guion para grabarlos está en `Helios_guion_tramo_AICIM_Teams.docx`. Para grabar sin la voz de Windows en Linux hace falta `/etc/hosts` con `127.0.0.1 helios.localhost`.
 
+## Audio limpio y música (24/11)
+`python procesar_audio.py` (limpia y nivela cada voz a -16 LUFS) → `python grabar.py` (la pantalla dura lo que dura cada voz) → `python armar.py <ruta absoluta de salida/trabajo> <ruta absoluta de salida>` (mezcla con `musica/Steady_Pulse.mp3` a -39 LUFS con ducking y sube el audio al video sin recodificar la imagen). Salidas: `Helios_demo_voz_y_musica.wav` (48 kHz, 24 bits), `Helios_demo_voz_y_musica_320k.m4a`, `Helios_demo_completo_con_voz_y_subtitulos.mp4` y `Helios_demo_con_voz_sin_subtitulos.mp4`.
+
 ## Archivos que genera `armar.py`
 - `Helios_demo_completo_con_voz_y_subtitulos.mp4`
 - `Helios_demo_con_subtitulos_sin_audio.mp4`

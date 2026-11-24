@@ -210,6 +210,8 @@ Pedido de Uriel (para la dueña del proyecto, a partir del mensaje al cliente co
 
 **Audios reales del video (24/11):** el video usa las grabaciones de Ale (`08_Video_demo/audios/voz_<clave>.m4a`, una por frase de `guion.py` → `AUDIOS`: 34 frases del recorrido más AICIM y Teams), **limpiadas** (filtro de graves, reducción de ruido y volumen parejo con ffmpeg: `highpass`, `afftdn`, `loudnorm`). Los subtítulos (`TEXTOS`) siguen lo que dicen los audios. Sin audio quedan solo la sala de crisis (`sala1` a `sala5`) y Gemma en Teams (`teams2` a `teams4`): su guion para grabar sale de `guion_tramo_aicim_teams.js`. Si se regraba un audio, hay que limpiarlo igual.
 
+**Audio del video, con música (24/11):** `08_Video_demo/procesar_audio.py` limpia cada voz (pasa-altos 85 Hz, pasa-bajos 14 kHz, `afftdn`, recorte con margen de 0,2 s, compresor 3:1, limitador a -1,5 dB, `loudnorm` de dos pasadas a -16 LUFS, fades de 40 ms) desde `audios/originales/` y los archivos de sala y Teams; `mezclar_audio.py` pone las voces en su instante, suma `musica/Steady_Pulse.mp3` a -39 LUFS (fade in 1,5 s, fade out 2,5 s, ducking de ~3 dB con `sidechaincompress`) y exporta WAV 24 bits y AAC 320 kb/s; `armar.py` sube ese audio al video con `-c:v copy`. Si cambia un audio hay que volver a grabar la pantalla.
+
 ## Perfiles (11/11, patch25) — publicado
 - Gerente: tablero de lectura con **Estado por cliente** (Panorama), 24 h, histórico, **lista de alertas activas con su estado y quién las tiene, pre-alertas y el detalle de cada alerta, todo en solo lectura** (desde el parche 42); sin Seguimiento ni acciones.
 - Analista: tablero completo, Seguimiento, deriva, resuelve, "Avisar a Soporte" en pre-alertas, reglas de derivación. Sin reglas de alerta.
