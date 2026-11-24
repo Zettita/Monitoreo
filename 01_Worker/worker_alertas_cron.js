@@ -5065,6 +5065,38 @@ const ASIST_HERRAMIENTAS = {
       };
     },
   },
+  // Parche 79: alertas parecidas ya cerradas, para los problemas abiertos que la persona puede ver (sin pedir el alerta_id de cada una)
+  casos_parecidos: {
+    permiso: (yo) => puede(yo, 'alertas_abiertas') || puede(yo, 'mis_alertas'),
+    descripcion: 'Alertas parecidas que ya se cerraron (mismo tipo de problema y mismo cliente, últimos 30 días) para cada problema abierto que la persona puede ver: cuándo fue, cómo terminó, la causa y qué se hizo. Soporte ve solo los casos suyos o de sus equipos. Para "¿pasó algo parecido antes?", "¿cómo se resolvió la última vez?".',
+    parametros: {},
+    async ejecutar(env, yo) {
+      const soporte = !puede(yo, 'tablero');
+      const abiertas = soporte ? (await datosMisAlertas(env, yo)).abiertas : (await env.DB.prepare(Q_ABIERTAS_ASIGNACION + ' LIMIT 400').all()).results.filter((x) => x.severidad !== 'BAJA');
+      const claves = new Map();
+      for (const x of abiertas) { const k = x.tipo_alerta + '|' + x.cliente_id; if (!claves.has(k)) claves.set(k, x); if (claves.size >= 6) break; }
+      if (!claves.size) return { problemas: [], nota: 'No hay alertas abiertas para comparar.' };
+      const r = await env.DB.batch([
+        env.DB.prepare(`SELECT h.tipo_alerta, h.cliente_id, h.servicio_id, h.canal_id, MIN(h.ventana_inicio) AS inicio, h.fecha_resolucion, MAX(h.motivo_resolucion) AS motivo,
+                               MAX(h.resuelta_por) AS resuelta_por, MAX(h.causa_resolucion) AS causa, MAX(h.acciones_resolucion) AS acciones, MAX(h.comentario) AS comentario
+                        FROM alertas_historico h
+                        WHERE h.ventana_inicio >= (SELECT strftime('%Y-%m-%dT%H:%M:%SZ', COALESCE(ahora, 'now'), '-30 days') FROM alerta_parametros WHERE id = 1)
+                          AND h.estado = 'RESUELTA' AND (h.tipo_alerta || '|' || h.cliente_id) IN (SELECT value FROM json_each(?1))
+                          AND (?2 = 0 OR h.asignado_usuario_id = ?3 OR h.asignado_equipo_id IN (SELECT equipo_id FROM equipo_miembros WHERE usuario_id = ?3))
+                        GROUP BY h.tipo_alerta, h.cliente_id, h.servicio_id, h.canal_id, h.fecha_resolucion ORDER BY h.fecha_resolucion DESC LIMIT 30`)
+          .bind(JSON.stringify([...claves.keys()]), soporte ? 1 : 0, yo.id),
+        env.DB.prepare(Q_REGLAS_PERSONALIZADAS),
+      ]);
+      const por = {};
+      for (const x of r[0].results) { const k = x.tipo_alerta + '|' + x.cliente_id; (por[k] = por[k] || []).push(x); }
+      return { problemas: [...claves].map(([k, a]) => {
+        const casos = (por[k] || []).slice(0, 3).map((x) => ({ empezo: asistFecha(x.inicio), donde: (ASIST_SERVICIO[x.servicio_id] || x.servicio_id) + ' por ' + (ASIST_CANAL[x.canal_id] || x.canal_id),
+          como_termino: x.motivo === 'MANUAL' ? 'Resuelta por ' + (x.resuelta_por || 'una persona') : 'Se normalizó sola',
+          causa: x.causa || undefined, que_se_hizo: x.acciones || undefined, comentario: !x.causa && x.comentario ? String(x.comentario).slice(0, 200) : undefined }));
+        return { problema: asistProblema(a, r[1].results) + ' en ' + a.cliente_id, casos_cerrados: casos.length ? casos : 'ninguno en los últimos 30 días' };
+      }) };
+    },
+  },
   incidentes: {
     permiso: 'tablero',
     descripcion: 'Resumen de incidentes de los últimos días (máximo 30): cantidad por cliente, cuántos graves, cuántos siguen abiertos, el tiempo promedio de resolución y en qué horario empiezan. Con cliente_id, además, los incidentes más largos de ese cliente. Para preguntas de negocio, rankings e informes.',
@@ -5336,6 +5368,8 @@ const ASIST_SUGERENCIAS = {
 // Así responde bien aunque el modelo no pida herramientas, y la mayoría de las preguntas salen en una sola vuelta.
 // Además, según las palabras de la pregunta, se suman los datos que seguro hacen falta (máximo 3 en total).
 const ASIST_PALABRAS = [
+  [/tarea|me (toc[oó]|asignaron)|sin (tomar|responsable)|otras? salas/i, 'tareas_salas'],
+  [/parecid|similar|antes\b|anterior|cerrad|antecedent|otra vez|de nuevo|ya (pas|ocurri|tuvimos|vimos)|la [uú]ltima vez/i, 'casos_parecidos'],
   [/horari|hora |\bhoras?\b|cliente|problema|incidente|mes\b|semana|ranking|m[aá]s (alertas|problemas)|histori|resoluci|mttr|tard[aó]/i, 'incidentes'],
   [/equipo|carga|qui[eé]n (la |las )?tiene|asignad|sin asignar|soporte/i, 'carga_equipos'],
   [/deriv|a qui[eé]n/i, 'opciones_derivacion'],
@@ -5694,6 +5728,42 @@ Object.assign(ASIST_HERRAMIENTAS, {
       return out;
     },
   },
+  // Parche 79: las tareas abiertas de TODAS las salas abiertas (no solo la sala de la pregunta), con lo que ve cada perfil: Soporte, las suyas y las de sus equipos;
+  // Analista, Gerente y Administrador, todas. «Sin tomar» = asignada a un equipo y todavía sin una persona responsable.
+  tareas_salas: {
+    permiso: 'sala_crisis',
+    descripcion: 'Tareas abiertas (pendientes o en curso) de las salas de crisis abiertas: de quién es cada una, en qué sala, cuánto lleva y cuáles están sin tomar (asignadas a un equipo y sin persona responsable). Soporte ve solo las suyas y las de sus equipos; los demás perfiles ven todas. Para "¿qué tareas tengo?", "¿qué tareas hay sin tomar o sin asignar?".',
+    parametros: {},
+    async ejecutar(env, yo) {
+      const todos = puede(yo, 'sala_crisis_dirigir') || yo.perfil === 'GERENTE' || yo.perfil === 'ADMIN';
+      const eq = await misEquipos(env, yo.id);
+      const ahora = await salaAhoraMs(env);
+      let filas;
+      try {
+        filas = (await env.DB.prepare(`SELECT t.incidente_id, i.titulo AS sala, t.titulo, t.estado, t.actualizada, t.vence, t.responsable_usuario_id, t.equipo_id, u.nombre AS persona, e.nombre AS equipo
+            FROM incidente_tareas t JOIN incidentes_mayores i ON i.id = t.incidente_id AND i.estado <> 'CERRADO'
+            LEFT JOIN usuarios u ON u.id = t.responsable_usuario_id LEFT JOIN equipos e ON e.id = t.equipo_id
+            WHERE t.estado IN ('PENDIENTE', 'EN_CURSO')
+              AND (?2 = 1 OR t.responsable_usuario_id = ?1 OR (t.responsable_usuario_id IS NULL AND t.equipo_id IN (SELECT value FROM json_each(?3))))
+            ORDER BY t.incidente_id, CASE t.estado WHEN 'EN_CURSO' THEN 0 ELSE 1 END, t.id LIMIT 40`)
+          .bind(yo.id, todos ? 1 : 0, JSON.stringify(eq.miembro.concat(eq.lidero))).all()).results;
+      } catch (e) {
+        if (/no such table/i.test(e.message)) return { tareas: [], nota: 'Todavía no hay salas de crisis cargadas.' };
+        throw e;
+      }
+      const demorada = (t) => (t.estado === 'PENDIENTE' && ahora - Date.parse(t.actualizada) > 20 * 60000) || (t.estado === 'EN_CURSO' && ahora - Date.parse(t.actualizada) > 60 * 60000)
+        || (t.vence && Date.parse(t.vence) < ahora);
+      const sinTomar = (t) => t.responsable_usuario_id == null;
+      const mia = (t) => t.responsable_usuario_id === yo.id;
+      if (!filas.length) return { cuantas: { abiertas: 0 }, nota: todos ? 'No hay tareas abiertas en las salas de crisis.' : 'No hay tareas abiertas asignadas a esta persona ni a sus equipos.' };
+      return {
+        cuantas: { abiertas: filas.length, asignadas_a_esta_persona: filas.filter(mia).length, sin_tomar: filas.filter(sinTomar).length, demoradas: filas.filter(demorada).length },
+        tareas: filas.map((t) => ({ sala: imCodigo(t.incidente_id) + ' · ' + t.sala, tarea: t.titulo, estado: TAREA_ESTADO_TXT[t.estado].toLowerCase() + ' hace ' + salaHace(ahora, t.actualizada),
+          de: sinTomar(t) ? 'equipo ' + (t.equipo || '?') + ', todavía sin persona responsable' : t.persona + (t.equipo ? ' (equipo ' + t.equipo + ')' : ''),
+          es_de_esta_persona: mia(t) ? true : undefined, demorada: demorada(t) ? true : undefined })),
+      };
+    },
+  },
   guia_diagnostico: {
     permiso: 'sala_crisis', soloSala: true,   // se le ofrece al modelo solo si la pregunta se hace dentro de una sala
     descripcion: 'Guía de diagnóstico de una sala de crisis: de qué componentes depende el servicio afectado, qué revisar en cada uno, quién lo atiende, y los incidentes parecidos ya cerrados con su causa raíz.',
@@ -5714,13 +5784,19 @@ Object.assign(ASIST_HERRAMIENTAS, {
 });
 
 // ---------- Pregunta libre dentro de la sala (parche 71) ----------
-const SALA_PALABRAS_GUIA = /escal|proveedor|revis|causa|componente|depend|antecedente|parecid|diagn|por d[oó]nde|empiez|qu[eé] hago|qu[eé] miro|tercer/i;
+const SALA_PALABRAS_GUIA = /escal|proveedor|revis|causa|componente|depend|antecedente|parecid|similar|cerrad|anterior|antes\b|otra vez|de nuevo|la [uú]ltima vez|diagn|por d[oó]nde|empiez|qu[eé] hago|qu[eé] miro|tercer/i;
+const SALA_PALABRAS_TAREAS = /tarea.*(tengo|mis?\b|sin (tomar|asignar|responsable)|otras? salas)|(tengo|mis|sin (tomar|asignar|responsable)).*tarea|me (toc[oó]|asignaron)|otras? salas|todas las salas/i;
+const SALA_PALABRAS_MIS = /\bmis (alertas|problemas)|alertas? (asignadas?|abiertas?|pendientes?|sin asignar)|sin asignar|tengo (asignad|pendiente)|me (toc[oó]|asignaron)/i;
+const SALA_PALABRAS_PARECIDAS = /parecid|similar|antes\b|anterior|cerrad|antecedente|otra vez|de nuevo|la [uú]ltima vez/i;
 const SALA_PALABRAS_AFUERA = /proveedor|extern|afuera|cloudflare|twilio|tercer|noticia|paro|corte/i;
 function salaElegir(pregunta, disponibles) {
   const out = ['estado_incidente', 'tareas_incidente'];
   if (SALA_PALABRAS_GUIA.test(pregunta)) out.push('guia_diagnostico');
   if (SALA_PALABRAS_AFUERA.test(pregunta)) out.push('contexto_externo');
-  return out.filter((n) => disponibles.includes(n)).slice(0, 4);
+  if (SALA_PALABRAS_TAREAS.test(pregunta)) out.push('tareas_salas');
+  if (SALA_PALABRAS_MIS.test(pregunta)) out.push('mis_alertas', 'alertas_abiertas');   // cada perfil tiene una de las dos
+  if (SALA_PALABRAS_PARECIDAS.test(pregunta)) out.push('casos_parecidos');
+  return out.filter((n) => disponibles.includes(n)).slice(0, 5);
 }
 const SALA_GUIA_LIBRE = 'Respondé con estos datos de la sala, en pocas frases y en español. No digas que vas a consultar algo: ya lo tenés. Si falta un dato, decí cuál. ' +
   'Si preguntan si conviene escalar: decidilo con las tareas hechas y abiertas, las dependencias de la guía (por ejemplo, el proveedor) y, si está, lo de afuera; si conviene, proponelo con sugerir_accion (tipo escalar). ' +
@@ -6369,7 +6445,8 @@ function botSinNombre(texto, nombre) {   // «gemma, ¿qué reviso?» → «¿qu
   if (t.toLowerCase().startsWith(n) && !/[\p{L}\p{N}_]/u.test(t.charAt(n.length) || ' ')) return t.slice(n.length).replace(/^[\s,:;-]+/, '').trim();
   return texto;
 }
-const botSaludo = (nombre) => 'Hola, soy ' + nombre + ', el asistente de Helios. Mencioname y preguntame por la operación; por ejemplo: **@' + nombre + ' IM-4 ¿qué reviso primero?** o **¿hubo algo parecido antes?** '
+const botSaludo = (nombre) => 'Hola, soy ' + nombre + ', el asistente de Helios. Mencioname y preguntame por la operación; por ejemplo: **@' + nombre + ' IM-4 ¿qué reviso primero?**, **¿qué alertas tengo asignadas?**, '
+  + '**¿qué tareas tengo en las salas?** o **¿hubo algo parecido antes?** '
   + 'Respondo con lo que tu perfil puede ver en Helios. No hago cambios: si propongo algo, lo confirmás en Helios.';
 let BOT_JWKS = {};          // dirección de las claves -> { t, claves }
 let BOT_TOKEN = null;       // { valor, vence }
@@ -6516,6 +6593,22 @@ async function botGuardarMemoria(env, act, mensajes, salaId) {
     ]);
   } catch (e) { if (!/no such table|no such column/i.test(e.message)) console.error('Bot de Teams: no se pudo guardar la memoria: ' + e.message); }
 }
+// Al instalar la app, Teams manda dos avisos (installationUpdate y conversationUpdate) y cada uno saludaba: el chat recibía el saludo dos veces (parche 79).
+// Ahora saluda uno solo por chat: el primero que llega anota una marca en la misma tabla de memoria (clave «saludo:<chat>», atómico) y el otro la encuentra.
+// Si se lo saca y se lo vuelve a sumar pasados 10 minutos, saluda de nuevo. Sin el script 25 no hay dónde anotar: saluda solo con conversationUpdate.
+async function botSaludar(env, act, evento) {
+  let saluda = true;
+  try {
+    const r = await env.DB.prepare(`INSERT INTO teams_bot_memoria (conversacion_id, mensajes, sala_id, actualizado) VALUES (?1, '[]', NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+      ON CONFLICT (conversacion_id) DO UPDATE SET actualizado = excluded.actualizado WHERE teams_bot_memoria.actualizado < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-10 minutes')`)
+      .bind('saludo:' + botChat(act)).run();
+    saluda = !!(r.meta && r.meta.changes > 0);
+  } catch (e) {
+    if (!/no such table|no such column/i.test(e.message)) console.error('Bot de Teams: no se pudo anotar el saludo: ' + e.message);
+    saluda = evento === 'conversationUpdate';
+  }
+  if (saluda) await botResponder(env, act, botSaludo(botNombre(env, act)));
+}
 async function botOlvidar(env, act) {
   try { await env.DB.prepare('DELETE FROM teams_bot_memoria WHERE conversacion_id = ?1').bind(botChat(act)).run(); }
   catch (e) { if (!/no such table|no such column/i.test(e.message)) throw e; }
@@ -6557,10 +6650,10 @@ async function botProcesar(env, request, act) {
   const origen = new URL(request.url).origin;
   const tipo = String(act.type || '');
   if (tipo === 'conversationUpdate') {
-    if ((act.membersAdded || []).some((x) => x && act.recipient && x.id === act.recipient.id)) await botResponder(env, act, botSaludo(botNombre(env, act)));
+    if ((act.membersAdded || []).some((x) => x && act.recipient && x.id === act.recipient.id)) await botSaludar(env, act, 'conversationUpdate');
     return;
   }
-  if (tipo === 'installationUpdate') { if (act.action === 'add') await botResponder(env, act, botSaludo(botNombre(env, act))); return; }
+  if (tipo === 'installationUpdate') { if (act.action === 'add') await botSaludar(env, act, 'installationUpdate'); return; }
   if (tipo !== 'message') return;
   // Además de la mención de Teams, en un chat de a dos se lo puede llamar por el nombre («gemma, ¿qué reviso?»)
   const nombre = botNombre(env, act);

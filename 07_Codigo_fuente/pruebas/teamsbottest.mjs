@@ -287,7 +287,7 @@ olvidarTodo();
 olvidarTodo();
 r=await teams({ type:'conversationUpdate', id:'cu-n', serviceUrl:SERVICIO, channelId:'msteams', membersAdded:[{ id:'28:'+APP }], from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Gemma' }, conversation:{ id:'19:chat@thread.v2' }, channelData:{ tenant:{ id:TENANT } } });
 ok('el saludo usa el nombre de la app en Teams (@Gemma)', /soy Gemma/.test((ultimo()||{}).text||'') && /\*\*@Gemma IM-4/.test((ultimo()||{}).text||''), ultimo());
-r=await teams({ type:'conversationUpdate', id:'cu-m', serviceUrl:SERVICIO, channelId:'msteams', membersAdded:[{ id:'28:'+APP }], from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Asistente Helios' }, conversation:{ id:'19:chat@thread.v2' }, channelData:{ tenant:{ id:TENANT } } });
+r=await teams({ type:'conversationUpdate', id:'cu-m', serviceUrl:SERVICIO, channelId:'msteams', membersAdded:[{ id:'28:'+APP }], from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Asistente Helios' }, conversation:{ id:'19:chat-otro-nombre@thread.v2' }, channelData:{ tenant:{ id:TENANT } } });
 ok('si la app se registró con otro nombre, usa ese', /\*\*@Asistente Helios IM-4/.test((ultimo()||{}).text||''), ultimo());
 r=await teams(actividad('u-ana','<at>Gemma</at> IM-4 ¿qué reviso primero?'));
 ok('la mención @Gemma de un chat grupal se contesta como cualquier otra', /Respuesta de Helios\./.test((ultimo()||{}).text||'') && hablaCon('qué reviso primero') && !hablaCon('<at>') && !hablaCon('Gemma IM-4'), ultimo());
@@ -310,6 +310,98 @@ r=await teams({ type:'installationUpdate', action:'add', id:'iu-1', serviceUrl:S
 ok('al instalar la app, saluda', /Mencioname/.test((ultimo()||{}).text||''));
 r=await teams({ type:'typing', id:'t-1', serviceUrl:SERVICIO, channelId:'msteams', from:{ id:'u-ana' }, recipient:{ id:'28:'+APP }, conversation:{ id:'a:1' }, channelData:{ tenant:{ id:TENANT } } });
 ok('otros eventos (por ejemplo "está escribiendo") se ignoran con 200', r.s===200 && salidas.length===0);
+
+
+// ---------- Un solo saludo por chat (parche 79) ----------
+// Teams manda dos avisos al instalar la app (installationUpdate y conversationUpdate): antes cada uno saludaba y el chat recibía el saludo dos veces
+olvidarTodo();
+const CONV = (c) => ({ id: c, conversationType: 'groupChat' });
+const cuInstal = (c, id) => ({ type:'conversationUpdate', id, serviceUrl:SERVICIO, channelId:'msteams', membersAdded:[{ id:'28:'+APP }], from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Gemma' }, conversation:CONV(c), channelData:{ tenant:{ id:TENANT } } });
+const iuInstal = (c, id) => ({ type:'installationUpdate', action:'add', id, serviceUrl:SERVICIO, channelId:'msteams', from:{ id:'u-ana' }, recipient:{ id:'28:'+APP, name:'Gemma' }, conversation:CONV(c), channelData:{ tenant:{ id:TENANT } } });
+let saludos = 0;
+for (const a of [iuInstal('19:doble@thread.v2', 'iu-d'), cuInstal('19:doble@thread.v2', 'cu-d')]) { await teams(a); saludos += mensajes().filter((x) => /Mencioname/.test(x.cuerpo.text)).length; }
+ok('si Teams manda los dos avisos al instalar (primero la instalación), el chat recibe un solo saludo', saludos === 1, saludos);
+saludos = 0;
+for (const a of [cuInstal('19:doble2@thread.v2', 'cu-e'), iuInstal('19:doble2@thread.v2', 'iu-e')]) { await teams(a); saludos += mensajes().filter((x) => /Mencioname/.test(x.cuerpo.text)).length; }
+ok('y si llegan en el otro orden, también uno solo', saludos === 1, saludos);
+await Promise.all([teams(cuInstal('19:doble3@thread.v2', 'cu-f')), teams(iuInstal('19:doble3@thread.v2', 'iu-f'))]);
+ok('(la marca del saludo queda anotada, una por chat)', n("select count(*) n from teams_bot_memoria where conversacion_id like 'saludo:%'") === 3);
+await teams(cuInstal('19:doble@thread.v2', 'cu-g'));
+ok('dentro de los 10 minutos, otro aviso del mismo chat no vuelve a saludar', mensajes().length === 0, mensajes().length);
+db.prepare("UPDATE teams_bot_memoria SET actualizado = strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-11 minutes') WHERE conversacion_id = 'saludo:19:doble@thread.v2'").run();
+await teams(cuInstal('19:doble@thread.v2', 'cu-h'));
+ok('si se lo saca y se lo vuelve a sumar pasados 10 minutos, saluda de nuevo', mensajes().length === 1 && /Mencioname/.test(ultimo().text));
+ok('el saludo cuenta lo que se puede preguntar por perfil (alertas, tareas, casos parecidos)', /qué alertas tengo asignadas/.test(ultimo().text) && /qué tareas tengo/.test(ultimo().text) && /algo parecido/.test(ultimo().text), ultimo().text);
+await teams(actividad('u-ana','IM-4 ¿qué reviso primero?'));
+ok('la marca del saludo no se confunde con la memoria de la conversación (el chat sigue su curso)', n("select count(*) n from teams_bot_memoria where conversacion_id = '19:chat@thread.v2'") === 1);
+olvidarTodo();
+// Sin el script 25 no hay dónde anotar la marca: saluda solo con uno de los dos avisos (el de conversationUpdate)
+db.exec('DROP TABLE teams_bot_memoria');
+saludos = 0;
+for (const a of [iuInstal('19:sin25@thread.v2', 'iu-s'), cuInstal('19:sin25@thread.v2', 'cu-s')]) { await teams(a); saludos += mensajes().filter((x) => /Mencioname/.test(x.cuerpo.text)).length; }
+ok('sin el script 25 también saluda una sola vez', saludos === 1, saludos);
+db.exec("CREATE TABLE teams_bot_memoria ( conversacion_id TEXT PRIMARY KEY, mensajes TEXT NOT NULL, sala_id INTEGER, actualizado TEXT NOT NULL ) WITHOUT ROWID");
+olvidarTodo();
+
+// ---------- Cada perfil pregunta por lo suyo (parche 79) ----------
+// Lo que llega al modelo (sección «Datos de Helios») para cada pregunta: alertas asignadas o sin asignar, tareas de las salas y casos parecidos ya cerrados
+const datosIA = () => pedidosIA.map((p) => (p.messages || []).map((m) => (typeof m.content === 'string' ? m.content : '')).join('\n')).join('\n');
+const datosJSON = () => { const D = datosIA(), m = 'Datos de Helios para responder (JSON):\n', i = D.indexOf(m); if (i < 0) return {}; try { return JSON.parse(D.slice(i + m.length).split('\n')[0]); } catch (e) { return {}; } };
+const trae = (clave) => datosJSON()[clave] !== undefined;
+const sec = (clave) => JSON.stringify(datosJSON()[clave] === undefined ? null : datosJSON()[clave]);   // solo lo que trajo esa herramienta
+await call(ck.ana,'POST',`/api/incidentes/${IM}/tareas`,{titulo:'Llamar al proveedor',responsable_usuario_id:id('carla')});
+await call(ck.ana,'POST',`/api/incidentes/${IM}/tareas`,{titulo:'Revisar el balanceador',equipo_id:q1("select id from equipos where nombre='Mesa'").id});
+// Tareas
+r=await teams(actividad('u-sol','IM-4 ¿qué tareas tengo?'));
+ok('Soporte pregunta por sus tareas dentro de la sala: llegan las de todas las salas abiertas que le tocan', trae('tareas_salas') && /Revisar el gateway/.test(sec('tareas_salas')), sec('tareas_salas'));
+ok('…incluida la que es de su equipo y nadie tomó («sin tomar»)', /Revisar el balanceador/.test(sec('tareas_salas')) && /sin persona responsable/.test(sec('tareas_salas')));
+ok('…y no ve las tareas de otra persona de Soporte (en esta lista; las de la sala donde trabaja sí, como siempre)', !/Llamar al proveedor/.test(sec('tareas_salas')), sec('tareas_salas'));
+olvidarTodo();
+r=await teams(actividad('u-upn','¿qué tareas tengo asignadas?'));
+ok('otra persona de Soporte, fuera de una sala, ve solo las suyas (no las de Sol ni las de su equipo)', trae('tareas_salas') && /Llamar al proveedor/.test(sec('tareas_salas')) && !/Revisar el gateway|Revisar el balanceador/.test(sec('tareas_salas')), sec('tareas_salas'));
+olvidarTodo();
+r=await teams(actividad('u-ana','¿qué tareas hay sin tomar o sin asignar?'));
+ok('el Analista ve las tareas de toda la operación, con las que están sin tomar', trae('tareas_salas') && /Revisar el gateway/.test(sec('tareas_salas')) && /Llamar al proveedor/.test(sec('tareas_salas')) && /"sin_tomar":1/.test(sec('tareas_salas')), sec('tareas_salas'));
+olvidarTodo();
+r=await teams(actividad('u-gero','¿qué tareas hay abiertas?'));
+ok('el Gerente también (solo lectura)', trae('tareas_salas') && /Llamar al proveedor/.test(sec('tareas_salas')) && !/Propuestas/.test((ultimo()||{}).text||''), sec('tareas_salas'));
+olvidarTodo();
+// Alertas asignadas y sin asignar
+await call(ck.ana,'POST',`/api/alertas/${ab[0]}/derivar`,{usuario_id:id('sol')});
+r=await teams(actividad('u-sol','¿qué alertas tengo asignadas?'));
+ok('Soporte pregunta por sus alertas asignadas: llegan las suyas', trae('mis_alertas') && /Se aprueban menos operaciones/.test(sec('mis_alertas')), sec('mis_alertas'));
+r=await teams(actividad('u-sol','IM-4 ¿qué alertas tengo asignadas?'));
+ok('…también dentro de una sala (antes solo llegaban los datos de la sala)', trae('mis_alertas') && trae('estado_incidente'), datosIA().slice(0,200));
+r=await teams(actividad('u-ana','IM-4 ¿hay alertas sin asignar?'));
+ok('el Analista pregunta por lo sin asignar dentro de la sala: llegan las alertas abiertas con su estado', trae('alertas_abiertas') && trae('estado_incidente') && /sin_asignar/.test(sec('alertas_abiertas')));
+r=await teams(actividad('u-ana','¿hay alertas sin asignar?'));
+ok('…y fuera de una sala también', trae('alertas_abiertas'));
+// Casos parecidos ya cerrados
+db.exec("DROP TABLE IF EXISTS cp_t");
+db.exec(`CREATE TEMP TABLE cp_t AS SELECT * FROM alertas_historico WHERE alerta_id = '${ab[0]}'`);
+const cerrar = (idx, ventana, resol, causa, acc, asig) => {
+  db.exec(`UPDATE cp_t SET alerta_id = 'c${idx}' || substr(alerta_id, 3), ventana_inicio = '${ventana}T10:00:00Z', ventana_fin = '${ventana}T10:15:00Z', estado = 'RESUELTA', fecha_resolucion = '${resol}T11:00:00Z',
+    motivo_resolucion = 'MANUAL', resuelta_por = 'Ana Lista', causa_resolucion = '${causa}', acciones_resolucion = '${acc}', asignado_usuario_id = ${asig}, asignado_equipo_id = NULL`);
+  db.exec('INSERT INTO alertas_historico SELECT * FROM cp_t');
+};
+cerrar(1, '2026-10-24', '2026-10-24', 'Falla en el gateway del proveedor', 'Escalado al proveedor', id('sol'));
+cerrar(2, '2026-10-23', '2026-10-23', 'Causa que Soporte no tiene que ver', 'Reinicio del servicio', 'NULL');
+db.exec('DROP TABLE cp_t');
+olvidarTodo();
+r=await teams(actividad('u-ana','¿hubo algo parecido antes?'));
+ok('el Analista pregunta si hubo algo parecido: llegan los casos ya cerrados, con la causa y qué se hizo', trae('casos_parecidos') && /Falla en el gateway del proveedor/.test(sec('casos_parecidos')) && /Escalado al proveedor/.test(sec('casos_parecidos')) && /Causa que Soporte no tiene que ver/.test(sec('casos_parecidos')), sec('casos_parecidos'));
+olvidarTodo();
+r=await teams(actividad('u-sol','¿hubo algo parecido antes?'));
+ok('Soporte recibe solo los casos parecidos que fueron suyos o de su equipo', trae('casos_parecidos') && /Falla en el gateway del proveedor/.test(sec('casos_parecidos')) && !/Causa que Soporte no tiene que ver/.test(sec('casos_parecidos')), sec('casos_parecidos'));
+r=await teams(actividad('u-sol','IM-4 ¿pasó algo similar antes?'));
+ok('dentro de la sala, además de los antecedentes de la sala, llegan los casos parecidos de las alertas', trae('guia_diagnostico') && trae('casos_parecidos') && trae('estado_incidente'), datosIA().slice(0,200));
+olvidarTodo();
+r=await teams(actividad('u-gero','¿hubo algo parecido antes?'));
+ok('el Gerente también los ve (solo lectura, sin propuestas)', trae('casos_parecidos') && /Falla en el gateway del proveedor/.test(sec('casos_parecidos')) && !/Propuestas/.test((ultimo()||{}).text||''), sec('casos_parecidos'));
+olvidarTodo();
+r=await teams(actividad('u-upn','¿hubo algo parecido antes?'));
+ok('Soporte sin alertas asignadas no recibe casos de otros', !/Falla en el gateway|Causa que Soporte/.test(sec('casos_parecidos')) && /No hay alertas abiertas para comparar/.test(sec('casos_parecidos')), sec('casos_parecidos'));
+olvidarTodo();
 
 // ---------- Cuando Microsoft falla ----------
 falloMembers=true; BOT_CORREOS_LIMPIAR();

@@ -46,7 +46,8 @@ function botSinNombre(texto, nombre) {   // «gemma, ¿qué reviso?» → «¿qu
   if (t.toLowerCase().startsWith(n) && !/[\p{L}\p{N}_]/u.test(t.charAt(n.length) || ' ')) return t.slice(n.length).replace(/^[\s,:;-]+/, '').trim();
   return texto;
 }
-const botSaludo = (nombre) => 'Hola, soy ' + nombre + ', el asistente de Helios. Mencioname y preguntame por la operación; por ejemplo: **@' + nombre + ' IM-4 ¿qué reviso primero?** o **¿hubo algo parecido antes?** '
+const botSaludo = (nombre) => 'Hola, soy ' + nombre + ', el asistente de Helios. Mencioname y preguntame por la operación; por ejemplo: **@' + nombre + ' IM-4 ¿qué reviso primero?**, **¿qué alertas tengo asignadas?**, '
+  + '**¿qué tareas tengo en las salas?** o **¿hubo algo parecido antes?** '
   + 'Respondo con lo que tu perfil puede ver en Helios. No hago cambios: si propongo algo, lo confirmás en Helios.';
 let BOT_JWKS = {};          // dirección de las claves -> { t, claves }
 let BOT_TOKEN = null;       // { valor, vence }
@@ -193,6 +194,22 @@ async function botGuardarMemoria(env, act, mensajes, salaId) {
     ]);
   } catch (e) { if (!/no such table|no such column/i.test(e.message)) console.error('Bot de Teams: no se pudo guardar la memoria: ' + e.message); }
 }
+// Al instalar la app, Teams manda dos avisos (installationUpdate y conversationUpdate) y cada uno saludaba: el chat recibía el saludo dos veces (parche 79).
+// Ahora saluda uno solo por chat: el primero que llega anota una marca en la misma tabla de memoria (clave «saludo:<chat>», atómico) y el otro la encuentra.
+// Si se lo saca y se lo vuelve a sumar pasados 10 minutos, saluda de nuevo. Sin el script 25 no hay dónde anotar: saluda solo con conversationUpdate.
+async function botSaludar(env, act, evento) {
+  let saluda = true;
+  try {
+    const r = await env.DB.prepare(`INSERT INTO teams_bot_memoria (conversacion_id, mensajes, sala_id, actualizado) VALUES (?1, '[]', NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+      ON CONFLICT (conversacion_id) DO UPDATE SET actualizado = excluded.actualizado WHERE teams_bot_memoria.actualizado < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-10 minutes')`)
+      .bind('saludo:' + botChat(act)).run();
+    saluda = !!(r.meta && r.meta.changes > 0);
+  } catch (e) {
+    if (!/no such table|no such column/i.test(e.message)) console.error('Bot de Teams: no se pudo anotar el saludo: ' + e.message);
+    saluda = evento === 'conversationUpdate';
+  }
+  if (saluda) await botResponder(env, act, botSaludo(botNombre(env, act)));
+}
 async function botOlvidar(env, act) {
   try { await env.DB.prepare('DELETE FROM teams_bot_memoria WHERE conversacion_id = ?1').bind(botChat(act)).run(); }
   catch (e) { if (!/no such table|no such column/i.test(e.message)) throw e; }
@@ -234,10 +251,10 @@ async function botProcesar(env, request, act) {
   const origen = new URL(request.url).origin;
   const tipo = String(act.type || '');
   if (tipo === 'conversationUpdate') {
-    if ((act.membersAdded || []).some((x) => x && act.recipient && x.id === act.recipient.id)) await botResponder(env, act, botSaludo(botNombre(env, act)));
+    if ((act.membersAdded || []).some((x) => x && act.recipient && x.id === act.recipient.id)) await botSaludar(env, act, 'conversationUpdate');
     return;
   }
-  if (tipo === 'installationUpdate') { if (act.action === 'add') await botResponder(env, act, botSaludo(botNombre(env, act))); return; }
+  if (tipo === 'installationUpdate') { if (act.action === 'add') await botSaludar(env, act, 'installationUpdate'); return; }
   if (tipo !== 'message') return;
   // Además de la mención de Teams, en un chat de a dos se lo puede llamar por el nombre («gemma, ¿qué reviso?»)
   const nombre = botNombre(env, act);

@@ -80,6 +80,42 @@ Object.assign(ASIST_HERRAMIENTAS, {
       return out;
     },
   },
+  // Parche 79: las tareas abiertas de TODAS las salas abiertas (no solo la sala de la pregunta), con lo que ve cada perfil: Soporte, las suyas y las de sus equipos;
+  // Analista, Gerente y Administrador, todas. «Sin tomar» = asignada a un equipo y todavía sin una persona responsable.
+  tareas_salas: {
+    permiso: 'sala_crisis',
+    descripcion: 'Tareas abiertas (pendientes o en curso) de las salas de crisis abiertas: de quién es cada una, en qué sala, cuánto lleva y cuáles están sin tomar (asignadas a un equipo y sin persona responsable). Soporte ve solo las suyas y las de sus equipos; los demás perfiles ven todas. Para "¿qué tareas tengo?", "¿qué tareas hay sin tomar o sin asignar?".',
+    parametros: {},
+    async ejecutar(env, yo) {
+      const todos = puede(yo, 'sala_crisis_dirigir') || yo.perfil === 'GERENTE' || yo.perfil === 'ADMIN';
+      const eq = await misEquipos(env, yo.id);
+      const ahora = await salaAhoraMs(env);
+      let filas;
+      try {
+        filas = (await env.DB.prepare(`SELECT t.incidente_id, i.titulo AS sala, t.titulo, t.estado, t.actualizada, t.vence, t.responsable_usuario_id, t.equipo_id, u.nombre AS persona, e.nombre AS equipo
+            FROM incidente_tareas t JOIN incidentes_mayores i ON i.id = t.incidente_id AND i.estado <> 'CERRADO'
+            LEFT JOIN usuarios u ON u.id = t.responsable_usuario_id LEFT JOIN equipos e ON e.id = t.equipo_id
+            WHERE t.estado IN ('PENDIENTE', 'EN_CURSO')
+              AND (?2 = 1 OR t.responsable_usuario_id = ?1 OR (t.responsable_usuario_id IS NULL AND t.equipo_id IN (SELECT value FROM json_each(?3))))
+            ORDER BY t.incidente_id, CASE t.estado WHEN 'EN_CURSO' THEN 0 ELSE 1 END, t.id LIMIT 40`)
+          .bind(yo.id, todos ? 1 : 0, JSON.stringify(eq.miembro.concat(eq.lidero))).all()).results;
+      } catch (e) {
+        if (/no such table/i.test(e.message)) return { tareas: [], nota: 'Todavía no hay salas de crisis cargadas.' };
+        throw e;
+      }
+      const demorada = (t) => (t.estado === 'PENDIENTE' && ahora - Date.parse(t.actualizada) > 20 * 60000) || (t.estado === 'EN_CURSO' && ahora - Date.parse(t.actualizada) > 60 * 60000)
+        || (t.vence && Date.parse(t.vence) < ahora);
+      const sinTomar = (t) => t.responsable_usuario_id == null;
+      const mia = (t) => t.responsable_usuario_id === yo.id;
+      if (!filas.length) return { cuantas: { abiertas: 0 }, nota: todos ? 'No hay tareas abiertas en las salas de crisis.' : 'No hay tareas abiertas asignadas a esta persona ni a sus equipos.' };
+      return {
+        cuantas: { abiertas: filas.length, asignadas_a_esta_persona: filas.filter(mia).length, sin_tomar: filas.filter(sinTomar).length, demoradas: filas.filter(demorada).length },
+        tareas: filas.map((t) => ({ sala: imCodigo(t.incidente_id) + ' · ' + t.sala, tarea: t.titulo, estado: TAREA_ESTADO_TXT[t.estado].toLowerCase() + ' hace ' + salaHace(ahora, t.actualizada),
+          de: sinTomar(t) ? 'equipo ' + (t.equipo || '?') + ', todavía sin persona responsable' : t.persona + (t.equipo ? ' (equipo ' + t.equipo + ')' : ''),
+          es_de_esta_persona: mia(t) ? true : undefined, demorada: demorada(t) ? true : undefined })),
+      };
+    },
+  },
   guia_diagnostico: {
     permiso: 'sala_crisis', soloSala: true,   // se le ofrece al modelo solo si la pregunta se hace dentro de una sala
     descripcion: 'Guía de diagnóstico de una sala de crisis: de qué componentes depende el servicio afectado, qué revisar en cada uno, quién lo atiende, y los incidentes parecidos ya cerrados con su causa raíz.',

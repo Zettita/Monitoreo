@@ -262,6 +262,8 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 | `mis_alertas` (en curso, para tomar, resueltas en 24 h) | `mis_alertas` | No | No | Sí | No |
 | `detalle_alerta` (últimas ventanas, historial, casos parecidos resueltos, otros problemas del cliente) | `tablero`, o Soporte solo lo suyo o de su equipo (misma regla que el historial) | Sí | Sí | Lo suyo | Sí |
 | `ajustes_sugeridos` (posibles falsas alarmas de 30 días y umbrales configurados) | `admin_umbrales` | Sí | No | No | No |
+| `tareas_salas` (parche 79: tareas abiertas de todas las salas abiertas; las «sin tomar» son las asignadas a un equipo sin persona; Soporte solo las suyas y las de sus equipos) | `sala_crisis` | Sí | Sí | Lo suyo | Sí |
+| `casos_parecidos` (parche 79: alertas parecidas ya cerradas de los problemas abiertos que ve la persona; Soporte solo los casos suyos o de sus equipos) | `alertas_abiertas` o `mis_alertas` | Sí | Sí | Lo suyo | Sí |
 | `contexto_externo` (parche 29: calendario con feriados, fines de semana largos, cobro de sueldos, aguinaldo y eventos comerciales; incidentes y mantenimientos de proveedores; noticias de Argentina de 48 h) | `asistente` (los servicios críticos de los clientes, solo con `tablero`) | Sí | Sí | Sí | Sí |
 
 - **Nunca ejecuta nada.** Puede **proponer** derivar, tomar, comentar, devolver o resolver (`sugerir_accion`), solo si el perfil puede hacerlo; el servidor valida la alerta y el destino. La página muestra la propuesta con el comentario editable y un botón **"Hacerlo"**: recién con ese clic se llama a la ruta de siempre (`/api/alertas/{id}/...`), con sus permisos, historial y auditoría. El Gerente y el Administrador no reciben propuestas (no trabajan alertas); al Administrador le recomienda ajustes en texto y los hace él en Administración.
@@ -481,6 +483,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Gemma en Teams: un solo saludo y cada perfil pregunta por lo suyo (24/11, parche 79; sin SQL, falta publicar)**
+
+- Teams manda dos avisos al instalar la app y cada uno saludaba: ahora saluda uno solo por chat (marca en `teams_bot_memoria`). Dos herramientas nuevas del asistente, de solo lectura: `tareas_salas` (tareas abiertas de todas las salas abiertas, con las «sin tomar»; Soporte solo las suyas y las de sus equipos) y `casos_parecidos` (alertas parecidas ya cerradas de los problemas abiertos que se pueden ver; Soporte solo los casos suyos o de sus equipos). Las alertas asignadas o sin asignar ahora también llegan cuando se pregunta dentro de una sala. Respaldo: `99_Archivo_viejo/worker_antes_parche79/`, ramas `respaldo-antes-parche-79` y `version-parche-79-gemma-saludo-y-perfiles`.
 
 **La memoria del bot de Teams es del chat (20/11, parche 78; script 25 cambiado, falta publicar)**
 

@@ -271,6 +271,38 @@ const ASIST_HERRAMIENTAS = {
       };
     },
   },
+  // Parche 79: alertas parecidas ya cerradas, para los problemas abiertos que la persona puede ver (sin pedir el alerta_id de cada una)
+  casos_parecidos: {
+    permiso: (yo) => puede(yo, 'alertas_abiertas') || puede(yo, 'mis_alertas'),
+    descripcion: 'Alertas parecidas que ya se cerraron (mismo tipo de problema y mismo cliente, últimos 30 días) para cada problema abierto que la persona puede ver: cuándo fue, cómo terminó, la causa y qué se hizo. Soporte ve solo los casos suyos o de sus equipos. Para "¿pasó algo parecido antes?", "¿cómo se resolvió la última vez?".',
+    parametros: {},
+    async ejecutar(env, yo) {
+      const soporte = !puede(yo, 'tablero');
+      const abiertas = soporte ? (await datosMisAlertas(env, yo)).abiertas : (await env.DB.prepare(Q_ABIERTAS_ASIGNACION + ' LIMIT 400').all()).results.filter((x) => x.severidad !== 'BAJA');
+      const claves = new Map();
+      for (const x of abiertas) { const k = x.tipo_alerta + '|' + x.cliente_id; if (!claves.has(k)) claves.set(k, x); if (claves.size >= 6) break; }
+      if (!claves.size) return { problemas: [], nota: 'No hay alertas abiertas para comparar.' };
+      const r = await env.DB.batch([
+        env.DB.prepare(`SELECT h.tipo_alerta, h.cliente_id, h.servicio_id, h.canal_id, MIN(h.ventana_inicio) AS inicio, h.fecha_resolucion, MAX(h.motivo_resolucion) AS motivo,
+                               MAX(h.resuelta_por) AS resuelta_por, MAX(h.causa_resolucion) AS causa, MAX(h.acciones_resolucion) AS acciones, MAX(h.comentario) AS comentario
+                        FROM alertas_historico h
+                        WHERE h.ventana_inicio >= (SELECT strftime('%Y-%m-%dT%H:%M:%SZ', COALESCE(ahora, 'now'), '-30 days') FROM alerta_parametros WHERE id = 1)
+                          AND h.estado = 'RESUELTA' AND (h.tipo_alerta || '|' || h.cliente_id) IN (SELECT value FROM json_each(?1))
+                          AND (?2 = 0 OR h.asignado_usuario_id = ?3 OR h.asignado_equipo_id IN (SELECT equipo_id FROM equipo_miembros WHERE usuario_id = ?3))
+                        GROUP BY h.tipo_alerta, h.cliente_id, h.servicio_id, h.canal_id, h.fecha_resolucion ORDER BY h.fecha_resolucion DESC LIMIT 30`)
+          .bind(JSON.stringify([...claves.keys()]), soporte ? 1 : 0, yo.id),
+        env.DB.prepare(Q_REGLAS_PERSONALIZADAS),
+      ]);
+      const por = {};
+      for (const x of r[0].results) { const k = x.tipo_alerta + '|' + x.cliente_id; (por[k] = por[k] || []).push(x); }
+      return { problemas: [...claves].map(([k, a]) => {
+        const casos = (por[k] || []).slice(0, 3).map((x) => ({ empezo: asistFecha(x.inicio), donde: (ASIST_SERVICIO[x.servicio_id] || x.servicio_id) + ' por ' + (ASIST_CANAL[x.canal_id] || x.canal_id),
+          como_termino: x.motivo === 'MANUAL' ? 'Resuelta por ' + (x.resuelta_por || 'una persona') : 'Se normalizó sola',
+          causa: x.causa || undefined, que_se_hizo: x.acciones || undefined, comentario: !x.causa && x.comentario ? String(x.comentario).slice(0, 200) : undefined }));
+        return { problema: asistProblema(a, r[1].results) + ' en ' + a.cliente_id, casos_cerrados: casos.length ? casos : 'ninguno en los últimos 30 días' };
+      }) };
+    },
+  },
   incidentes: {
     permiso: 'tablero',
     descripcion: 'Resumen de incidentes de los últimos días (máximo 30): cantidad por cliente, cuántos graves, cuántos siguen abiertos, el tiempo promedio de resolución y en qué horario empiezan. Con cliente_id, además, los incidentes más largos de ese cliente. Para preguntas de negocio, rankings e informes.',
@@ -535,6 +567,8 @@ const ASIST_SUGERENCIAS = {
 // Así responde bien aunque el modelo no pida herramientas, y la mayoría de las preguntas salen en una sola vuelta.
 // Además, según las palabras de la pregunta, se suman los datos que seguro hacen falta (máximo 3 en total).
 const ASIST_PALABRAS = [
+  [/tarea|me (toc[oó]|asignaron)|sin (tomar|responsable)|otras? salas/i, 'tareas_salas'],
+  [/parecid|similar|antes\b|anterior|cerrad|antecedent|otra vez|de nuevo|ya (pas|ocurri|tuvimos|vimos)|la [uú]ltima vez/i, 'casos_parecidos'],
   [/horari|hora |\bhoras?\b|cliente|problema|incidente|mes\b|semana|ranking|m[aá]s (alertas|problemas)|histori|resoluci|mttr|tard[aó]/i, 'incidentes'],
   [/equipo|carga|qui[eé]n (la |las )?tiene|asignad|sin asignar|soporte/i, 'carga_equipos'],
   [/deriv|a qui[eé]n/i, 'opciones_derivacion'],

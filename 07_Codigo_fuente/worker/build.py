@@ -275,5 +275,7 @@ import patch76
 s = patch76.aplicar(s)
 import patch77
 s = patch77.aplicar(s)
+import patch79
+s = patch79.aplicar(s)
 open(out, 'w', encoding='utf-8', newline='\n').write(s)   # LF, igual que el Worker publicado
 print('ok', len(s))
