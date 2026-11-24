@@ -308,7 +308,7 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 | Tomar | **No** | **No** (el analista solo deriva) | Solo lo asignado a él o a su equipo | No |
 | Resolver | **No** | Cualquiera (por ejemplo, falsas alarmas) | Solo lo asignado a él | No |
 | Devolver | — | — | Lo que tiene asignado | No |
-| Mis alertas (bandeja propia) | No | No | Sí | No |
+| Mis alertas/tareas (bandeja propia: alertas y tareas de salas de crisis) | No | No | Sí | No |
 | Seguimiento (todas las abiertas, quién las tiene, carga por equipo) | Sí, solo lectura | Sí | No | **No** |
 | Campanita | No | Sí (lleva a Seguimiento) | Sí (lleva a Mis alertas) | No |
 | Detalle de alerta | Sí (solo lectura) | Sí (todas) | Solo lo suyo o de su equipo | Sí (solo lectura) |
@@ -483,6 +483,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Sala de crisis para quien tiene la alerta, responsable en la línea de tiempo y «Mis alertas/tareas» (24/11, parche 80; sin SQL, falta publicar)**
+
+- Quien tiene asignada (a su usuario o a un equipo suyo) una alerta de una sala entra a la sala en solo lectura, aunque no tenga tareas. La línea de tiempo de la sala dice quién es el responsable de cada alerta al sumarla y cada vez que se deriva, toma, devuelve o resuelve (también en el canal de Teams). La página «Mis alertas» pasa a «Mis alertas/tareas» y suma las tareas de salas de crisis de la persona o de su equipo (pendientes, y hechas en 24 h); el número del menú cuenta también las tareas pendientes. Respaldo: `99_Archivo_viejo/worker_antes_parche80/`, ramas `respaldo-antes-parche-80` y `version-parche-80-sala-por-alerta-y-mis-tareas`.
 
 **Gemma en Teams: salas que no existen o que la persona no ve (24/11, parche 79b; sin SQL, falta publicar)**
 
