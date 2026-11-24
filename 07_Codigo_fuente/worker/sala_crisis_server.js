@@ -45,8 +45,18 @@ async function rolEnIncidente(env, yo, id, inc) {
       OR (responsable_usuario_id IS NULL AND equipo_id IN (SELECT value FROM json_each(?3))))`).bind(id, yo.id, JSON.stringify(equipos)).all()).results.map((x) => x.id);
   const dirige = puede(yo, 'sala_crisis_dirigir');
   const lectura = yo.perfil === 'GERENTE' || yo.perfil === 'ADMIN';
-  if (!dirige && !lectura && !mias.length) return { error: jsonError('Esa sala de crisis no tiene tareas para tu usuario ni para tu equipo.', 403) };
-  return { inc, dirige, lectura, mias, equipos, abierto: inc.estado !== 'CERRADO' };
+  // Parche 80: quien tiene asignada una alerta de la sala (a su usuario o a un equipo suyo) es la persona a cargo de esa alerta: también entra a la sala (la ve, sin tareas)
+  const porAlerta = !dirige && !lectura && !mias.length && await alertaPropiaEnSala(env, yo, id, equipos);
+  if (!dirige && !lectura && !mias.length && !porAlerta) return { error: jsonError('Esa sala de crisis no tiene tareas para tu usuario ni para tu equipo.', 403) };
+  return { inc, dirige, lectura, mias, porAlerta, equipos, abierto: inc.estado !== 'CERRADO' };
+}
+// ¿Tiene esta persona (o un equipo suyo) asignada alguna alerta de la sala? Vale la alerta que se sumó y las filas abiertas de su mismo problema.
+async function alertaPropiaEnSala(env, yo, id, equipos) {
+  const r = await env.DB.prepare(`SELECT 1 AS x FROM incidente_alertas ia WHERE ia.incidente_id = ?1 AND EXISTS (
+      SELECT 1 FROM alertas_historico h WHERE (h.alerta_id = ia.alerta_id OR (h.tipo_alerta = ia.tipo_alerta AND h.cliente_id = ia.cliente_id AND h.servicio_id = ia.servicio_id
+        AND h.canal_id = ia.canal_id AND h.estado IN ('ABIERTA', 'RECONOCIDA')))
+        AND (h.asignado_usuario_id = ?2 OR h.asignado_equipo_id IN (SELECT value FROM json_each(?3)))) LIMIT 1`).bind(id, yo.id, JSON.stringify(equipos || [])).first();
+  return !!r;
 }
 
 // ---------- Lista ----------
@@ -62,8 +72,13 @@ async function listarIncidentes(env, yo) {
       OR (t.responsable_usuario_id IS NULL AND t.equipo_id IN (SELECT m.equipo_id FROM equipo_miembros m WHERE m.usuario_id = ?1))`).bind(yo.id),
     env.DB.prepare(`SELECT COUNT(*) AS n FROM incidente_tareas t WHERE t.estado IN ('PENDIENTE', 'EN_CURSO') AND (t.responsable_usuario_id = ?1
       OR (t.responsable_usuario_id IS NULL AND t.equipo_id IN (SELECT m.equipo_id FROM equipo_miembros m WHERE m.usuario_id = ?1)))`).bind(yo.id),
+    // Parche 80: las salas con una alerta asignada a esta persona o a un equipo suyo
+    env.DB.prepare(`SELECT DISTINCT ia.incidente_id AS id FROM incidente_alertas ia WHERE EXISTS (
+        SELECT 1 FROM alertas_historico h WHERE (h.alerta_id = ia.alerta_id OR (h.tipo_alerta = ia.tipo_alerta AND h.cliente_id = ia.cliente_id AND h.servicio_id = ia.servicio_id
+          AND h.canal_id = ia.canal_id AND h.estado IN ('ABIERTA', 'RECONOCIDA')))
+          AND (h.asignado_usuario_id = ?1 OR h.asignado_equipo_id IN (SELECT m.equipo_id FROM equipo_miembros m WHERE m.usuario_id = ?1)))`).bind(yo.id),
   ]);
-  const conTarea = new Set(r[1].results.map((x) => x.id));
+  const conTarea = new Set(r[1].results.concat(r[3].results).map((x) => x.id));
   const todos = puede(yo, 'sala_crisis_dirigir') || yo.perfil === 'GERENTE' || yo.perfil === 'ADMIN';
   const incidentes = r[0].results.filter((i) => todos || conTarea.has(i.id));
   return okJson({ incidentes, abiertos: incidentes.filter((i) => i.estado !== 'CERRADO').length, mis_tareas_pendientes: r[2].results[0].n,
@@ -157,6 +172,7 @@ async function alertasParaIncidente(env, ids, incidenteId) {
   const out = [];
   for (const aid of ids) {
     const a = await env.DB.prepare(`SELECT alerta_id, tipo_alerta, cliente_id, servicio_id, canal_id, estado, severidad_maxima,
+        (SELECT nombre FROM usuarios WHERE id = alertas_historico.asignado_usuario_id) AS resp_nombre, (SELECT nombre FROM equipos WHERE id = alertas_historico.asignado_equipo_id) AS resp_equipo,
         (SELECT MIN(ventana_inicio) FROM alertas_historico WHERE alerta_id IN (${GRUPO_IDS})) AS desde
       FROM alertas_historico WHERE alerta_id = ?1`).bind(aid).first();
     if (!a) return { error: jsonError('Una de las alertas elegidas no existe.', 404) };
@@ -204,12 +220,48 @@ async function abrirIncidente(env, request, yo) {
   }
   return okJson({ incidente: { id, codigo: imCodigo(id), titulo } });
 }
+// Quién es el responsable de la alerta (parche 80): queda dicho en la línea de tiempo al sumarla y cada vez que cambia
+function responsableTxt(a) {
+  const quien = [a.resp_nombre, a.resp_equipo ? 'equipo ' + a.resp_equipo : null].filter(Boolean).join(' · ');
+  if (a.estado === 'RECONOCIDA' && a.resp_nombre) return 'Responsable de la alerta: ' + a.resp_nombre + ' (la está trabajando).';
+  return quien ? 'Responsable de la alerta: ' + quien + ' (asignada, todavía sin tomar).' : 'Todavía no tiene responsable asignado.';
+}
+// Renglones de la línea de tiempo de las salas abiertas donde está la alerta (los arma una acción sobre la alerta: derivar, tomar, devolver o resolver)
+async function lineasPorAsignacion(env, yo, alertaId, texto) {
+  try {
+    const r = await env.DB.prepare(`SELECT DISTINCT ia.incidente_id AS id FROM incidente_alertas ia JOIN incidentes_mayores im ON im.id = ia.incidente_id AND im.estado <> 'CERRADO'
+      WHERE ia.alerta_id IN (${GRUPO_IDS})`).bind(alertaId).all();
+    return r.results.map((x) => lineaSQL(env, x.id, yo, 'ALERTA_SUMADA', texto, alertaId));
+  } catch (e) { if (/no such table/i.test(e.message)) return []; throw e; }
+}
+// Tareas de salas de crisis de esta persona o de un equipo suyo (sin persona responsable): pendientes, en curso y las hechas en las últimas 24 horas
+async function tareasDeMisSalas(env, yo) {
+  try {
+    const eq = await misEquipos(env, yo.id);
+    const filas = (await env.DB.prepare(`SELECT t.id, t.incidente_id, i.titulo AS sala, i.cliente_id, i.servicio_id, t.titulo, t.detalle, t.estado, t.resultado, t.creada, t.actualizada, t.terminada, t.vence,
+        t.responsable_usuario_id, u.nombre AS persona, e.nombre AS equipo, uc.nombre AS creada_por
+      FROM incidente_tareas t JOIN incidentes_mayores i ON i.id = t.incidente_id LEFT JOIN usuarios u ON u.id = t.responsable_usuario_id LEFT JOIN equipos e ON e.id = t.equipo_id
+        LEFT JOIN usuarios uc ON uc.id = t.creada_por
+      WHERE (t.responsable_usuario_id = ?1 OR (t.responsable_usuario_id IS NULL AND t.equipo_id IN (SELECT value FROM json_each(?2))))
+        AND (t.estado IN ('PENDIENTE', 'EN_CURSO') OR (t.estado = 'HECHA' AND t.terminada >= strftime('%Y-%m-%dT%H:%M:%SZ', ${AHORA_SIM}, '-24 hours')))
+      ORDER BY CASE t.estado WHEN 'EN_CURSO' THEN 0 WHEN 'PENDIENTE' THEN 1 ELSE 2 END, t.id DESC LIMIT 60`).bind(yo.id, JSON.stringify(eq.miembro.concat(eq.lidero))).all()).results;
+    return filas.map((t) => Object.assign(t, { codigo: imCodigo(t.incidente_id), sin_tomar: t.responsable_usuario_id == null }));
+  } catch (e) { if (/no such table/i.test(e.message)) return []; throw e; }
+}
+async function contarMisTareas(env, yo) {
+  try {
+    const eq = await misEquipos(env, yo.id);
+    return (await env.DB.prepare(`SELECT COUNT(*) AS n FROM incidente_tareas t JOIN incidentes_mayores i ON i.id = t.incidente_id AND i.estado <> 'CERRADO'
+      WHERE t.estado IN ('PENDIENTE', 'EN_CURSO') AND (t.responsable_usuario_id = ?1 OR (t.responsable_usuario_id IS NULL AND t.equipo_id IN (SELECT value FROM json_each(?2))))`)
+      .bind(yo.id, JSON.stringify(eq.miembro.concat(eq.lidero))).first()).n;
+  } catch (e) { if (/no such table/i.test(e.message)) return 0; throw e; }
+}
 function sumarAlertasSQL(env, id, yo, als) {
   const out = [];
   for (const a of als) {
     out.push(env.DB.prepare(`INSERT INTO incidente_alertas (incidente_id, alerta_id, tipo_alerta, cliente_id, servicio_id, canal_id, sumada_por, sumada)
       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ${AHORA_SIM})`).bind(id, a.alerta_id, a.tipo_alerta, a.cliente_id, a.servicio_id, a.canal_id, yo.id));
-    out.push(lineaSQL(env, id, yo, 'ALERTA_SUMADA', 'Sumó la alerta: ' + fraseAlerta(a) + '.', a.alerta_id));
+    out.push(lineaSQL(env, id, yo, 'ALERTA_SUMADA', 'Sumó la alerta: ' + fraseAlerta(a) + '. ' + responsableTxt(a), a.alerta_id));
     out.push(eventoComentario(env, yo, a.alerta_id, 'Sumó la alerta a la sala de crisis ' + imCodigo(id) + '.'));
   }
   return out;

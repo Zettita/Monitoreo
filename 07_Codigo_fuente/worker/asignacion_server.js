@@ -107,7 +107,7 @@ async function contarMisAlertas(env, yo) {
              OR (h.asignado_usuario_id IS NULL AND h.estado = 'ABIERTA'
                  AND h.asignado_equipo_id IN (SELECT m.equipo_id FROM equipo_miembros m JOIN equipos e ON e.id = m.equipo_id AND e.activo = 1 WHERE m.usuario_id = ?1))))`)
     .bind(yo.id).first();
-  return r ? r.n : 0;
+  return (r ? r.n : 0) + await contarMisTareas(env, yo);   // alertas para tomar o en curso + tareas de salas de crisis pendientes (parche 80)
 }
 
 // Datos de la página "Mis alertas"
@@ -200,7 +200,7 @@ async function historialAlerta(env, alertaId) {
 async function accionAsignacion(env, request, yo, alertaId, accion) {
   const b = await leerCuerpo(request);
   const comentario = opcional(b.comentario, 1000);
-  const a = await env.DB.prepare('SELECT alerta_id, estado, severidad, asignado_usuario_id, asignado_equipo_id, asignado_por, reconocida_por, tipo_alerta, cliente_id FROM alertas_historico WHERE alerta_id = ?1').bind(alertaId).first();
+  const a = await env.DB.prepare('SELECT alerta_id, estado, severidad, asignado_usuario_id, asignado_equipo_id, asignado_por, reconocida_por, tipo_alerta, cliente_id, servicio_id, canal_id FROM alertas_historico WHERE alerta_id = ?1').bind(alertaId).first();
   if (!a) return jsonError('La alerta no existe.', 404);
   if (a.estado === 'RESUELTA') return jsonError('La alerta ya está resuelta. Actualizá la página.', 409);
   const eq = await misEquipos(env, yo.id);
@@ -234,6 +234,10 @@ async function accionAsignacion(env, request, yo, alertaId, accion) {
       }
     }
     const eqNombre = equipo ? (await env.DB.prepare('SELECT nombre FROM equipos WHERE id = ?1').bind(equipo).first()).nombre : null;
+    const uNombre = usuario ? (await env.DB.prepare('SELECT nombre FROM usuarios WHERE id = ?1').bind(usuario).first()).nombre : null;
+    // Si la alerta está en una sala de crisis abierta, la línea de tiempo dice quién es el responsable (parche 80)
+    const lineas = await lineasPorAsignacion(env, yo, alertaId, 'Derivó la alerta «' + fraseAlerta(a) + '» a ' + [uNombre, eqNombre ? 'equipo ' + eqNombre : null].filter(Boolean).join(' · ') + '. '
+      + (uNombre ? uNombre + ' es ahora el responsable de la alerta.' : 'Queda a cargo del equipo hasta que alguien la tome.'));
     const avisos = usuario
       ? avisar([usuario], 'ASIGNADA', yo.nombre + ' te asignó una alerta' + (eqNombre ? ' (equipo ' + eqNombre + ')' : ''), comentario)
       : avisar(await miembrosActivos(env, equipo), 'ASIGNADA', yo.nombre + ' asignó una alerta a tu equipo ' + eqNombre, comentario);
@@ -242,6 +246,7 @@ async function accionAsignacion(env, request, yo, alertaId, accion) {
                         estado = 'ABIERTA', reconocida_por = NULL, fecha_reconocimiento = NULL WHERE ${GRUPO_ABIERTO}`).bind(alertaId, usuario, equipo, yo.id),
       evento('DERIVAR', usuario, equipo, comentario),
       auditoria('DERIVAR_ALERTA', desc),
+      ...lineas,
     ].concat(avisos));
     return okJson({});
   }
@@ -255,7 +260,8 @@ async function accionAsignacion(env, request, yo, alertaId, accion) {
                         asignado_en = COALESCE(asignado_en, ${AHORA_SIM}), asignado_por = COALESCE(asignado_por, ?2)
                       WHERE ${GRUPO_ABIERTO} AND estado = 'ABIERTA' AND (asignado_usuario_id IS NULL OR asignado_usuario_id = ?2)`).bind(alertaId, yo.id, yo.nombre).run();
     if (!r.meta.changes) return jsonError('Alguien la tomó recién. Actualizá la página.', 409);
-    await env.DB.batch([evento('TOMAR', null, null, comentario), auditoria('TOMAR_ALERTA', desc)]);
+    await env.DB.batch([evento('TOMAR', null, null, comentario), auditoria('TOMAR_ALERTA', desc),
+      ...(await lineasPorAsignacion(env, yo, alertaId, 'Tomó la alerta «' + fraseAlerta(a) + '»: es quien la resuelve (responsable de la alerta).'))]);
     return okJson({});
   }
   if (accion === 'comentar') {
@@ -275,6 +281,7 @@ async function accionAsignacion(env, request, yo, alertaId, accion) {
                         estado = 'ABIERTA', reconocida_por = NULL, fecha_reconocimiento = NULL WHERE ${GRUPO_ABIERTO}`).bind(alertaId),
       evento('DEVOLVER', null, null, comentario),
       auditoria('DEVOLVER_ALERTA', desc),
+      ...(await lineasPorAsignacion(env, yo, alertaId, 'Devolvió la alerta «' + fraseAlerta(a) + '»: vuelve a quedar sin responsable.' + (comentario ? ' Motivo: ' + comentario.slice(0, 200) : ''))),
     ].concat(avisar(a.asignado_por != null ? [a.asignado_por] : await analistasActivos(env), 'DEVUELTA', yo.nombre + ' devolvió una alerta', comentario)));
     return okJson({});
   }

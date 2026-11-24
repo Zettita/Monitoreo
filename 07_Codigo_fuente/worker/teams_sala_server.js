@@ -20,7 +20,7 @@ const TEAMS_HOSTS = /^https:\/\/[a-z0-9.-]+\.(logic\.azure\.com|powerplatform\.c
 const TEAMS_TOPE_MS = 5000;
 const TEAMS_MAX_RENGLONES = 8;
 const TEAMS_MAX_CHAT = 40;   // personas en el enlace del chat (el enlace tiene que entrar en una URL)
-const TEAMS_RUTAS = /^\/api\/(incidentes(\/|$)|alertas\/[^/]+\/comunicar$)/;
+const TEAMS_RUTAS = /^\/api\/(incidentes(\/|$)|alertas\/[^/]+\/(comunicar|derivar|tomar|devolver|resolver)$)/;
 const TEAMS_SEV = { CRITICA: 'Grave', ALTA: 'Importante' };
 
 function teamsUrl(env) {
