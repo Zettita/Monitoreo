@@ -54,3 +54,8 @@ python grabar.py --seco                              # pasada de prueba rápida,
 ## Código
 `grabar.py` (arranque) · `capitulos.py` (los pasos de cada capítulo) · `guion.py` (el texto de la voz y de los subtítulos) · `grab.py` (navegador, cursor, esperas) · `overlays.js` (cursor, tarjetas, teléfono y Outlook simulados) · `voz.py` (voz de Windows) · `armar.py` (montaje) · `preparar_base.mjs` (personas, equipos y regla de la demo) · `historial.py` (historial y contexto de ejemplo) · `servidor_demo.mjs` e `ia_guion.mjs`.
 Para cambiar lo que se dice, se edita `guion.py`; para cambiar lo que se hace, `capitulos.py`.
+
+## Audios limpios, nivel y música de fondo (24/11)
+- Los 42 audios de `audios/` se limpiaron de nuevo: se recorta el arranque hasta la primera voz (sin zumbido, golpes ni ruido ambiente), resta espectral de fondo y compuerta suave. Todos quedan en **-22 LUFS** (picos ≤ -3 dBFS), el mismo nivel.
+- `musica.py` sintetiza una música base suave (propia, sin derechos). `armar.py` la mezcla con la voz bajándola sola cuando habla (`sidechaincompress`) y deja `Helios_demo_voz_y_musica.wav`; la voz sola sigue aparte (`Helios_demo_voz_en_off.*`).
+- Si cambia la duración de un audio hay que volver a correr `grabar.py` (cada escena dura lo que su voz).
