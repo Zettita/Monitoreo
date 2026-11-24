@@ -42,15 +42,15 @@ TEXTOS = {
 
     # Los dos primeros textos de este bloque son los de los audios que grabó una persona (carpeta audios/): se usan tal cual, con su duración.
     'aicim1': 'Y lo que viene: AICIM, un asistente inteligente que coordina la resolución de los incidentes mayores.',
-    'sala1': 'Cuando varias alertas son parte de un mismo problema, como esta caída del gateway de pagos que afecta a tres clientes, el analista abre una sala de crisis desde la alerta y la suma al mismo incidente.',
-    'sala2': 'Después suma las alertas de los otros clientes afectados. La sala reúne en un solo lugar las alertas, las tareas, la línea de tiempo y una guía de diagnóstico, con los componentes de la infraestructura, sus dependencias y los incidentes parecidos que ya se resolvieron.',
-    'sala3': 'El asistente propone qué revisar primero y a quién asignarle cada tarea. Nada se hace solo: el analista confirma cada propuesta.',
-    'sala4': 'Soporte recibe la tarea, la empieza y, cuando termina, la marca como hecha con lo que encontró. Todo queda en la línea de tiempo de la sala.',
-    'sala5': 'Cuando el servicio se restablece, el analista lo marca como mitigado y cierra la sala con la causa raíz. Ese antecedente queda disponible para el próximo incidente.',
+    'sala1': 'Cuando varias alertas son parte del mismo problema, el analista abre una sala de crisis desde la alerta.',
+    'sala2': 'Suma las alertas de los otros clientes afectados. La sala reúne alertas, tareas y una guía de diagnóstico en un solo lugar.',
+    'sala3': 'El asistente propone qué revisar primero y a quién asignarle cada tarea. Nada se hace solo: el analista confirma.',
+    'sala4': 'Soporte recibe su tarea, la empieza y, al terminar, la marca como hecha con lo que encontró.',
+    'sala5': 'Cuando el servicio vuelve, el analista marca el incidente como mitigado y cierra la sala con la causa raíz.',
     'teams1': 'Conduce la sala de crisis desde Microsoft Teams, asigna tareas y sigue cada acción hasta restablecer el servicio. Siempre bajo supervisión humana.',
-    'teams2': 'En el chat de la sala, el equipo le pregunta a Gemma, el asistente de Helios, cómo va el incidente o qué conviene revisar. Responde con los datos de la sala y con los permisos de quien pregunta.',
-    'teams3': 'Si hace falta actuar, por ejemplo escalar al proveedor, Gemma propone la acción y manda el enlace para confirmarla en Helios. Nunca ejecuta nada por su cuenta.',
-    'teams4': 'Y cada novedad de la sala, como una tarea nueva, una tarea hecha o el cambio de estado, llega al canal de Teams, para que todo el equipo siga el incidente sin salir de donde ya trabaja.',
+    'teams2': 'En el chat de la sala, el equipo le pregunta a Gemma cómo va el incidente, y Gemma responde con los datos de la sala.',
+    'teams3': 'Si hay que actuar, por ejemplo escalar al proveedor, Gemma propone la acción y manda el enlace para confirmarla en Helios.',
+    'teams4': 'Y cada novedad de la sala llega al canal de Teams, para que todo el equipo siga el incidente.',
 
     'fin': 'Helios: pre-alertas anticipadas, alertas priorizadas, comunicación sin carga manual, información para la gerencia y un asistente que ayuda a decidir. Enterate antes que tus clientes.',
 }
