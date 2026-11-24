@@ -484,6 +484,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Gemma en Teams: salas que no existen o que la persona no ve (24/11, parche 79b; sin SQL, falta publicar)**
+
+- Con la demo reiniciada, el bot contestaba «Ese incidente no existe.» (la memoria del chat apuntaba a una sala vieja) y nombraba el IM-4 a personas de Soporte sin tareas ahí. Ahora la sala del título, de la memoria o la única abierta se usa solo si existe y la persona la ve; si no, la pregunta sigue como general. «Preparar demo» borra la memoria del bot. Respaldo: `99_Archivo_viejo/worker_antes_parche79b/`, ramas `respaldo-antes-parche-79b` y `version-parche-79b-bot-salas-visibles`.
+
 **Gemma en Teams: un solo saludo y cada perfil pregunta por lo suyo (24/11, parche 79; sin SQL, falta publicar)**
 
 - Teams manda dos avisos al instalar la app y cada uno saludaba: ahora saluda uno solo por chat (marca en `teams_bot_memoria`). Dos herramientas nuevas del asistente, de solo lectura: `tareas_salas` (tareas abiertas de todas las salas abiertas, con las «sin tomar»; Soporte solo las suyas y las de sus equipos) y `casos_parecidos` (alertas parecidas ya cerradas de los problemas abiertos que se pueden ver; Soporte solo los casos suyos o de sus equipos). Las alertas asignadas o sin asignar ahora también llegan cuando se pregunta dentro de una sala. Respaldo: `99_Archivo_viejo/worker_antes_parche79/`, ramas `respaldo-antes-parche-79` y `version-parche-79-gemma-saludo-y-perfiles`.

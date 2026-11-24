@@ -915,6 +915,7 @@ async function demoPreparar(env) {
   ]);
   await env.DB.prepare('DELETE FROM tickets_alerta').run().catch(() => {});
   await env.DB.batch([env.DB.prepare('DELETE FROM comunicado_destinatarios'), env.DB.prepare('DELETE FROM comunicados_incidente')]).catch(() => {});
+  await env.DB.prepare('DELETE FROM teams_bot_memoria').run().catch(() => {});   // la memoria del bot de Teams (parche 79)
   await env.DB.batch([
     env.DB.prepare("DELETE FROM incidente_alertas WHERE incidente_id IN (SELECT id FROM incidentes_mayores WHERE origen = 'HELIOS')"),
     env.DB.prepare("DELETE FROM incidente_tareas WHERE incidente_id IN (SELECT id FROM incidentes_mayores WHERE origen = 'HELIOS')"),
@@ -6615,16 +6616,26 @@ async function botOlvidar(env, act) {
 }
 
 // ---------- Sobre qué sala pregunta ----------
-// 1) lo que escribe ("IM-4"), 2) el título del chat de Helios ("IM-4 · …"), 3) la sala de la que venía hablando, 4) la única sala abierta
+// 1) lo que escribe ("IM-4"): si no existe o no la ve, se le dice. Si no lo escribe, se prueba (2) el título del chat de Helios ("IM-4 · …"), (3) la sala de la que
+// venía hablando y (4) la única sala abierta, pero SOLO si existe y la persona la puede ver (parche 79): si no, la pregunta sigue como una pregunta general
+// (sus alertas, sus tareas, casos parecidos). Antes, una sala que ya no existía (por ejemplo, después de «Preparar demo») o una sala donde la persona no tiene
+// tareas hacía que el bot contestara «Ese incidente no existe.» o «Esa sala de crisis no tiene tareas…» aunque preguntara por lo suyo.
+async function botSalaVisible(env, yo, id) {
+  try { return !(await rolEnIncidente(env, yo, id)).error; }
+  catch (e) { return false; }   // sin el script 24
+}
 async function botSala(env, yo, texto, act, memoria) {
-  const m = texto.match(/\bIM-(\d{1,6})\b/i) || String((act.conversation && act.conversation.name) || '').match(/\bIM-(\d{1,6})\b/i);
+  const m = texto.match(/\bIM-(\d{1,6})\b/i);
   if (m) return { id: Number(m[1]) };
-  if (memoria && memoria.sala_id && memoria.mensajes.length) return { id: memoria.sala_id };
+  const t = String((act.conversation && act.conversation.name) || '').match(/\bIM-(\d{1,6})\b/i);
+  for (const id of [t && Number(t[1]), memoria && memoria.mensajes.length && memoria.sala_id].filter(Boolean)) if (await botSalaVisible(env, yo, id)) return { id };
   if (!puede(yo, 'sala_crisis')) return {};
   try {
     const r = (await env.DB.prepare("SELECT id FROM incidentes_mayores WHERE estado <> 'CERRADO' ORDER BY id DESC LIMIT 3").all()).results;
-    if (r.length === 1) return { id: r[0].id };
-    if (r.length > 1) return { varias: true };
+    const vistas = [];
+    for (const x of r) if (await botSalaVisible(env, yo, x.id)) vistas.push(x.id);
+    if (vistas.length === 1) return { id: vistas[0] };
+    if (vistas.length > 1) return { varias: true };
   } catch (e) { /* sin el script 24 */ }
   return {};
 }
@@ -6676,7 +6687,13 @@ async function botProcesar(env, request, act) {
   let memoria = await botMemoria(env, act);
   const sala = await botSala(env, yo, texto, act, memoria);
   // Si ahora se pregunta por otra sala, lo anterior era de otro tema: se empieza de nuevo
-  if (memoria.sala_id && sala.id && sala.id !== memoria.sala_id) memoria = { ...memoria, mensajes: [] };
+  // Otra sala escrita a mano: lo anterior era de otro tema. Si la sala de la que venía hablando el chat existe pero esta persona no la ve, contesta como pregunta general
+  // (sin la conversación del chat y sin tocarla: no se guarda), y si ya no existe (por ejemplo, después de «Preparar demo») se empieza de nuevo.
+  let aparte = false;
+  if (memoria.sala_id && sala.id !== memoria.sala_id) {
+    if (!sala.id) { try { aparte = !!(await env.DB.prepare('SELECT 1 FROM incidentes_mayores WHERE id = ?1').bind(memoria.sala_id).first()); } catch (e) { /* sin el script 24 */ } }
+    memoria = { ...memoria, mensajes: [] };
+  }
   const cuerpo = { pregunta: texto };
   if (sala.id) cuerpo.incidente_id = sala.id;
   if (memoria.mensajes.length) cuerpo.historia = botHistoria(memoria.mensajes);
@@ -6686,7 +6703,7 @@ async function botProcesar(env, request, act) {
   if (!resp.ok || j.ok === false) { await botResponder(env, act, String(j.error || 'No pude responder ahora. Probá de nuevo en un momento.')); return; }
   await botResponder(env, act, botArmarRespuesta(j, origen, sala));
   // Se recuerda lo conversado (sin los saludos sueltos, que no pasaron por el modelo)
-  if (memoria.activa && !j.sin_ia && j.respuesta) await botGuardarMemoria(env, act, memoria.mensajes.concat([{ rol: 'usuario', texto, quien: String(yo.nombre || '').split(/\s+/)[0] }, { rol: 'asistente', texto: String(j.respuesta).slice(0, 1500) }]), sala.id);
+  if (memoria.activa && !aparte && !j.sin_ia && j.respuesta) await botGuardarMemoria(env, act, memoria.mensajes.concat([{ rol: 'usuario', texto, quien: String(yo.nombre || '').split(/\s+/)[0] }, { rol: 'asistente', texto: String(j.respuesta).slice(0, 1500) }]), sala.id);
 }
 
 // ---------- Lo que llama Microsoft ----------
