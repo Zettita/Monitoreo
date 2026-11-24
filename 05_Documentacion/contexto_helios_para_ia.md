@@ -309,6 +309,7 @@ Botón **"Asistente"** abajo a la derecha en el tablero, Mis alertas, Seguimient
 | Resolver | **No** | Cualquiera (por ejemplo, falsas alarmas) | Solo lo asignado a él | No |
 | Devolver | — | — | Lo que tiene asignado | No |
 | Mis alertas/tareas (bandeja propia: alertas y tareas de salas de crisis) | No | No | Sí | No |
+| Mis tareas (tareas de salas de crisis; parche 81) | No | Sí | No (están en Mis alertas/tareas) | No |
 | Seguimiento (todas las abiertas, quién las tiene, carga por equipo) | Sí, solo lectura | Sí | No | **No** |
 | Campanita | No | Sí (lleva a Seguimiento) | Sí (lleva a Mis alertas) | No |
 | Detalle de alerta | Sí (solo lectura) | Sí (todas) | Solo lo suyo o de su equipo | Sí (solo lectura) |
@@ -483,6 +484,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**«Mis tareas» para el Analista y alertas / tareas bien separadas (24/11, parche 81; sin SQL, falta publicar)**
+
+- Página nueva «Mis tareas» (`/mis-tareas`, permiso `mis_tareas` = Analista) con las tareas de salas de crisis del Analista (pendientes, en curso y hechas en 24 h), con enlace a cada sala y «Mis tareas» en su menú. «Mis alertas/tareas» de Soporte se ordena en dos grupos con título propio, «Alertas» y «Tareas de salas de crisis» (con «Alertas resueltas…» y «Tareas hechas…» por separado), y el resumen de arriba va en dos filas. Respaldo: `99_Archivo_viejo/worker_antes_parche81/`, ramas `respaldo-antes-parche-81` y `version-parche-81-mis-tareas-analista`.
 
 **Sala de crisis para quien tiene la alerta, responsable en la línea de tiempo y «Mis alertas/tareas» (24/11, parche 80; sin SQL, falta publicar)**
 
