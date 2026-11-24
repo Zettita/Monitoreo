@@ -1,6 +1,8 @@
 # Parche 79 (24/11): Gemma en Teams, ajustes de la primera prueba real (sin SQL).
 #   - El saludo salía dos veces al instalar la app (Teams manda installationUpdate y conversationUpdate): ahora saluda uno solo por chat
 #     (teams_bot_server.js, botSaludar).
+#   - El bot ya no contesta «Ese incidente no existe.» ni «Esa sala … no tiene tareas»: una sala que no existe o que la persona no ve (la de la memoria,
+#     la del título o la única abierta) se ignora y la pregunta sigue como general. «Preparar demo» borra la memoria del bot.
 #   - Cada perfil puede preguntar por lo suyo: las alertas que tiene asignadas o sin asignar (según el perfil), las tareas de las salas de crisis
 #     (asignadas, sin tomar) y los casos parecidos ya cerrados. Herramientas nuevas, de solo lectura y con el permiso de cada perfil:
 #       tareas_salas    (sala_crisis_asistente.js)  tareas abiertas de todas las salas abiertas; Soporte, solo las suyas y las de sus equipos
@@ -30,4 +32,8 @@ def aplicar(s):
              "  if (SALA_PALABRAS_MIS.test(pregunta)) out.push('mis_alertas', 'alertas_abiertas');   // cada perfil tiene una de las dos\n"
              "  if (SALA_PALABRAS_PARECIDAS.test(pregunta)) out.push('casos_parecidos');\n"
              "  return out.filter((n) => disponibles.includes(n)).slice(0, 5);")
+    # Preparar demo: la sala nueva vuelve a ser IM-4, así que la memoria del bot de Teams (que recuerda de qué sala se venía hablando) se borra
+    s = _rep(s, "  await env.DB.batch([env.DB.prepare('DELETE FROM comunicado_destinatarios'), env.DB.prepare('DELETE FROM comunicados_incidente')]).catch(() => {});\n",
+             "  await env.DB.batch([env.DB.prepare('DELETE FROM comunicado_destinatarios'), env.DB.prepare('DELETE FROM comunicados_incidente')]).catch(() => {});\n"
+             "  await env.DB.prepare('DELETE FROM teams_bot_memoria').run().catch(() => {});   // la memoria del bot de Teams (parche 79)\n")
     return s

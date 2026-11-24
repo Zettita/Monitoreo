@@ -78,6 +78,7 @@ async function teams(act, token, cab) {
   return r;
 }
 const olvidarTodo = () => db.exec('DELETE FROM teams_bot_memoria');
+const memoriaDe = (c) => db.prepare('select sala_id, mensajes from teams_bot_memoria where conversacion_id = ?').get(c) || null;
 const mensajes = () => salidas.filter((x) => x.metodo === 'POST' && x.cuerpo && x.cuerpo.type === 'message');
 const ultimo = () => (mensajes().slice(-1)[0] || {}).cuerpo;
 
@@ -243,7 +244,10 @@ ok('guarda como mucho los últimos 6 mensajes del chat (de varias personas)', me
 // El permiso es el de quien pregunta: Soporte sin tareas en la sala no recibe datos aunque el chat venga hablando de ella
 { const antes=memoria().mensajes;
   r=await teams(actividad('u-upn','¿qué reviso primero?'));
-  ok('el permiso sigue siendo el de quien pregunta: Soporte sin tareas en la sala recibe el aviso de siempre y no se guarda nada', pedidosIA.length===0 && /Esa sala de crisis no tiene tareas/.test((ultimo()||{}).text||'') && memoria().mensajes===antes, ultimo()); }
+  ok('el permiso sigue siendo el de quien pregunta: Soporte sin tareas en la sala contesta como pregunta general (sin datos ni enlace de la sala) y no toca la memoria del chat',
+    pedidosIA.length>=1 && !/Esa sala de crisis|Ese incidente/.test((ultimo()||{}).text||'') && !/incidente\/\d/.test((ultimo()||{}).text||'') && !hablaCon('"estado_incidente"') && !hablaCon('Revisar el gateway') && memoria().mensajes===antes, ultimo());
+  r=await teams(actividad('u-upn','IM-4 ¿qué reviso primero?'));
+  ok('…pero si escribe el número de esa sala, se le dice que no tiene tareas ahí (y no se le da ningún dato)', pedidosIA.length===0 && /Esa sala de crisis no tiene tareas/.test((ultimo()||{}).text||'') && memoria().mensajes===antes, ultimo()); }
 // Otra sala: lo anterior era de otro tema
 { const r2=await call(ck.ana,'POST','/api/incidentes',{alertas:[db.prepare("select alerta_id from alertas_historico where estado!='RESUELTA' and severidad_maxima!='BAJA' and alerta_id not in (select alerta_id from incidente_alertas) limit 1").get().alerta_id]});
   const IM2=r2.j.incidente.id;
@@ -403,6 +407,23 @@ r=await teams(actividad('u-upn','¿hubo algo parecido antes?'));
 ok('Soporte sin alertas asignadas no recibe casos de otros', !/Falla en el gateway|Causa que Soporte/.test(sec('casos_parecidos')) && /No hay alertas abiertas para comparar/.test(sec('casos_parecidos')), sec('casos_parecidos'));
 olvidarTodo();
 
+// Una sala que ya no existe o que la persona no ve no rompe la pregunta (prueba real del 24/11: después de «Preparar demo» contestaba «Ese incidente no existe.»)
+{ const privado = { act: { conversation: { id: 'a:privado', conversationType: 'personal' } } };
+  CORREOS['u-mica']='mica@helios.test';
+  { const x=await call(A,'POST','/api/admin/usuarios',{usuario:'mica',nombre:'Mica Nueva',perfil:'SOPORTE',correo:'mica@helios.test'}); ok('(preparación) otra persona de Soporte, sin tareas en ninguna sala', x.s===200, x.j); }
+  db.prepare("INSERT OR REPLACE INTO teams_bot_memoria (conversacion_id, mensajes, sala_id, actualizado) VALUES ('a:privado', ?1, 99, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))")
+    .run(JSON.stringify([{ rol: 'usuario', texto: '¿qué reviso primero?', quien: 'Ana' }, { rol: 'asistente', texto: 'Revisá el gateway.' }]));
+  r=await teams(actividad('u-mica','¿tengo alguna tarea o alerta?', privado));
+  ok('con la memoria apuntando a una sala que ya no existe, igual contesta lo de la persona (sin «Ese incidente no existe»)', pedidosIA.length>=1 && !/no existe|Esa sala/.test((ultimo()||{}).text||'') && trae('mis_alertas') && trae('tareas_salas') && !trae('estado_incidente') && !/incidente\/\d/.test((ultimo()||{}).text||''), ultimo());
+  ok('…y no arrastra la conversación vieja de esa sala', !/Revisá el gateway/.test(datosIA()) && memoriaDe('a:privado').sala_id===null, memoriaDe('a:privado'));
+  // Una persona de Soporte sin tareas en la única sala abierta: su pregunta es general (antes le decía que la sala no tenía tareas para ella)
+  olvidarTodo();
+  r=await teams(actividad('u-mica','¿qué alertas tengo asignadas?'));
+  ok('Soporte sin tareas en las salas abiertas recibe lo suyo y no el aviso de la sala (ni el enlace)', pedidosIA.length>=1 && !/Esa sala|Ese incidente/.test((ultimo()||{}).text||'') && trae('mis_alertas') && !trae('estado_incidente') && !/incidente\/\d/.test((ultimo()||{}).text||''), ultimo());
+  r=await teams(actividad('u-sol','¿qué alertas tengo asignadas?'));
+  ok('Soporte con una tarea en la sala sigue recibiendo también los datos de la sala', trae('mis_alertas') && trae('estado_incidente')); }
+olvidarTodo();
+
 // ---------- Cuando Microsoft falla ----------
 falloMembers=true; BOT_CORREOS_LIMPIAR();
 function BOT_CORREOS_LIMPIAR(){ CORREOS['u-nuevo']='ana@helios.test'; }
@@ -434,6 +455,11 @@ env={ DB, AI, ...CFG, TEAMS_BOT_NOMBRE:'Helios' };
 r=await call(A,'GET',`/api/incidentes/${IM}`); ok('y con TEAMS_BOT_NOMBRE usa ese', r.j.teams_chat.bot==='Helios');
 r=await call(A,'GET','/api/admin/teams/bot'); ok('Administración muestra el nombre', r.j.nombre==='Helios', r.j);
 env={ DB, AI, ...CFG };
+
+// «Preparar demo» borra la memoria del bot (la sala nueva vuelve a ser IM-4: no tiene que arrastrar lo hablado de la anterior)
+db.prepare("INSERT OR REPLACE INTO teams_bot_memoria (conversacion_id, mensajes, sala_id, actualizado) VALUES ('19:x@thread.v2', '[]', 4, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))").run();
+r=await call(A,'POST','/api/demo/preparar');
+ok('«Preparar demo» borra la memoria del bot de Teams', r.s===200 && n('select count(*) n from teams_bot_memoria')===0, r.j);
 
 globalThis.fetch = fetchReal;
 console.log(fallas ? 'FALLAS: '+fallas : 'TODO OK');
