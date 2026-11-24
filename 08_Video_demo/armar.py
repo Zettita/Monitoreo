@@ -56,7 +56,13 @@ def trozos(texto, maximo=150):
     return fin
 
 
-FUENTE = ImageFont.truetype('C:/Windows/Fonts/seguisb.ttf', 30)
+def _fuente(tam):
+    for r in ('C:/Windows/Fonts/seguisb.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', '/usr/share/fonts/opentype/inter/Inter-SemiBold.otf'):
+        if os.path.exists(r): return ImageFont.truetype(r, tam)
+    return ImageFont.load_default()
+
+
+FUENTE = _fuente(30)
 
 
 def dibujar(texto, ruta):
@@ -78,6 +84,9 @@ def srt_tiempo(s):
     ms = int(round(s * 1000)); return '%02d:%02d:%02d,%03d' % (ms // 3600000, ms // 60000 % 60, ms // 1000 % 60, ms % 1000)
 
 
+EVENTOS = []
+
+
 def armar_subtitulos():
     carp = os.path.join(carpeta, 'subs'); os.makedirs(carp, exist_ok=True)
     blanco = os.path.join(carp, 'vacio.png'); Image.new('RGB', (ANCHO, ALTO_FRANJA), COLOR_FRANJA).save(blanco)
@@ -86,6 +95,7 @@ def armar_subtitulos():
         ts = trozos(texto); pesos = [len(t) for t in ts]; tot = sum(pesos); t0 = seg
         for t, p in zip(ts, pesos):
             d = dur * p / tot; eventos.append((t0, t0 + d, t)); t0 += d
+    EVENTOS[:] = eventos
     lista, cursor, n = [], 0.0, 0
     for ini, fin, texto in eventos:
         if ini > cursor + 0.01: lista.append((blanco, ini - cursor)); cursor = ini
@@ -118,4 +128,38 @@ correr([FF, '-y', '-loglevel', 'error', '-i', sin_audio, '-i', wav, '-map', '0:v
 # sin subtítulos ni voz (la franja de abajo queda vacía)
 correr([FF, '-y', '-loglevel', 'error', '-i', pantalla, '-f', 'lavfi', '-i', 'color=c=0x091E42:s=%dx%d:r=30' % (ANCHO, ALTO_FRANJA), '-filter_complex',
         '[0:v]fps=30[v];[v][1:v]vstack=inputs=2:shortest=1[o]', '-map', '[o]', '-t', '%.3f' % duracion, *x264, '-an', os.path.join(salida, 'Helios_demo_sin_subtitulos_ni_audio.mp4')])
+
+
+# ---------- tramo nuevo: de la tarjeta AICIM hasta las novedades en el canal de Teams ----------
+# Es lo que reemplaza a las dos tarjetas de "lo que viene" en un video ya armado: se entrega aparte, con los mismos formatos.
+def tramo():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from guion import TEXTOS, AUDIOS
+    por_texto = {v: k for k, v in TEXTOS.items()}
+    fr = T['frases']; claves = [por_texto.get(f[1]) for f in fr]
+    if 'aicim1' not in claves or 'teams4' not in claves: return []
+    i, j = claves.index('aicim1'), len(claves) - 1 - claves[::-1].index('teams4')
+    ini = max(0.0, fr[i][0] - 0.4); fin = min(duracion, fr[j][0] + fr[j][3] + 0.8); dur = fin - ini
+    pre = os.path.join(salida, 'Helios_tramo_AICIM_Teams_')
+    cortar = lambda origen, destino, extra: correr([FF, '-y', '-loglevel', 'error', '-ss', '%.3f' % ini, '-i', origen, '-t', '%.3f' % dur, *extra, destino])
+    cortar(os.path.join(salida, 'Helios_demo_completo_con_voz_y_subtitulos.mp4'), pre + 'con_audios_y_subtitulos.mp4', x264[:-2] + ['-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart'])
+    cortar(os.path.join(salida, 'Helios_demo_con_subtitulos_sin_audio.mp4'), pre + 'con_subtitulos_sin_audio.mp4', x264[:-2] + ['-an', '-movflags', '+faststart'])
+    cortar(os.path.join(salida, 'Helios_demo_sin_subtitulos_ni_audio.mp4'), pre + 'sin_subtitulos_ni_audio.mp4', x264[:-2] + ['-an', '-movflags', '+faststart'])
+    cortar(wav, pre + 'audios.wav', [])
+    with open(pre + 'subtitulos.srt', 'w', encoding='utf-8') as f:
+        k = 0
+        for a, b, texto in EVENTOS:
+            if b <= ini or a >= fin: continue
+            k += 1; f.write('%d\n%s --> %s\n%s\n\n' % (k, srt_tiempo(max(0, a - ini)), srt_tiempo(min(dur, b - ini)), texto))
+    # tabla para el guion de la voz: qué frase va en qué momento del tramo
+    filas = []
+    for n_, (seg, texto, _w, d) in enumerate(fr[i:j + 1]):
+        clave = claves[i + n_]
+        sig = fr[i + n_ + 1][0] if i + n_ + 1 < len(fr) else fin
+        filas.append({'clave': clave, 'desde': round(seg - ini, 2), 'hasta': round(min(sig, fin) - ini, 2), 'dur_frase': round(d, 2), 'texto': texto, 'audio_grabado': clave in AUDIOS})
+    json.dump({'duracion': round(dur, 2), 'filas': filas}, open(os.path.join(salida, 'tramo_AICIM_Teams.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    return filas
+
+
+tramo()
 print('Listo:', os.listdir(salida))

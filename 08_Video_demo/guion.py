@@ -40,8 +40,21 @@ TEXTOS = {
     'asis4': 'Sobre una alerta, explica qué está pasando y usa casos parecidos ya resueltos para orientar la solución.',
     'asis5': 'Y suma contexto externo: feriados, incidentes de proveedores y noticias que puedan afectar la operación. Así el equipo entiende si un pico o una caída tiene una causa de afuera.',
 
-    'aicim1': 'Y la próxima capacidad: el Asistente Inteligente de Coordinación de Incidentes Mayores. Es un agente que dirige y coordina la resolución de los incidentes mayores. Con conocimiento de la infraestructura, sus dependencias y sus antecedentes operativos, conduce la sala de crisis, asigna tareas a los especialistas, indica qué componentes revisar y orienta el diagnóstico.',
-    'aicim2': 'La sala de crisis se integra con Microsoft Teams. Desde ahí el asistente determina los escalamientos necesarios y supervisa los avances, los tiempos de respuesta, las comunicaciones y el seguimiento de las acciones hasta el restablecimiento del servicio. Transforma la información técnica en acciones concretas, siempre bajo supervisión humana.',
+    # Los dos primeros textos de este bloque son los de los audios que grabó una persona (carpeta audios/): se usan tal cual, con su duración.
+    'aicim1': 'Y lo que viene: AICIM, un asistente inteligente que coordina la resolución de los incidentes mayores.',
+    'sala1': 'Cuando varias alertas son parte de un mismo problema, como esta caída del gateway de pagos que afecta a tres clientes, el analista abre una sala de crisis desde la alerta y la suma al mismo incidente.',
+    'sala2': 'Después suma las alertas de los otros clientes afectados. La sala reúne en un solo lugar las alertas, las tareas, la línea de tiempo y una guía de diagnóstico, con los componentes de la infraestructura, sus dependencias y los incidentes parecidos que ya se resolvieron.',
+    'sala3': 'El asistente propone qué revisar primero y a quién asignarle cada tarea. Nada se hace solo: el analista confirma cada propuesta.',
+    'sala4': 'Soporte recibe la tarea, la empieza y, cuando termina, la marca como hecha con lo que encontró. Todo queda en la línea de tiempo de la sala.',
+    'sala5': 'Cuando el servicio se restablece, el analista lo marca como mitigado y cierra la sala con la causa raíz. Ese antecedente queda disponible para el próximo incidente.',
+    'teams1': 'Conduce la sala de crisis desde Microsoft Teams, asigna tareas y sigue cada acción hasta restablecer el servicio. Siempre bajo supervisión humana.',
+    'teams2': 'En el chat de la sala, el equipo le pregunta a Gemma, el asistente de Helios, cómo va el incidente o qué conviene revisar. Responde con los datos de la sala y con los permisos de quien pregunta.',
+    'teams3': 'Si hace falta actuar, por ejemplo escalar al proveedor, Gemma propone la acción y manda el enlace para confirmarla en Helios. Nunca ejecuta nada por su cuenta.',
+    'teams4': 'Y cada novedad de la sala, como una tarea nueva, una tarea hecha o el cambio de estado, llega al canal de Teams, para que todo el equipo siga el incidente sin salir de donde ya trabaja.',
 
     'fin': 'Helios: pre-alertas anticipadas, alertas priorizadas, comunicación sin carga manual, información para la gerencia y un asistente que ayuda a decidir. Enterate antes que tus clientes.',
 }
+
+
+# Audios grabados por una persona: clave del texto -> archivo (carpeta audios/). Reemplazan a la voz sintética en esas frases.
+AUDIOS = {'aicim1': 'audios/demo_AICIM.mp4', 'teams1': 'audios/demo_Microsoft_Teams.mp4'}

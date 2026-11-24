@@ -24,7 +24,9 @@ class Grabador:
     # ---- ciclo de vida
     def abrir(self):
         self.pw = sync_playwright().start()
-        self.nav = self.pw.chromium.launch(args=['--force-device-scale-factor=%s' % ESCALA, '--hide-scrollbars', '--autoplay-policy=no-user-gesture-required'])
+        extra = ['--no-sandbox'] if os.name != 'nt' else []                     # en Linux (por ejemplo, en un contenedor) el navegador corre sin sandbox
+        self.nav = self.pw.chromium.launch(executable_path=os.environ.get('HELIOS_CHROMIUM') or None,
+                                           args=['--force-device-scale-factor=%s' % ESCALA, '--hide-scrollbars', '--autoplay-policy=no-user-gesture-required'] + extra)
         self.ctx = self.nav.new_context(viewport={'width': ANCHO, 'height': ALTO}, device_scale_factor=ESCALA, locale='es-AR', timezone_id='America/Argentina/Buenos_Aires')
         with open(os.path.join(AQUI, 'overlays.js'), encoding='utf-8') as f:
             self.ctx.add_init_script(f.read())
@@ -37,7 +39,9 @@ class Grabador:
         if self.grabar:
             os.makedirs(self.trabajo, exist_ok=True)
             if os.path.exists(self.video): os.remove(self.video)
-            self.pg.screencast.start(path=self.video, fps=30, quality=95, size={'width': int(ANCHO * ESCALA), 'height': int(ALTO * ESCALA)})
+            tam = {'width': int(ANCHO * ESCALA), 'height': int(ALTO * ESCALA)}
+            try: self.pg.screencast.start(path=self.video, fps=30, quality=95, size=tam)
+            except TypeError: self.pg.screencast.start(path=self.video, quality=95, size=tam)      # versiones de Playwright sin la opción fps
         self.t0 = time.perf_counter()
 
     def cerrar(self):

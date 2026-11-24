@@ -78,16 +78,58 @@ function respContexto(d) {
   return t;
 }
 
+
+// ---------- Sala de crisis (parches 69 a 72): las respuestas usan los datos reales de la sala ----------
+const componenteDe = (ant) => { const m = /\(componente: ([^)]+)\)/.exec(ant || ''); return m ? m[1] : null; };
+function respSalaComoVamos(d) {
+  const e = d.estado_incidente, t = d.tareas_incidente || {}, c = t.cuantas || {};
+  const abiertas = (c.pendientes || 0) + (c.en_curso || 0), hechas = c.hechas || 0;
+  let r = '**' + e.sala + '** sigue **' + e.estado.toLowerCase() + '** y es **' + e.gravedad + '**. Afecta a ' + e.afecta + '; el problema empezó ' + e.problema_desde.replace(/^(\d+\/\d+) (\d+:\d+)/, 'el $1 a las $2') + '.';
+  r += '\n\nLa sala la dirige ' + e.dirige + ' y agrupa ' + pl(e.alertas.length, 'alerta', 'alertas') + ':\n' + lista(e.alertas);
+  if (!abiertas && !hechas) r += '\n\nTodavía no hay tareas: nadie está revisando nada. Conviene preguntar **qué revisar primero** y asignar las primeras tareas.';
+  else {
+    r += '\n\n**Tareas:** ' + e.tareas + '.';
+    if ((t.abiertas || []).length) r += '\n' + lista(t.abiertas);
+    if ((t.hechas || []).length) r += '\n\n**Ya se encontró:**\n' + lista(t.hechas);
+    if (!hechas) r += '\n\nTodavía no hay resultados cargados.';
+  }
+  return r;
+}
+function respSalaGuia(d) {
+  const g = d.guia_diagnostico, t = d.tareas_incidente || {};
+  const ant = (g.antecedentes || [])[0], compAnt = componenteDe(ant);
+  const comps = (g.componentes || []).slice().sort((a, b) => (b.componente === compAnt) - (a.componente === compAnt));
+  const ya = new Set((t.componentes_ya_revisados_o_en_revision || []).map((x) => (typeof x === 'string' ? x : x.componente || x.nombre)));
+  let r = '**Qué revisaría primero**\n' + lista(comps.filter((x) => !ya.has(x.componente)).map((x) => '**' + x.componente + '** (' + x.lo_atiende + '): ' + x.que_revisar.replace(/\.$/, '')));
+  if (ant) r += '\n\n**Antecedente parecido**\n' + lista([ant.replace(/ \(componente: [^)]*\)\.?/, '.').replace(/\. Se renovó[^]*$/, '.').replace(/ Queda pendiente[^]*$/, '')]);
+  const dep = comps.flatMap((x) => (x.depende_de || [])).map((x) => x.replace(/ \(revisar:[^]*$/, '')).filter((x, i, a) => a.indexOf(x) === i);
+  if (dep.length) r += '\n\nDe estos componentes depende el servicio: ' + dep.join(', ').toLowerCase().replace(/^./, (m) => m.toUpperCase()) + '.';
+  if (compAnt) r += '\n\nEmpezaría por **' + compAnt + '**, porque en un caso parecido la causa fue ahí. Te dejo las tareas propuestas abajo: las confirma una persona.';
+  return r;
+}
+function respSalaEscalar(d) {
+  const g = d.guia_diagnostico || {}, e = d.estado_incidente || {};
+  const prov = ((g.componentes || []).flatMap((x) => x.depende_de || []).find((x) => /^Proveedor/.test(x)) || '').replace(/ \(revisar:[^]*$/, '');
+  const ant = (g.antecedentes || [])[0];
+  let r = 'Sí, conviene escalarlo' + (prov ? ' al **' + prov.toLowerCase() + '**' : ' al proveedor') + ': ' + (e.sala ? e.sala.split(' · ')[0] + ' sigue ' + String(e.estado || 'abierto').toLowerCase() : 'la sala sigue abierta') + ' y la caída afecta a ' + (e.afecta || 'varios clientes') + '.';
+  const cr = ant && /^(IM-\d+) \(([^,]+), ([^)]+)\): .*?Causa raíz: (.+?)\.? \(componente/.exec(ant);
+  if (cr) r += '\n\nEn un caso parecido (' + cr[1] + ', ' + cr[3] + ') la causa raíz fue: ' + cr[4].charAt(0).toLowerCase() + cr[4].slice(1) + '.';
+  r += '\n\nEscalar crea una tarea para una persona de Soporte, que contacta al proveedor y anota la respuesta en la sala.';
+  return r;
+}
+
 export const AI_GUION = {
   async run(modelo, p) {
     const usuario = [...p.messages].reverse().find((m) => m.role === 'user');
     const texto = (usuario && usuario.content) || '';
     const pregunta = texto.split('\n')[0];
     const d = datosDe(texto);
+    if (process.env.IA_DUMP) fs.appendFileSync(process.env.IA_DUMP, JSON.stringify({ pregunta, d }) + '\n');
     let r = '(No tengo una respuesta preparada para esa pregunta.)';
     try {
       if (d) {
-        if (d.detalle_alerta) r = respDetalle(d);
+        if (d.estado_incidente || d.guia_diagnostico) r = /escal/i.test(pregunta) ? respSalaEscalar(d) : d.guia_diagnostico ? respSalaGuia(d) : respSalaComoVamos(d);
+        else if (d.detalle_alerta) r = respDetalle(d);
         else if (d.contexto_externo) r = respContexto(d);
         else if (/sin asignar/i.test(pregunta) && d.alertas_abiertas) r = respSinAsignar(d);
         else if (/carga/i.test(pregunta) && d.carga_equipos) r = respCarga(d);

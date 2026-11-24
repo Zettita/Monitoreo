@@ -274,31 +274,158 @@ def cap6(g):
         preguntar(g, '¿Hay algo de afuera que pueda afectar hoy o mañana?')
         leer_respuesta(g, 6)
     g.clic(g.L('#asis-cerrar'), pausa=0.8)
-    # Próxima capacidad (no está construida: se presenta como lo que viene)
-    g.tarjeta('AICIM', 'Asistente Inteligente de Coordinación de Incidentes Mayores · próxima capacidad', items=[
+
+
+# ---------- AICIM: sala de crisis y Gemma en Teams ----------
+SALA = {}      # id de la sala, para la maqueta de Teams
+
+
+def respuesta_bot(g, usuario, pregunta, origen='https://worker-alertas-cron.developers-hs-842.workers.dev'):
+    """Lo que contestaría Gemma en Teams: la misma ruta del asistente de Helios (con el usuario de quien pregunta) y el mismo formato del bot."""
+    j = g.api_como(usuario, 'POST', '/api/asistente', {'pregunta': pregunta, 'incidente_id': SALA['id']})
+    assert j.get('ok'), j
+    t = (j.get('respuesta') or '').strip()
+    acc = j.get('acciones') or []
+    if acc:
+        t += '\n\n**Propuestas (no se hizo nada)**\n' + '\n'.join('- ' + ' · '.join(x for x in [(a.get('titulo') or a.get('tipo')) + (' → ' + a['destino'] if a.get('destino') else ''), a.get('alerta'), a.get('motivo')] if x) for a in acc)
+        t += '\n\nPara hacerlo, abrilo en Helios: ' + origen + '/incidente/%d' % SALA['id']
+    else:
+        t += '\n\n[Abrir la sala IM-%d en Helios](%s/incidente/%d)' % (SALA['id'], origen, SALA['id'])
+    return t
+
+
+def cap7(g):
+    """AICIM: la sala de crisis"""
+    g.tarjeta('AICIM', 'Asistente Inteligente de Coordinación de Incidentes Mayores', items=[
         'Dirige y coordina la resolución de incidentes mayores',
         'Conoce la infraestructura, sus dependencias y antecedentes operativos',
         'Conduce la sala de crisis y asigna tareas a los especialistas',
         'Indica qué componentes revisar y orienta el diagnóstico'])
     with g.decir(T['aicim1']):
         g.esperar(0.3)
-    g.tarjeta('Integrado con Microsoft Teams', 'La sala de crisis, coordinada desde donde ya trabaja el equipo', items=[
-        'Determina los escalamientos necesarios',
-        'Supervisa avances, tiempos de respuesta y comunicaciones',
-        'Sigue las acciones hasta el restablecimiento del servicio',
-        'Siempre bajo supervisión humana'])
-    with g.decir(T['aicim2']):
-        g.esperar(0.3)
+    g.quitar_tarjeta()
+    g.salir_sesion(); g.entrar_como('lbenitez')
+    for _ in range(4): g.api('POST', '/api/demo/siguiente')       # escenas 16 a 19, sin mostrar
+    g.ir('/?demo', espera=0.8); g.clic(g.L('#tab-op'), pausa=0.4)
+    with g.decir(T['sala1']):
+        escena(g, espera=1.2)                                    # escena 20: se cae el gateway de pagos
+        g.pasar(g.L('tr', has_text='CLI_006').first, pausa=1.0)
+        fila = g.L('tr', has_text='No se aprueba ninguna operación').first
+        g.clic(fila.get_by_role('link', name='Detalle'), pausa=0.8)
+        g.pg.wait_for_load_state('networkidle'); g.esperar(0.8)
+        g.clic(g.L('#acciones button', has_text='Abrir sala de crisis'), pausa=1.0)
+        g.pg.wait_for_url('**/incidente/*'); g.pg.wait_for_load_state('networkidle'); g.esperar(0.8)
+    SALA['id'] = int(g.pg.url.rstrip('/').split('/')[-1])
+    with g.decir(T['sala2']):
+        g.clic(g.L('#u-acc button', has_text='Sumar alertas'), pausa=0.8)
+        g.pg.wait_for_function("document.querySelectorAll('#al-lista input').length > 0")
+        for cli in ('CLI_002', 'CLI_005'):
+            g.clic(g.L('#al-lista label', has_text=cli).first, pausa=0.5)
+        g.clic(g.L('#al-ok'), pausa=1.2)
+        g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.pasar(g.L('#u-alertas'), pausa=1.2)
+        g.pasar(g.L('#u-guia'), pausa=2.5)
+        g.pasar(g.T('Incidentes parecidos', exact=True), pausa=2.0)
+    with g.decir(T['sala3']):
+        g.clic(g.L('#asis-boton'), pausa=1.0)
+        g.clic(g.L('#asis-sug button', has_text='Qué reviso primero').first, pausa=1.0)
+        g.pg.wait_for_function("!document.querySelector('#asis-msgs').innerText.includes('Pensando')", timeout=60000)
+        leer_respuesta(g, 5)
+        for _ in range(2):                                       # las dos tareas propuestas (el botón de cada propuesta dice «Hacerlo»)
+            g.clic(g.L('#asis-msgs .asis-btn.prim:not([disabled])', has_text='Hacerlo').first, pausa=1.2)
+            g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.clic(g.L('#asis-cerrar'), pausa=0.8)
+        g.pg.reload(wait_until='load'); g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.pasar(g.L('#u-tareas'), pausa=2.0)
+    with g.decir(T['sala4']):
+        g.salir_sesion(); g.entrar_como('dramos'); g.ir('/incidentes', espera=0.8)
+        g.clic(g.L('a[href^="/incidente/"]').first, pausa=0.8)
+        g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.pasar(g.L('#u-tareas'), pausa=0.8)
+        mia = g.L('#u-tareas li.mia').first
+        g.clic(mia.get_by_role('button', name='Empezar'), pausa=1.0)
+        g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.clic(g.L('#u-tareas li.mia').first.get_by_role('button', name='Marcar hecha'), pausa=0.6)
+        g.escribir(g.L('#he-res'), 'El certificado del enlace con el proveedor de cobranza venció a las 14:40. Se pidió la renovación.')
+        g.clic(g.L('#f-hecha button[type=submit]'), pausa=1.2)
+        g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.pasar(g.L('#u-linea'), pausa=1.5)
+    g.salir_sesion(); g.entrar_como('lbenitez')
 
 
-def cap7(g):
+def cap8(g):
+    """Gemma en Microsoft Teams"""
+    id_ = SALA['id']; sala = g.api('GET', '/api/incidentes/%d' % id_)
+    titulo = 'IM-%d · %s' % (id_, sala['incidente']['titulo'])
+    r_como = respuesta_bot(g, 'lbenitez', '¿Cómo vamos con este incidente?')
+    r_esc = respuesta_bot(g, 'lbenitez', '¿Escalo esto al proveedor?')
+    g.pg.evaluate("o => window.__teams(o)", {'titulo': titulo, 'miembros': ['Laura Benítez', 'Diego Ramos', 'Carolina Vega', 'Gemma'], 'yo': 'Laura Benítez', 'vista': 'chat'})
+
+    def escribir_en_teams(texto, hora):
+        for k in range(1, len(texto) + 1):
+            g.pg.evaluate("t => window.__tmsCompose(t)", texto[:k])
+            if g.grabar: g.pg.wait_for_timeout(32)
+        g.esperar(0.4)
+        g.pg.evaluate("a => window.__tmsEnviar(a[0], a[1], a[2])", ['Laura Benítez', hora, texto])
+    with g.decir(T['teams1']):
+        g.esperar(1.0)
+        escribir_en_teams('@Gemma ¿Cómo vamos con este incidente?', '15:21')
+        g.pg.evaluate("window.__tmsBot(true)"); g.esperar(1.6); g.pg.evaluate("window.__tmsBot(false)")
+        g.pg.evaluate("m => window.__tmsMsg(m)", {'quien': 'Gemma', 'bot': True, 'hora': '15:21', 'md': r_como})
+        g.esperar(1.5)
+    with g.decir(T['teams2']):
+        g.esperar(2.0)
+    with g.decir(T['teams3']):
+        escribir_en_teams('@Gemma ¿Escalo esto al proveedor?', '15:23')
+        g.pg.evaluate("window.__tmsBot(true)"); g.esperar(1.6); g.pg.evaluate("window.__tmsBot(false)")
+        g.pg.evaluate("m => window.__tmsMsg(m)", {'quien': 'Gemma', 'bot': True, 'hora': '15:23', 'md': r_esc})
+        g.esperar(2.0)
+    g.pg.evaluate("window.__teams(null)"); g.esperar(0.6)
+
+
+def cap9a(g):
+    """Cierre de la sala y novedades en el canal de Teams"""
+    g.api('POST', '/api/demo/siguiente')                             # escena 21: sigue caído
+    g.ir('/incidente/%d' % SALA['id'], espera=0.8)
+    with g.decir(T['sala5']):
+        g.api('POST', '/api/demo/siguiente')                         # escena 22: servicio restablecido
+        g.pg.reload(wait_until='load'); g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.clic(g.L('#u-acc button', has_text='Servicio restablecido'), pausa=1.0)
+        g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
+        g.clic(g.L('#u-acc button', has_text='Cerrar con causa raíz'), pausa=0.8)
+        g.escribir(g.L('#ce-causa'), 'Certificado vencido en el enlace entre el gateway de pagos y el proveedor de cobranza.')
+        g.L('#ce-comp').select_option(label='Gateway de pagos')
+        g.escribir(g.L('#ce-res'), 'Se renovó el certificado y se reinició el gateway. Se suma un aviso 30 días antes de cada vencimiento.')
+        g.clic(g.L('#f-cerrar button[type=submit]'), pausa=1.5)
+        g.pg.wait_for_load_state('networkidle'); g.esperar(0.8)
+    # Novedades de la sala tal como las manda Helios al canal de Teams (se arman con la línea de tiempo real)
+    sala = g.api('GET', '/api/incidentes/%d' % SALA['id']); inc = sala['incidente']
+    cron = list(reversed(sala['linea']))                             # la API da lo más nuevo primero
+    elegir = lambda f: next(x for x in cron if f(x))
+    linea = [elegir(lambda x: x['tipo'] == 'APERTURA'), elegir(lambda x: x['tipo'] == 'TAREA' and ': hecha' in (x.get('texto') or '')),
+             elegir(lambda x: x['tipo'] == 'ESTADO' and 'mitig' in (x.get('texto') or '').lower()), elegir(lambda x: x['tipo'] == 'CIERRE')]
+    g.pg.evaluate("o => window.__teams(o)", {'titulo': 'IM-%d · %s' % (SALA['id'], inc['titulo']), 'miembros': [], 'yo': 'Laura Benítez', 'vista': 'canal'})
+    hora = lambda iso: '%02d:%02d' % ((int(iso[11:13]) - 3) % 24, int(iso[14:16]))
+    with g.decir(T['teams4']):
+        g.esperar(1.0)
+        for x in linea:
+            est = 'Cerrado' if x['tipo'] == 'CIERRE' else 'Mitigado' if 'mitig' in (x.get('texto') or '').lower() else 'Abierto'
+            g.pg.evaluate("t => window.__tmsTarjeta(t)", {'titulo': ('🔴 ' if est == 'Abierto' else '') + 'IM-%d · %s' % (SALA['id'], inc['titulo']), 'hora': hora(x['fecha']),
+                'sub': est + ' · Grave · CLI_006 · Pago de servicios', 'filas': [[x.get('usuario') or 'Helios', (x['texto'] if len(x['texto']) <= 170 else x['texto'][:167].rstrip() + '…')]],
+                'color': '#C4314B' if est == 'Abierto' else '#0F766E', 'boton': 'Abrir sala en Helios'})
+            g.esperar(1.6)
+        g.esperar(1.0)
+    g.pg.evaluate("window.__teams(null)"); g.esperar(0.6)
+
+
+def cap9(g):
     """Cierre"""
     g.tarjeta('Helios', 'Enterate antes que tus clientes', items=[
         'Pre-alertas anticipadas', 'Alertas priorizadas y derivadas desde un solo lugar', 'Comunicación del incidente sin carga manual',
-        'Aviso push a nivel gerencial', 'Dashboard para Gerencia', 'Asistente de inteligencia artificial'])
+        'Aviso push a nivel gerencial', 'Dashboard para Gerencia', 'Asistente de inteligencia artificial', 'Sala de crisis con el asistente en Microsoft Teams'])
     with g.decir(T['fin']):
         g.esperar(0.5)
     g.esperar(1.0)
 
 
-CAPITULOS = [cap1, cap2, cap3, cap4, cap5, cap6, cap7]
+CAPITULOS = [cap1, cap2, cap3, cap4, cap5, cap6, cap7, cap8, cap9a, cap9]

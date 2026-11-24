@@ -9,7 +9,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 import voz
 from grab import Grabador
-from guion import TEXTOS
+from guion import TEXTOS, AUDIOS
 import capitulos, historial
 
 ap = argparse.ArgumentParser()
@@ -43,7 +43,7 @@ else:
     raise SystemExit('El servidor no arrancó')
 
 try:
-    voces = voz.generar(list(TEXTOS.values()), os.path.join(a.salida, 'voces'))
+    voces = voz.generar(list(TEXTOS.values()), os.path.join(a.salida, 'voces'), {TEXTOS[k]: os.path.join(AQUI, r) for k, r in AUDIOS.items()})
     g = Grabador(BASE, voces, a.salida, grabar=not a.seco)
     g.abrir()
     capitulos.preparar_demo(g)            # deja la demo en la escena 0

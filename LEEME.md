@@ -81,7 +81,7 @@ Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administr
 Cómo construir y probar: ver `CLAUDE.md`.
 
 ## 08_Video_demo — video de demostración (18/11)
-Graba la app de punta a punta con Playwright y arma el video (≈ 7 min) con subtítulos y voz en off, más la voz y los subtítulos por separado. El push en el celular, Outlook y el asistente de IA se simulan (todo explicado en su `LEEME.md`). Los videos generados van en `08_Video_demo/salida/` (no se suben a Git).
+Graba la app de punta a punta con Playwright y arma el video (≈ 10 min desde el 24/11, con la sala de crisis y Gemma en Teams) con subtítulos y voz en off, más la voz y los subtítulos por separado, y el tramo nuevo (AICIM, sala de crisis y Teams) como clip aparte con su guion. Los audios grabados por una persona van en `08_Video_demo/audios/`. El push en el celular, Outlook, Microsoft Teams y el asistente de IA se simulan (todo explicado en su `LEEME.md`). Los videos generados van en `08_Video_demo/salida/` (no se suben a Git).
 
 ## CLAUDE.md (en la raíz)
 Instrucciones para Claude Code: qué es el proyecto, reglas, cómo construir y probar, y en qué etapa estamos. Claude Code lo lee solo al abrir esta carpeta.

@@ -70,7 +70,9 @@
     var k = document.createElement('div'); k.id = '__card';
     var t = document.createElement('div'); t.id = '__tel';
     var o = document.createElement('div'); o.id = '__out';
-    var capas = [o, t, k, s, c];   // de abajo hacia arriba
+    var m = document.createElement('div'); m.id = '__tms';
+    var tcss = document.createElement('style'); tcss.id = '__tms-css'; tcss.textContent = window.__tmsCss || ''; document.documentElement.appendChild(tcss);
+    var capas = [o, m, t, k, s, c];   // de abajo hacia arriba
     capas.forEach(function (e) { e.classList.add('__capa'); e.setAttribute('popover', 'manual'); document.documentElement.appendChild(e); });
     function promover() { capas.forEach(function (e) { try { e.hidePopover(); } catch (x) {} try { e.showPopover(); } catch (x) {} }); }
     window.__promover = promover; promover();
@@ -137,5 +139,132 @@
       }
     } catch (x) {}
     return null;
+  };
+
+  // ---------- Microsoft Teams simulado ----------
+  // __teams({titulo, miembros:[iniciales...], yo, vista:'chat'|'canal'}), __tmsCompose(texto), __tmsEnviar(), __tmsBot(true|false),
+  // __tmsMsg({quien, bot, hora, md}), __tmsTarjeta({titulo, filas:[[k,v]], boton}), __tmsVista('chat'|'canal'). Solo existe en el video.
+  window.__tmsCss = String.raw`
+#__tms{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;z-index:2147483643;background:#f5f5f5;font-family:"Segoe UI",system-ui,sans-serif;color:#242424;display:none;flex-direction:column}
+#__tms.v{display:flex}
+#__tms .top{height:48px;background:#ebebeb;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;padding:0 16px;gap:14px;font-size:15px}
+#__tms .top .bus{margin:0 auto;width:520px;height:32px;border-radius:6px;background:#fff;border:1px solid #d1d1d1;display:flex;align-items:center;padding:0 12px;color:#707070;font-size:14px}
+#__tms .top .nota{background:#fff8e1;color:#7a5b00;border:1px solid #ffe08a;border-radius:6px;padding:5px 12px;font-size:13px}
+#__tms .top .tlogo{font-weight:700;color:#464EB8;letter-spacing:-.3px;white-space:nowrap}
+#__tms .cuerpo{flex:1;display:flex;min-height:0}
+#__tms .riel{width:68px;background:#ebebeb;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:6px}
+#__tms .riel div{width:56px;padding:8px 0 6px;text-align:center;font-size:11px;color:#424242;border-radius:6px}
+#__tms .riel div i{display:block;font-style:normal;font-size:20px;margin-bottom:2px}
+#__tms .riel div.on{color:#464EB8;font-weight:600;background:#fff}
+#__tms .lista{width:330px;background:#fafafa;border-right:1px solid #e0e0e0;display:flex;flex-direction:column}
+#__tms .lista h3{margin:0;padding:14px 16px;font-size:20px;font-weight:700}
+#__tms .lista .it{display:flex;gap:10px;padding:10px 16px;font-size:14px;align-items:center}
+#__tms .lista .it.on{background:#e8ebfa;border-left:3px solid #464EB8;padding-left:13px}
+#__tms .lista .it b{display:block;font-weight:600}
+#__tms .lista .it small{color:#616161;font-size:12px}
+#__tms .av{width:36px;height:36px;border-radius:50%;background:#7b83eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none}
+#__tms .av.bot{background:#0F766E;overflow:hidden;padding:0}
+#__tms .av.bot img{width:100%;height:100%;object-fit:cover}
+#__tms .av.p2{background:#c239b3}#__tms .av.p3{background:#038387}#__tms .av.p4{background:#ca5010}
+#__tms .panel{flex:1;display:flex;flex-direction:column;background:#fff;min-width:0}
+#__tms .cab{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid #e0e0e0}
+#__tms .cab h2{margin:0;font-size:17px;font-weight:700}
+#__tms .cab .mi{margin-left:auto;display:flex}
+#__tms .cab .mi .av{width:28px;height:28px;font-size:11px;margin-left:-6px;border:2px solid #fff}
+#__tms .msgs{flex:1;overflow:hidden;padding:18px 28px 6px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end}
+#__tms .msg{display:flex;gap:12px;max-width:980px}
+#__tms .msg .bur{background:#f5f5f5;border-radius:6px;padding:9px 14px;font-size:15px;line-height:1.5}
+#__tms .msg.yo .bur{background:#e8ebfa}
+#__tms .msg .qn{font-size:12.5px;color:#424242;margin-bottom:3px}
+#__tms .msg .qn b{font-weight:600}
+#__tms .msg .qn em{font-style:normal;color:#707070;margin-left:8px}
+#__tms .msg .bur p{margin:0 0 8px}#__tms .msg .bur p:last-child{margin:0}
+#__tms .msg .bur ul{margin:2px 0 8px;padding-left:22px}
+#__tms .msg .bur li{margin:2px 0}
+#__tms .msg .bur a{color:#464EB8;text-decoration:underline}
+#__tms .men{background:#dfe2fb;color:#3c44a7;border-radius:4px;padding:0 4px;font-weight:600}
+#__tms .msg .ap{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:#0F766E;border:1px solid #0F766E;border-radius:3px;padding:0 4px;vertical-align:1px}
+#__tms .escr{font-size:13px;color:#616161;padding:0 28px 6px;height:22px;display:flex;align-items:center;gap:8px}
+#__tms .escr i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#616161;animation:__pt 1s infinite}
+#__tms .escr i:nth-child(2){animation-delay:.2s}#__tms .escr i:nth-child(3){animation-delay:.4s}
+@keyframes __pt{0%,60%,100%{opacity:.25}30%{opacity:1}}
+#__tms .comp{margin:0 28px 18px;border:1px solid #d1d1d1;border-radius:6px;padding:12px 14px;min-height:46px;font-size:15px;background:#fff}
+#__tms .comp.vacio{color:#8a8a8a}
+#__tms .tar{border:1px solid #e0e0e0;border-left:4px solid #C4314B;border-radius:6px;background:#fff;padding:12px 16px;max-width:620px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+#__tms .tar h4{margin:0 0 8px;font-size:15px;font-weight:700}
+#__tms .tar .fi{display:flex;gap:12px;font-size:14px;margin:3px 0}#__tms .tar .fi b{width:110px;color:#616161;font-weight:400}
+#__tms .tar .bt{display:inline-block;margin-top:10px;background:#464EB8;color:#fff;border-radius:4px;padding:6px 14px;font-size:14px;font-weight:600}
+#__tms .rot{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;color:#8a8a8a}
+`;
+  (function () { var e = document.getElementById('__tms-css'); if (e) e.textContent = window.__tmsCss; })();   // la capa se monta antes de que este bloque defina el CSS
+  window.__tms = function () { return document.getElementById('__tms'); };
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function md(t) {
+    var b = String(t || '').split(/\n{2,}/).map(function (par) {
+      var ls = par.split('\n'), out = '', lista = [];
+      function cierra() { if (lista.length) { out += '<ul>' + lista.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; lista = []; } }
+      function en(x) { return esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|\s)_([^_\s][^_]*?)_(?=$|[\s.,;:])/g, '$1<i>$2</i>').replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a>$1</a>').replace(/(https?:\/\/[^\s<]+)/g, '<a>$1</a>'); }
+      ls.forEach(function (l) { if (/^- /.test(l)) lista.push(en(l.slice(2))); else { cierra(); if (l.trim()) out += '<p>' + en(l) + '</p>'; } });
+      cierra(); return out;
+    }).join('');
+    return b;
+  }
+  function ini(n) { return String(n || '?').split(' ').map(function (x) { return x.charAt(0); }).slice(0, 2).join('').toUpperCase(); }
+  var PERS = ['', 'p2', 'p3', 'p4'];
+  function avatar(quien, bot) {
+    if (bot) return '<div class="av bot"><img src="/icono-192.png" alt=""></div>';
+    var k = 0; for (var i = 0; i < quien.length; i++) k += quien.charCodeAt(i);
+    return '<div class="av ' + PERS[k % 4] + '">' + esc(ini(quien)) + '</div>';
+  }
+  window.__teams = function (o) {
+    var x = document.getElementById('__tms'); if (!x) return;
+    if (!o) { x.classList.remove('v'); return; }
+    window.__tmsYo = o.yo || 'Laura Benítez';
+    x.innerHTML = '<div class="top"><span class="tlogo">Microsoft Teams</span><div class="bus">Buscar</div><span class="nota">Simulación para el video: Gemma responde con los datos reales de Helios</span></div>' +
+      '<div class="cuerpo"><div class="riel"><div><i>🔔</i>Actividad</div><div class="on"><i>💬</i>Chat</div><div><i>👥</i>Equipos</div><div><i>📅</i>Calendario</div><div><i>⋯</i>Más</div></div>' +
+      '<div class="lista"><h3>Chat</h3><div class="it on" id="__tms-it1">' + avatar('IM', false) + '<div><b id="__tms-it1t"></b><small>Gemma: …</small></div></div>' +
+      '<div class="it" id="__tms-it2"><div class="av p3">PM</div><div><b>Plataforma Monitoreo</b><small>Canal · General</small></div></div>' +
+      '<div class="it"><div class="av p2">DR</div><div><b>Diego Ramos</b><small>Ok, ya lo miro</small></div></div></div>' +
+      '<div class="panel"><div class="cab"><h2 id="__tms-t"></h2><div class="mi" id="__tms-mi"></div></div>' +
+      '<div class="msgs" id="__tms-msgs"></div><div class="escr" id="__tms-escr"></div><div class="comp vacio" id="__tms-comp">Escribí un mensaje nuevo</div></div></div>';
+    window.__tmsDatos = o; window.__tmsVista(o.vista || 'chat');
+    x.classList.add('v');
+  };
+  window.__tmsVista = function (v) {
+    var o = window.__tmsDatos || {}; var chat = v !== 'canal';
+    document.getElementById('__tms-it1').classList.toggle('on', chat); document.getElementById('__tms-it2').classList.toggle('on', !chat);
+    document.getElementById('__tms-it1t').textContent = o.titulo || 'IM-4 · Sala de crisis';
+    document.getElementById('__tms-t').textContent = chat ? (o.titulo || 'IM-4 · Sala de crisis') : 'Plataforma Monitoreo › General';
+    document.getElementById('__tms-mi').innerHTML = chat ? (o.miembros || []).map(function (m) { return m === 'Gemma' ? avatar('', true) : avatar(m, false); }).join('') : '';
+    document.getElementById('__tms-msgs').innerHTML = ''; window.__tmsCompose('');
+  };
+  window.__tmsCompose = function (t) {
+    var c = document.getElementById('__tms-comp'); if (!c) return;
+    if (!t) { c.className = 'comp vacio'; c.textContent = 'Escribí un mensaje nuevo'; return; }
+    c.className = 'comp'; c.innerHTML = esc(t).replace(/@(\w+)/g, '<span class="men">@$1</span>');
+  };
+  window.__tmsMsg = function (m) {
+    var box = document.getElementById('__tms-msgs'); if (!box) return;
+    var d = document.createElement('div'); d.className = 'msg' + (m.quien === window.__tmsYo ? ' yo' : '');
+    d.innerHTML = avatar(m.quien, m.bot) + '<div><div class="qn"><b>' + esc(m.quien) + '</b><em>' + esc(m.hora || '') + '</em></div><div class="bur">' +
+      (m.md ? md(m.md) : '') + '</div></div>';
+    if (m.mencion) d.querySelector('.bur').innerHTML = md(m.md).replace(/@(\w+)/g, '<span class="men">@$1</span>');
+    box.appendChild(d);
+  };
+  window.__tmsEnviar = function (quien, hora, texto) {
+    window.__tmsCompose(''); window.__tmsMsg({ quien: quien, hora: hora, md: texto, mencion: true });
+  };
+  window.__tmsBot = function (si) {
+    var e = document.getElementById('__tms-escr'); if (!e) return;
+    e.innerHTML = si ? 'Gemma está escribiendo <i></i><i></i><i></i>' : '';
+  };
+  window.__tmsTarjeta = function (t) {
+    var box = document.getElementById('__tms-msgs'); if (!box) return;
+    var d = document.createElement('div'); d.className = 'msg';
+    d.innerHTML = avatar('Helios', true) + '<div><div class="qn"><b>Helios</b><em>' + esc(t.hora || '') + '</em></div><div class="tar" style="border-left-color:' + (t.color || '#C4314B') + '">' +
+      '<div style="font-size:12px;color:#707070">Helios · Sala de crisis</div><h4>' + esc(t.titulo) + '</h4><div style="font-size:13px;color:#707070;margin-bottom:6px">' + esc(t.sub || '') + '</div>' +
+      (t.filas || []).map(function (f) { return '<div class="fi" style="border-top:1px solid #eee;padding-top:6px"><span><b style="width:auto;color:#242424;font-weight:600">' + esc(f[0]) + '</b>: ' + esc(f[1]) + '</span></div>'; }).join('') +
+      '<span class="bt">' + esc(t.boton || 'Abrir sala en Helios') + '</span></div></div>';
+    box.appendChild(d);
   };
 })();
