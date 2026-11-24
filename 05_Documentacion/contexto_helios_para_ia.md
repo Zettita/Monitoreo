@@ -495,6 +495,10 @@ Si tenés también un documento de contexto anterior, estas son las diferencias;
 **Gemma en Teams: un solo saludo y cada perfil pregunta por lo suyo (24/11, parche 79; sin SQL, falta publicar)**
 
 - Teams manda dos avisos al instalar la app y cada uno saludaba: ahora saluda uno solo por chat (marca en `teams_bot_memoria`). Dos herramientas nuevas del asistente, de solo lectura: `tareas_salas` (tareas abiertas de todas las salas abiertas, con las «sin tomar»; Soporte solo las suyas y las de sus equipos) y `casos_parecidos` (alertas parecidas ya cerradas de los problemas abiertos que se pueden ver; Soporte solo los casos suyos o de sus equipos). Las alertas asignadas o sin asignar ahora también llegan cuando se pregunta dentro de una sala. Respaldo: `99_Archivo_viejo/worker_antes_parche79/`, ramas `respaldo-antes-parche-79` y `version-parche-79-gemma-saludo-y-perfiles`.
+**Audios reales en el video (24/11; sin parche ni SQL)**
+
+- El video de `08_Video_demo/` usa los audios que grabó Ale para cada frase (34 del recorrido, más AICIM y Teams), limpiados de ruido y con volumen parejo; los subtítulos siguen lo que dicen. Quedan sin voz la sala de crisis y Gemma en Teams (tienen guion escrito para grabar).
+
 **Video de la demo con la sala de crisis y Gemma en Teams (24/11; sin parche ni SQL)**
 
 - El video de `08_Video_demo/` cambia las dos tarjetas finales («lo que viene») por un tramo con la **sala de crisis real** y **Gemma en Microsoft Teams** (maqueta de Teams; las respuestas salen de la misma ruta del asistente de la sala y las novedades del canal, de su línea de tiempo real). Usa los dos audios grabados por una persona (AICIM y Microsoft Teams) y deja el resto sin voz, con su guion para grabar. Detalle en `08_Video_demo/LEEME.md`.

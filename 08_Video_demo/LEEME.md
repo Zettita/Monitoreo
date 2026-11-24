@@ -41,6 +41,9 @@ python grabar.py --seco                              # pasada de prueba rápida,
 ## Guion para que una persona ponga su voz (19/11)
 `node guion_voz_en_off.js salida/video` arma `Helios_guion_voz_en_off.docx` (tabla con tiempo, qué se ve en pantalla y texto) y un `.txt` corrido, para locutar sobre `Helios_demo_sin_subtitulos_ni_audio.mp4`. Lleva la frase pedida: «los campos del producto y sus funcionalidades son variables modificables según necesidad del cliente» (minuto 2:01). Los tiempos son los de la grabación actual: si se vuelve a grabar y cambian, hay que ajustarlos. Hace falta `npm install docx --no-save` en `07_Codigo_fuente/word`.
 
+## Audios grabados (24/11)
+`audios/voz_<clave>.m4a` (una por frase de `guion.py`, ya limpiados con ffmpeg: `highpass=80`, `afftdn`, `loudnorm=-18 LUFS`). Con `python grabar.py` + `python armar.py <ruta absoluta de salida/trabajo> <ruta absoluta de salida>` el video usa esas voces y el tiempo en pantalla sigue su duración. Sin audio: `sala1` a `sala5` y `teams2` a `teams4` (voz de relleno en silencio); el guion para grabarlos está en `Helios_guion_tramo_AICIM_Teams.docx`. Para grabar sin la voz de Windows en Linux hace falta `/etc/hosts` con `127.0.0.1 helios.localhost`.
+
 ## Archivos que genera `armar.py`
 - `Helios_demo_completo_con_voz_y_subtitulos.mp4`
 - `Helios_demo_con_subtitulos_sin_audio.mp4`
