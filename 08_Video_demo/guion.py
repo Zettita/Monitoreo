@@ -17,7 +17,7 @@ TEXTOS = {
     'seguimiento': 'En Seguimiento, el analista ve quién tiene cada alerta y desde cuándo, y la carga de cada equipo. Lo que lleva demasiado tiempo sin atención se marca en rojo.',
 
     'soporte1': 'Ahora, la vista de Soporte. Cada persona ve solo lo asignado a ella o a su equipo, ordenado por prioridad.',
-    'tomar': 'Diego toma la alerta y pasa a estar en curso. En el detalle tiene toda la conversación: derivaciones, comentarios y evidencia.',
+    'tomar': 'Matías toma la alerta y pasa a estar en curso. En el detalle tiene toda la conversación: derivaciones, comentarios y evidencia.',
     'evidencia': 'Deja un comentario con lo que vio en los logs y adjunta una captura como evidencia. Todo queda registrado en el historial de la alerta.',
     'ticket': 'Con un clic se genera el ticket en Jira, con los datos de la alerta ya cargados. Queda vinculado a la alerta.',
     'comunicar': 'Comunicar el incidente no requiere cargar nada a mano. Se eligen los equipos o las personas a avisar, cada uno con su rol: informado, técnico o líder. El mensaje ya viene armado con los datos de la alerta y el ticket, y Helios envía el aviso push.',

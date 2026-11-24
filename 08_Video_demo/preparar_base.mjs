@@ -29,7 +29,7 @@ const PERSONAS = [   // [usuario, nombre, perfil, correo]
   ['mpaz', 'Mariano Paz', 'ADMIN', 'mariano.paz@helios-demo.com.ar'],
   ['lbenitez', 'Laura Benítez', 'ANALISTA', 'laura.benitez@helios-demo.com.ar'],
   ['cvega', 'Carolina Vega', 'SOPORTE', 'carolina.vega@helios-demo.com.ar'],
-  ['dramos', 'Diego Ramos', 'SOPORTE', 'diego.ramos@helios-demo.com.ar'],
+  ['mramos', 'Matías Ramos', 'SOPORTE', 'matias.ramos@helios-demo.com.ar'],
   ['nfunes', 'Nicolás Funes', 'SOPORTE', 'nicolas.funes@helios-demo.com.ar'],
   ['gtorres', 'Gabriela Torres', 'GERENTE', 'gabriela.torres@helios-demo.com.ar'],
   ['jsosa', 'Julieta Sosa', 'COMUNICADOS', 'julieta.sosa@helios-demo.com.ar'],
@@ -48,7 +48,7 @@ for (const [u, n, p, c] of PERSONAS.slice(1)) {
 }
 const id = (u) => db.prepare('SELECT id FROM usuarios WHERE usuario = ?').get(u).id;
 const eq = async (nombre, extra) => { const r = await call(A, 'POST', '/api/admin/equipos', Object.assign({ nombre }, extra)); if (!r.j.ok) throw new Error('equipo ' + nombre + ': ' + JSON.stringify(r.j)); return db.prepare('SELECT id FROM equipos WHERE nombre = ?').get(nombre).id; };
-const mesa = await eq('Mesa de ayuda', { responsable_id: id('cvega'), miembros: [{ usuario_id: id('cvega'), rol: 'LIDER' }, { usuario_id: id('dramos'), rol: 'TECNICO' }, { usuario_id: id('nfunes'), rol: 'TECNICO' }] });
+const mesa = await eq('Mesa de ayuda', { responsable_id: id('cvega'), miembros: [{ usuario_id: id('cvega'), rol: 'LIDER' }, { usuario_id: id('mramos'), rol: 'TECNICO' }, { usuario_id: id('nfunes'), rol: 'TECNICO' }] });
 await eq('Gerencia y negocio', { miembros: [{ usuario_id: id('gtorres'), rol: 'INFORMADO' }, { usuario_id: id('jsosa'), rol: 'LIDER' }] });
 await eq('Atención al cliente', { miembros: [{ usuario_id: id('mibanez'), rol: 'INFORMADO' }] });
 // Reglas de derivación automática

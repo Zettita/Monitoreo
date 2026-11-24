@@ -40,10 +40,10 @@ const SECCIONES = [
   ['4. Soporte trabaja la alerta y comunica el incidente', [
     ['2:33', '2:37', 'Tarjeta "Vista de Soporte".',
       'Ahora, la vista de Soporte.'],
-    ['2:37', '2:45', 'Mis alertas de Diego.',
+    ['2:37', '2:45', 'Mis alertas de Matías.',
       'Cada persona ve solo lo que se le asignó, a ella o a su equipo, ordenado por prioridad.'],
-    ['2:45', '2:54', 'Diego toma la alerta y abre el detalle.',
-      'Diego toma la alerta y pasa a estar en curso. En el detalle tiene toda la conversación: derivaciones, comentarios y evidencia.'],
+    ['2:45', '2:54', 'Matías toma la alerta y abre el detalle.',
+      'Matías toma la alerta y pasa a estar en curso. En el detalle tiene toda la conversación: derivaciones, comentarios y evidencia.'],
     ['2:54', '3:06', 'Comentario y captura adjunta.',
       'Deja un comentario con lo que vio en los logs y adjunta una captura como evidencia. Todo queda registrado en el historial, sin planillas ni mensajes sueltos.'],
     ['3:06', '3:16', 'Botón "Generar ticket" y ticket de Jira.',

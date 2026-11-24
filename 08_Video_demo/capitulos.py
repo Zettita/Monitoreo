@@ -67,8 +67,8 @@ def cap3(g):
         fila = g.L('tr', has_text='CLI_004')
         g.clic(fila.get_by_role('button', name='Derivar'))
         g.pasar(g.L('#d-persona'), pausa=0.4)
-        g.L('#d-persona').select_option(label='Diego Ramos · Soporte')
-        g.escribir(g.L('#d-texto'), 'Diego, revisá los rechazos del antifraude en CLI_004.')
+        g.L('#d-persona').select_option(label='Matías Ramos · Soporte')
+        g.escribir(g.L('#d-texto'), 'Matías, revisá los rechazos del antifraude en CLI_004.')
         g.clic(g.L('#d-guardar'), pausa=1.0)
     with g.decir(T['regla']):
         g.ir('/admin', espera=0.8)
@@ -87,10 +87,10 @@ def cap3(g):
 
 def cap4(g):
     """Soporte trabaja la alerta y comunica el incidente"""
-    g.tarjeta('Vista de Soporte', 'Diego Ramos · Mesa de ayuda'); g.esperar(1.0)
+    g.tarjeta('Vista de Soporte', 'Matías Ramos · Mesa de ayuda'); g.esperar(1.0)
     g.salir_sesion(); g.entrar_como('lbenitez')
     for _ in range(5): g.api('POST', '/api/demo/siguiente')   # escenas 10 a 14, mientras se ve la tarjeta: llega la caída total de CLI_006
-    g.salir_sesion(); g.entrar_como('dramos'); g.ir('/mis-alertas', espera=0.6); g.esperar(0.6); g.quitar_tarjeta()
+    g.salir_sesion(); g.entrar_como('mramos'); g.ir('/mis-alertas', espera=0.6); g.esperar(0.6); g.quitar_tarjeta()
     with g.decir(T['soporte1']):
         g.pasar(g.T('Para tomar').first, pausa=2.0)
     with g.decir(T['tomar']):
@@ -338,7 +338,7 @@ def cap7(g):
         g.pg.reload(wait_until='load'); g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
         g.pasar(g.L('#u-tareas'), pausa=2.0)
     with g.decir(T['sala4']):
-        g.salir_sesion(); g.entrar_como('dramos'); g.ir('/incidentes', espera=0.8)
+        g.salir_sesion(); g.entrar_como('mramos'); g.ir('/incidentes', espera=0.8)
         g.clic(g.L('a[href^="/incidente/"]').first, pausa=0.8)
         g.pg.wait_for_load_state('networkidle'); g.esperar(0.6)
         g.pasar(g.L('#u-tareas'), pausa=0.8)
@@ -359,7 +359,7 @@ def cap8(g):
     titulo = 'IM-%d · %s' % (id_, sala['incidente']['titulo'])
     r_como = respuesta_bot(g, 'lbenitez', '¿Cómo vamos con este incidente?')
     r_esc = respuesta_bot(g, 'lbenitez', '¿Escalo esto al proveedor?')
-    g.pg.evaluate("o => window.__teams(o)", {'titulo': titulo, 'miembros': ['Laura Benítez', 'Diego Ramos', 'Carolina Vega', 'Gemma'], 'yo': 'Laura Benítez', 'vista': 'chat'})
+    g.pg.evaluate("o => window.__teams(o)", {'titulo': titulo, 'miembros': ['Laura Benítez', 'Matías Ramos', 'Carolina Vega', 'Gemma'], 'yo': 'Laura Benítez', 'vista': 'chat'})
 
     def escribir_en_teams(texto, hora):
         for k in range(1, len(texto) + 1):

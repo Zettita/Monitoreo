@@ -224,7 +224,7 @@
       '<div class="cuerpo"><div class="riel"><div><i>🔔</i>Actividad</div><div class="on"><i>💬</i>Chat</div><div><i>👥</i>Equipos</div><div><i>📅</i>Calendario</div><div><i>⋯</i>Más</div></div>' +
       '<div class="lista"><h3>Chat</h3><div class="it on" id="__tms-it1">' + avatar('IM', false) + '<div><b id="__tms-it1t"></b><small>Gemma: …</small></div></div>' +
       '<div class="it" id="__tms-it2"><div class="av p3">PM</div><div><b>Plataforma Monitoreo</b><small>Canal · General</small></div></div>' +
-      '<div class="it"><div class="av p2">DR</div><div><b>Diego Ramos</b><small>Ok, ya lo miro</small></div></div></div>' +
+      '<div class="it"><div class="av p2">MR</div><div><b>Matías Ramos</b><small>Ok, ya lo miro</small></div></div></div>' +
       '<div class="panel"><div class="cab"><h2 id="__tms-t"></h2><div class="mi" id="__tms-mi"></div></div>' +
       '<div class="msgs" id="__tms-msgs"></div><div class="escr" id="__tms-escr"></div><div class="comp vacio" id="__tms-comp">Escribí un mensaje nuevo</div></div></div>';
     window.__tmsDatos = o; window.__tmsVista(o.vista || 'chat');

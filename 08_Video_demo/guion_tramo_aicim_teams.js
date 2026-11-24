@@ -16,7 +16,7 @@ const VE = {
   sala1: 'Escena 20: se cae el gateway de pagos. El analista abre el detalle de la alerta y toca «Abrir sala de crisis».',
   sala2: 'Ya en la sala: suma las alertas de CLI 002 y CLI 005. Se ven las alertas, la línea de tiempo y la guía de diagnóstico con incidentes parecidos.',
   sala3: 'Asistente dentro de la sala: «¿Qué reviso primero?». El analista confirma las dos tareas que propone.',
-  sala4: 'Vista de Soporte (Diego): empieza su tarea y la marca como hecha, con lo que encontró.',
+  sala4: 'Vista de Soporte (Matías): empieza su tarea y la marca como hecha, con lo que encontró.',
   teams1: 'Microsoft Teams: el chat de la sala. El analista le escribe a @Gemma y responde con el estado del incidente.',
   teams2: 'Se lee la respuesta de Gemma (estado, alertas y tareas de la sala).',
   teams3: 'Segunda pregunta: «¿Escalo esto al proveedor?». Gemma propone escalar y manda el enlace para confirmarlo en Helios.',
