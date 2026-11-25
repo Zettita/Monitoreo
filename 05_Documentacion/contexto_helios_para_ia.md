@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Menú del usuario igual en todas las páginas y pestaña inicial del tablero (25/11, parche 86; sin SQL, falta publicar)**
+
+- El desplegable de la foto de perfil tiene ahora las mismas entradas y en el mismo orden en todas las páginas (Tablero, Mis alertas/tareas, Seguimiento, Mis tareas, Sala de crisis, Comunicados, Administración, Cambiar contraseña, Tema y Salir), mostrando solo las que el perfil puede usar. Antes cada página tenía el suyo y faltaban entradas según dónde se estuviera; «Cambiar contraseña» solo existía en el tablero. Además, cada ingreso arranca en la primera pestaña del perfil (el Analista abría en Disponibilidad si el navegador la tenía guardada de otro usuario). Respaldo: `99_Archivo_viejo/worker_antes_parche86/`, ramas `respaldo-antes-parche-86` y `version-parche-86-menu-usuario-y-pestana`.
+
 **Asistente: sigue hablando de la misma alerta y separa las horas (25/11, parche 85; sin SQL, falta publicar)**
 
 - Si se abre el asistente con «¿Qué está pasando?» de una alerta, las preguntas siguientes se siguen refiriendo a esa alerta (la página manda `alerta_contexto` y el servidor trae su detalle); antes pedía aclarar de qué alerta se hablaba. Además `alertas_abiertas` y `detalle_alerta` separan `empezo_el_problema`, `asignada_desde` y `tomada_desde` (antes solo había `desde`, que el modelo leía como «la tiene desde»): el asistente había dicho que Soporte 2 tenía la alerta desde las 12:30 cuando la derivaron a las 12:55 y la tomó a las 13:00. Respaldo: `99_Archivo_viejo/worker_antes_parche85/`, ramas `respaldo-antes-parche-85` y `version-parche-85-asistente-contexto-y-horas`.

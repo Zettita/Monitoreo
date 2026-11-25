@@ -23,4 +23,9 @@ ok('Estado por cliente: la clase «largo» pone el detalle bajo el nombre del se
 // Parche 85: la conversación del asistente recuerda de qué alerta se habla
 ok('Asistente: la página manda la alerta de la conversación en las preguntas siguientes', s.includes('cuerpo.alerta_contexto = alertaCtx') && s.includes('alertaCtx = id;'));
 ok('Asistente: una pregunta sugerida deja de hablar de esa alerta', s.includes('alertaCtx = null;'));
+// Parche 86: el menú del usuario es el mismo en todas las páginas con menú y el login borra la pestaña recordada
+ok('Menú del usuario: el script común está en las 8 páginas con menú (tablero, Administración, Mis alertas/tareas, Seguimiento, sala, Mis tareas, Comunicados y detalle de alerta)', s.split('Menú del usuario igual en todas las páginas (parche 86)').length - 1 === 8);
+ok('Menú del usuario: lleva las 7 entradas de navegación en el mismo orden', s.includes("{ href: '/', texto: 'Tablero', permiso: 'tablero' }") && s.includes("{ href: '/admin', texto: 'Administración', permiso: 'admin_panel' }") && s.includes("{ href: '/comunicados', texto: 'Comunicados', permiso: 'comunicados' }"));
+ok('Menú del usuario: «Cambiar contraseña» también en las páginas que no la tenían', s.includes("id=\"dlg-clave-comun\"") || s.includes("d.id = 'dlg-clave-comun'"));
+ok('Login: cada ingreso borra la pestaña y el período que recordaba el navegador (el Analista abre en Operaciones)', s.includes("sessionStorage.removeItem('helios_pestana'); sessionStorage.removeItem('helios_periodo');"));
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');
