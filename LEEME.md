@@ -67,7 +67,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 - `novedades_asistente_ia.md` — asistente de IA (13/11): cómo activarlo, qué responde a cada perfil, límites y problemas comunes.
 - `Helios_modelos_IA_propuesta_cliente.docx` — propuesta (20/11): alcance, cuatro integraciones, costo en plan pago y seguridad para revisar con informática. La integración en el servidor propio se desarrolla igual; la GPU no es obligatoria.
 - `Helios_modelos_IA_analisis_tecnico.docx` — análisis para ingeniería (20/11): seis opciones, precios sin cupo gratis, pros y contras, CPU o GPU, cómo se enchufa cada integración y qué tiene que validar seguridad.
-- `Helios_demo_oficial_checklist.docx` y `Helios_demo_oficial_guion.docx` — la **demo oficial** (25/11, parches 82 y 83; desde el 83 es una sola escena): el primero, qué dejar listo antes (con una tabla de «si algo sale distinto»); el segundo, el guion de 2 páginas por perfil con qué tocar y qué decir. Los arma `07_Codigo_fuente/word/demo_oficial_build.js`.
+- `Helios_demo_oficial_checklist.docx` y `Helios_demo_oficial_guion.docx` — la **demo oficial** (25/11, parches 82 y 83; desde el 83 es una sola escena): el primero, qué dejar listo antes (con una tabla de «si algo sale distinto»); el segundo, el guion de 2 páginas por perfil con qué tocar y qué decir. `Helios_demo_oficial_speech_gerente.docx` — speech para hablar en vivo con el perfil Gerente, por sección y por tarjeta o gráfico, con las dudas que puede tener el gerente y su respuesta (lo arma `07_Codigo_fuente/word/demo_oficial_speech_gerente_build.js`). Los arma `07_Codigo_fuente/word/demo_oficial_build.js`.
 - `demo_alertas.pptx`, `demo_alertas_paso_a_paso.pptx` — presentaciones de la demo.
 
 ## 06_Capturas
