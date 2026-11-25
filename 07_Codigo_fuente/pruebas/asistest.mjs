@@ -340,6 +340,20 @@ r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'}); ok('una
   r=await call(ck.sol,'POST','/api/asistente',{pregunta:'¿alguien la está trabajando?',alerta_contexto:AL85});
   const ultSol=pedidos[0].p.messages.at(-1).content;
   ok('Soporte no recibe los datos de una alerta que no es suya aunque mande su id como contexto', r.s===200 && /no existe o no está disponible/.test(ultSol) && !ultSol.includes('Suben los rechazos'), ultSol.slice(-250));
+
+  // Parche 87: «¿A quién le puedo asignar esta alerta? ¿Quién de soporte es el menos cargado con tareas?» (Uriel, en Cloudflare)
+  pedidos.length=0; guion=[()=>texto('ok')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿A quién le puedo asignar esta alerta? ¿Quién de soporte es el menos cargado con tareas?',historia:hist,alerta_contexto:AL85});
+  const u87=pedidos[0].p.messages.at(-1).content;
+  ok('en la conversación de una alerta, «a quién asignarla / el menos cargado» trae derivación y carga junto con el detalle', r.s===200 && u87.includes('"detalle_alerta":{') && u87.includes('"opciones_derivacion":') && u87.includes('"carga_equipos":'), r.j.herramientas);
+  pedidos.length=0; guion=[()=>texto('Para decirte a quién podés asignar la alerta, necesito que me pidas que consulte las opciones de derivación y la carga de equipos.'), ()=>texto('Soporte 1 es quien tiene menos carga.')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿quién conviene que la tome?',historia:hist,alerta_contexto:AL85});
+  ok('si el modelo dice «necesito que me pidas que consulte…», el servidor le insiste una vez y responde con lo segundo', r.s===200 && pedidos.length===2 && /No anuncies consultas/.test(pedidos[1].p.messages.at(-1).content) && /menos carga/.test(r.j.respuesta), [pedidos.length, r.j.respuesta]);
+  ok('la regla 10 le dice al modelo que no le pida a la persona que repregunte', /Nunca le pidas a la persona que te pida consultar/.test(pedidos[0].p.messages[0].content));
+  // Las preguntas de siempre siguen trayendo lo mismo (sin conversación de alerta)
+  pedidos.length=0; guion=[()=>texto('ok')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿qué tareas tengo en las salas?'});
+  ok('«tareas» sigue trayendo las tareas de las salas y no la derivación', pedidos[0].p.messages.at(-1).content.includes('"tareas_salas":') && !pedidos[0].p.messages.at(-1).content.includes('"opciones_derivacion":'), r.j.herramientas);
 }
 // ni siquiera un perfil sin cupo recibe error por saludar
 env={DB,AI,ASISTENTE_POR_HORA:'1',ASISTENTE_POR_DIA:'1'};

@@ -40,7 +40,7 @@ function salaProponerEscalar(d, incidenteId) {
   return { tipo: 'escalar', incidente_id: incidenteId, usuario_id: personas[0].usuario_id, motivo, comentario: motivo + ' Hace falta escalarlo (por ejemplo, al proveedor).' };
 }
 // El modelo anunció que iba a consultar algo en vez de pedir la herramienta
-const ASIST_PROMESA = /\b(d[eé]jame|voy a|necesito|tengo que|perm[ií]teme|d[eé]jenme|vamos a)\s+(consultar|revisar|buscar|usar|chequear|verificar|mirar|ver)\b/i;
+const ASIST_PROMESA = /\b(d[eé]jame|voy a|necesito|tengo que|tendr[ií]a que|deber[ií]a|perm[ií]teme|d[eé]jenme|vamos a)\s+(consultar|revisar|buscar|usar|chequear|verificar|mirar|ver)\b|necesito que (me )?(pidas|pidan|consultes|dejes|uses)|me (pidas|pida|pidan) que (consulte|use|revise|mire)|(consult|revis)e? (las|los|la|el) (opciones|carga|datos)\b.{0,60}para (poder )?(decirte|responder|contestarte)/i;
 """
 
 

@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Asistente: «¿a quién la asigno?» dentro de la conversación de una alerta (25/11, parche 87; sin SQL, falta publicar)**
+
+- Dentro de la conversación de una alerta, una pregunta como «¿a quién le puedo asignar esta alerta? ¿quién de Soporte es el menos cargado?» ahora trae el detalle de la alerta más la derivación y la carga de equipos (antes elegía otros datos y el modelo pedía que se le repreguntara). Además se le insiste cuando dice «necesito que me pidas que consulte…» y una regla nueva le prohíbe pedirle a la persona que repregunte. Respaldo: `99_Archivo_viejo/worker_antes_parche87/`, ramas `respaldo-antes-parche-87` y `version-parche-87-asistente-asignar`.
+
 **Menú del usuario igual en todas las páginas y pestaña inicial del tablero (25/11, parche 86; sin SQL, falta publicar)**
 
 - El desplegable de la foto de perfil tiene ahora las mismas entradas y en el mismo orden en todas las páginas (Tablero, Mis alertas/tareas, Seguimiento, Mis tareas, Sala de crisis, Comunicados, Administración, Cambiar contraseña, Tema y Salir), mostrando solo las que el perfil puede usar. Antes cada página tenía el suyo y faltaban entradas según dónde se estuviera; «Cambiar contraseña» solo existía en el tablero. Además, cada ingreso arranca en la primera pestaña del perfil (el Analista abría en Disponibilidad si el navegador la tenía guardada de otro usuario). Respaldo: `99_Archivo_viejo/worker_antes_parche86/`, ramas `respaldo-antes-parche-86` y `version-parche-86-menu-usuario-y-pestana`.

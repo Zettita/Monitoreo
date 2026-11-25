@@ -5648,6 +5648,7 @@ function asistSistema(yo, ahora, nombresHerr) {
     '7. Escribí para una persona, en frases cortas: no muestres alerta_id, códigos internos, nombres de campos (como "peor", "cantidad", "estado", "observado") ni etiquetas como <resumen>. Nombrá cada problema por cliente, servicio y canal, con su prioridad y desde qué hora, en una frase (por ejemplo: "CLI_004, Transferencias por API: suben los rechazos (P4), desde las 11:45; 7,7 % contra 4 % esperado").',
     '8. Formato: no uses títulos con # ni ###; si hace falta un título, una línea en **negrita**. Listas con "- ", como mucho un nivel de sangría. Tratá a la persona de vos: "tenés", "empezá", "podés", "revisá" (nunca "tienes", "empieza", "puedes"). No cierres con preguntas como "¿Querés que te ayude?".',
     '9. Las horas de una alerta son tres cosas distintas: empezo_el_problema es cuándo empezó el problema (no cuándo lo tomó alguien); asignada_desde es cuándo la derivaron a esa persona o equipo; tomada_desde es cuándo la persona la tomó y la trabaja. Para "quién la tiene y desde cuándo" usá asignada_desde y tomada_desde, o el historial (quién la derivó y cuándo la tomó). Nunca digas que alguien la tiene "desde" la hora en que empezó el problema.',
+    '10. Si te falta un dato, pedí vos la herramienta que lo trae (con una llamada). Nunca le pidas a la persona que te pida consultar algo, que te dé un dato que ya tiene Helios ni que repregunte con otras palabras.',
   ].join('\n');
 }
 function asistSchemas(nombres, yo, enSala) {
@@ -5744,11 +5745,12 @@ const ASIST_SUGERENCIAS = {
 // Así responde bien aunque el modelo no pida herramientas, y la mayoría de las preguntas salen en una sola vuelta.
 // Además, según las palabras de la pregunta, se suman los datos que seguro hacen falta (máximo 3 en total).
 const ASIST_PALABRAS = [
+  // A quién asignar o derivar (parche 87): va primero para que no lo desplacen otros datos cuando la pregunta nombra varias cosas
+  [/deriv|a qui[eé]n|(?<!sin )asignar(le|la|lo)?\b|menos (cargad|carga|ocupad|tareas)|m[aá]s (libre|liviano|descargado)|est[aá] libre|disponible/i, 'opciones_derivacion'],
+  [/equipo|carga|cargad|qui[eé]n (la |las )?tiene|asignad|sin asignar|soporte|libre|ocupad/i, 'carga_equipos'],
   [/tarea|me (toc[oó]|asignaron)|sin (tomar|responsable)|otras? salas/i, 'tareas_salas'],
   [/parecid|similar|antes\b|anterior|cerrad|antecedent|otra vez|de nuevo|ya (pas|ocurri|tuvimos|vimos)|la [uú]ltima vez/i, 'casos_parecidos'],
   [/horari|hora |\bhoras?\b|cliente|problema|incidente|mes\b|semana|ranking|m[aá]s (alertas|problemas)|histori|resoluci|mttr|tard[aó]/i, 'incidentes'],
-  [/equipo|carga|qui[eé]n (la |las )?tiene|asignad|sin asignar|soporte/i, 'carga_equipos'],
-  [/deriv|a qui[eé]n/i, 'opciones_derivacion'],
   [/pre.?alerta|empeor|viene subiendo|riesgo/i, 'prealertas'],
   [/estado|c[oó]mo est[aá]|panorama|operaci[oó]n|servicio|canal/i, 'estado_clientes'],
   [/umbral|falsa|ajust|banda|configur/i, 'ajustes_sugeridos'],
@@ -5757,9 +5759,14 @@ const ASIST_PALABRAS = [
 ];
 // Parámetros que salen de las palabras de la pregunta (por ejemplo "este mes" → 30 días)
 const ASIST_ARGS = { incidentes: (q) => /mes\b|30/i.test(q) ? { dias: 30 } : {} };
+function asistElegirPalabras(pregunta, disponibles) {
+  const out = [];
+  for (const [re, n] of ASIST_PALABRAS) if (re.test(pregunta) && !out.includes(n)) out.push(n);
+  return out.filter((n) => disponibles.includes(n));
+}
 function asistElegir(pregunta, perfil, disponibles) {
   const out = (ASIST_BASE[perfil] || []).slice();
-  for (const [re, n] of ASIST_PALABRAS) if (re.test(pregunta) && !out.includes(n)) out.push(n);
+  for (const n of asistElegirPalabras(pregunta, disponibles)) if (!out.includes(n)) out.push(n);
   return out.filter((n) => disponibles.includes(n)).slice(0, 3);
 }
 const ASIST_BASE = { SOPORTE: ['mis_alertas'], ANALISTA: ['alertas_abiertas'], GERENTE: ['estado_clientes'], ADMIN: ['estado_clientes'] };
@@ -5924,11 +5931,11 @@ async function asistResponder(env, yo, entrada) {
   // Pregunta sugerida o "¿Qué está pasando?" de una alerta: los datos se traen directo (una sola llamada al modelo)
   const directas = [];
   let datosDirectos = null;
-  // Pregunta libre dentro de la conversación de una alerta: los datos de esa alerta llegan siempre (y, según las palabras, hasta 2 datos más)
+  // Pregunta libre dentro de la conversación de una alerta: los datos de esa alerta llegan siempre (y, según las palabras, hasta 3 datos más)
   const alertaCtx = entrada.alerta_contexto && !entrada.alerta_id && !entrada.sugerencia && !entrada.incidente_id ? entrada.alerta_contexto : null;
   if (alertaCtx) {
     directas.push(['detalle_alerta', { alerta_id: alertaCtx }]);
-    for (const n of asistElegir(entrada.pregunta, yo.perfil, disponibles).filter((x) => x !== 'detalle_alerta').slice(0, 2)) directas.push([n, ASIST_ARGS[n] ? ASIST_ARGS[n](entrada.pregunta) : {}]);
+    for (const n of asistElegirPalabras(entrada.pregunta, disponibles).filter((x) => x !== 'detalle_alerta').slice(0, 3)) directas.push([n, ASIST_ARGS[n] ? ASIST_ARGS[n](entrada.pregunta) : {}]);
   }
   if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);
   const salaLibre = !!(entrada.incidente_id && !entrada.sugerencia);
@@ -6196,7 +6203,7 @@ function salaProponerEscalar(d, incidenteId, motivoModelo) {
     comentario: motivoModelo ? motivoModelo + ' ' + situacion : situacion + ' Hay que escalarlo al proveedor.' };
 }
 // El modelo anunció que iba a consultar algo en vez de pedir la herramienta
-const ASIST_PROMESA = /\b(d[eé]jame|voy a|necesito|tengo que|perm[ií]teme|d[eé]jenme|vamos a)\s+(consultar|revisar|buscar|usar|chequear|verificar|mirar|ver)\b/i;
+const ASIST_PROMESA = /\b(d[eé]jame|voy a|necesito|tengo que|tendr[ií]a que|deber[ií]a|perm[ií]teme|d[eé]jenme|vamos a)\s+(consultar|revisar|buscar|usar|chequear|verificar|mirar|ver)\b|necesito que (me )?(pidas|pidan|consultes|dejes|uses)|me (pidas|pida|pidan) que (consulte|use|revise|mire)|(consult|revis)e? (las|los|la|el) (opciones|carga|datos)\b.{0,60}para (poder )?(decirte|responder|contestarte)/i;
 
 // ---------- Propuestas de la sala ----------
 const SALA_ACCIONES = {
