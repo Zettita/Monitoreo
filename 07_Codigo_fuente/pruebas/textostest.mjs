@@ -17,4 +17,7 @@ for (const t of ['>Operaciones<', 'Tendencia al alza en la tasa de rechazo', 'Si
   'Valor actual: <b>', 'Efectividad de los avisos · últimas 48 h', 'de acierto', 'Desvío vs. objetivo: ', "amarillo: 'En riesgo', rojo: 'No cumple'", '<th>Cliente</th><th>Servicio</th>', 'id=\\"hf-srv\\"', 'k-listas-res', 'fl-filas', 'Problemas por cliente', 'Problemas por tipo de falla', 'data-act-corte-fila', "{ derivar: 'Derivar', tomar: 'Tomar'", '<h2>Equipos</h2>', 'id=\\"lnk-misal\\"',
   "PESTANAS = ['op', 'hist', 'disp']", 'Solo un analista puede derivar o reasignar una alerta.'])
   ok('está: ' + t, s.includes(t));
+// Parche 84: en «Estado por cliente», el detalle largo pasa a un segundo renglón (el nombre del servicio no se parte letra por letra)
+ok('Estado por cliente: la línea con detalle largo lleva la clase «largo»', s.includes("(det.length > 14 ? ' largo' : '')"));
+ok('Estado por cliente: la clase «largo» pone el detalle bajo el nombre del servicio', s.includes('.pano-cli li.largo .pano-det { grid-column: 2; max-width: none; text-align: left; }'));
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');

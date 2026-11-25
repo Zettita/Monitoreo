@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Tarjetas de «Estado por cliente» con textos largos (25/11, parche 84; sin SQL, falta publicar)**
+
+- En cada línea de la tarjeta, si el detalle de la derecha tiene más de 14 caracteres (por ejemplo «Tendencia al alza en la tasa de rechazo»), la línea pasa a dos renglones: el nombre del servicio con todo el ancho y el detalle debajo. Antes el nombre se partía letra por letra. Solo la página del tablero. Respaldo: `99_Archivo_viejo/worker_antes_parche84/`, ramas `respaldo-antes-parche-84` y `version-parche-84-tarjetas-estado-por-cliente`.
+
 **Demo oficial en una sola escena (25/11, parche 83; sin SQL, falta publicar)**
 
 - La demo oficial pasa de 14 escenas a **una sola**: «Cargar escena» deja de una vez una mañana de operación (16 ventanas, martes 27/10/2026 de 10:00 a 14:00 ARG) con incidentes en todos los estados: sin asignar (el gateway de CLI_006), asignada sin tomar y demorada (rechazo de CLI_004), a un equipo, en curso (latencia de CLI_003), devuelta (silencio de CLI_007), dos resueltas a mano con causa, tres resueltas solas, tres pre-alertas cerradas (confirmadas y no cumplida) y una activa, y un cliente nuevo. La sala de crisis se abre en vivo. La carga se hace en 4 pasos cortos (6 + 6 + 4 ventanas y las asignaciones) para no pasar las 50 consultas por pedido de D1; la página los encadena sola. Las asignaciones usan a soporte1 y soporte2 (o las primeras personas de Soporte activas). Guion de 2 páginas por perfil y checklist en `05_Documentacion/`. Respaldo: `99_Archivo_viejo/worker_antes_parche83/`, ramas `respaldo-antes-parche-83` y `version-parche-83-demo-oficial-escena-unica`.
