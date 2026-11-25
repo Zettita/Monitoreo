@@ -122,6 +122,13 @@ function asistAgrupar(filas, umbrales, reglas, yoId, ahoraIso) {
     };
   }).sort((x, y) => x._orden - y._orden);
 }
+// El botón «Hacerlo» solo existe si el asistente dejó una propuesta (sugerir_accion). Si el modelo lo nombra sin haber dejado ninguna (parche 88),
+// esas frases se sacan de la respuesta: el resto del texto (por ejemplo «Te sugiero derivarla a Soporte 1») queda.
+const ASIST_BOTON_FALSO = /bot[oó]n\s*["“«'‘]?\s*hacerlo|["“«'‘]hacerlo["”»'’]|confirm\w*\s+(?:con|desde|usando|mediante)\s+(?:el\s+)?bot[oó]n|te dejo (?:el|los) bot[oó]n(?:es)?/i;
+function asistSinBotonFalso(texto) {
+  const lineas = String(texto || '').split('\n').map((linea) => ({ orig: linea, nueva: linea.split(/(?<=[.!?])\s+/).filter((frase) => !ASIST_BOTON_FALSO.test(frase)).join(' ') }));
+  return lineas.filter((l) => l.nueva.trim() || !l.orig.trim()).map((l) => l.nueva).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
 const asistLimpiar = (lista) => lista.map((g) => { const o = {}; for (const k in g) if (k[0] !== '_' && g[k] !== undefined && g[k] !== null) o[k] = g[k]; return o; });
 async function asistAhora(env) {
   const r = await env.DB.prepare(`SELECT strftime('%Y-%m-%dT%H:%M:%SZ', COALESCE(ahora, 'now')) AS ahora, ahora AS simulado FROM alerta_parametros WHERE id = 1`).first();
@@ -487,6 +494,7 @@ function asistSistema(yo, ahora, nombresHerr) {
     '8. Formato: no uses títulos con # ni ###; si hace falta un título, una línea en **negrita**. Listas con "- ", como mucho un nivel de sangría. Tratá a la persona de vos: "tenés", "empezá", "podés", "revisá" (nunca "tienes", "empieza", "puedes"). No cierres con preguntas como "¿Querés que te ayude?".',
     '9. Las horas de una alerta son tres cosas distintas: empezo_el_problema es cuándo empezó el problema (no cuándo lo tomó alguien); asignada_desde es cuándo la derivaron a esa persona o equipo; tomada_desde es cuándo la persona la tomó y la trabaja. Para "quién la tiene y desde cuándo" usá asignada_desde y tomada_desde, o el historial (quién la derivó y cuándo la tomó). Nunca digas que alguien la tiene "desde" la hora en que empezó el problema.',
     '10. Si te falta un dato, pedí vos la herramienta que lo trae (con una llamada). Nunca le pidas a la persona que te pida consultar algo, que te dé un dato que ya tiene Helios ni que repregunte con otras palabras.',
+    '11. El botón "Hacerlo" solo existe si en esta respuesta llamaste a sugerir_accion. Si recomendás derivar, tomar, comentar, devolver o resolver, llamala (con el alerta_id de la alerta) para que aparezca la propuesta; si no la llamaste, no menciones ese botón ni digas que la persona lo confirma: decí qué haría y que se hace desde la alerta.',
   ].join('\n');
 }
 function asistSchemas(nombres, yo) {
@@ -791,6 +799,7 @@ async function asistResponder(env, yo, entrada) {
   if (!texto) { try { console.error('Asistente: sin texto final con ' + asistNombreModelo(env) + '; última salida del modelo: ' + JSON.stringify(crudo).slice(0, 600)); } catch (e) { /* sin detalle */ } }
   if (!texto && datosDirectos && entrada.sugerencia && entrada.sugerencia.respaldo) texto = entrada.sugerencia.respaldo(datosDirectos, acciones);
   if (!texto) texto = acciones.length ? 'Te dejo una propuesta para que la revises.' : 'No pude armar una respuesta. Probá preguntarlo de otra forma.';
+  if (!acciones.length) texto = asistSinBotonFalso(texto) || 'No pude armar una respuesta. Probá preguntarlo de otra forma.';
   return { respuesta: texto.slice(0, 4000), acciones, herramientas: usadas };
 }
 

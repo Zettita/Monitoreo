@@ -354,6 +354,19 @@ r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'}); ok('una
   pedidos.length=0; guion=[()=>texto('ok')];
   r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿qué tareas tengo en las salas?'});
   ok('«tareas» sigue trayendo las tareas de las salas y no la derivación', pedidos[0].p.messages.at(-1).content.includes('"tareas_salas":') && !pedidos[0].p.messages.at(-1).content.includes('"opciones_derivacion":'), r.j.herramientas);
+
+  // Parche 88: no decir «confirmalo con el botón Hacerlo» si no hay propuesta en el chat (Uriel, en Cloudflare)
+  pedidos.length=0; guion=[()=>texto('Podés derivar la alerta a la **Mesa**.\n\n**Sugerencia**\nTe sugiero derivar la alerta a **Soporte1**. Si estás de acuerdo, confirmalo con el botón "Hacerlo".')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿a quién la derivo?',historia:hist,alerta_contexto:AL85});
+  ok('sin propuesta en el chat, la respuesta no manda a tocar «Hacerlo» (el resto del texto queda)', r.s===200 && r.j.acciones.length===0 && !/Hacerlo|bot[oó]n/i.test(r.j.respuesta) && /Te sugiero derivar la alerta a \*\*Soporte1\*\*/.test(r.j.respuesta) && /Mesa/.test(r.j.respuesta), r.j.respuesta);
+  const AL88=db.prepare("select alerta_id from alertas_historico where estado='ABIERTA' and asignado_usuario_id is null and asignado_equipo_id is null and severidad<>'BAJA' and alerta_id<>? order by ventana_inicio limit 1").get(AL85).alerta_id;
+  pedidos.length=0; guion=[()=>llamar('sugerir_accion',{tipo:'derivar',alerta_id:AL88,usuario_id:id('sol'),motivo:'Es quien tiene menos carga.'}), ()=>texto('Te dejo la propuesta; confirmala con el botón "Hacerlo".')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'derivá esa alerta a Sol',historia:hist});
+  ok('con propuesta en el chat, el texto sí puede nombrar el botón «Hacerlo»', r.s===200 && r.j.acciones.length===1 && r.j.acciones[0].tipo==='derivar' && /Hacerlo/.test(r.j.respuesta), [r.j.acciones, r.j.respuesta]);
+  ok('la regla 11 le explica al modelo cuándo existe el botón', /El botón "Hacerlo" solo existe si en esta respuesta llamaste a sugerir_accion/.test(pedidos[0].p.messages[0].content));
+  pedidos.length=0; guion=[()=>texto('Te dejo el botón para derivarla.')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'hola, ¿cómo está CLI_004?'});
+  ok('si lo único que decía era lo del botón, no queda una respuesta vacía', r.s===200 && r.j.respuesta.length>0 && !/botón/i.test(r.j.respuesta), r.j.respuesta);
 }
 // ni siquiera un perfil sin cupo recibe error por saludar
 env={DB,AI,ASISTENTE_POR_HORA:'1',ASISTENTE_POR_DIA:'1'};

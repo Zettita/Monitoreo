@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Asistente: no nombrar el botón «Hacerlo» si no dejó una propuesta (25/11, parche 88; sin SQL, falta publicar)**
+
+- Si el asistente no deja ninguna propuesta en el chat, ya no dice «confirmalo con el botón Hacerlo»: el servidor saca esas frases y deja el resto de la recomendación; y una regla nueva le pide llamar a `sugerir_accion` cuando recomienda derivar, tomar, comentar, devolver o resolver, para que la propuesta aparezca. No se agregó ningún botón nuevo. Respaldo: `99_Archivo_viejo/worker_antes_parche88/`, ramas `respaldo-antes-parche-88` y `version-parche-88-asistente-boton-hacerlo`.
+
 **Asistente: «¿a quién la asigno?» dentro de la conversación de una alerta (25/11, parche 87; sin SQL, falta publicar)**
 
 - Dentro de la conversación de una alerta, una pregunta como «¿a quién le puedo asignar esta alerta? ¿quién de Soporte es el menos cargado?» ahora trae el detalle de la alerta más la derivación y la carga de equipos (antes elegía otros datos y el modelo pedía que se le repreguntara). Además se le insiste cuando dice «necesito que me pidas que consulte…» y una regla nueva le prohíbe pedirle a la persona que repregunte. Respaldo: `99_Archivo_viejo/worker_antes_parche87/`, ramas `respaldo-antes-parche-87` y `version-parche-87-asistente-asignar`.
