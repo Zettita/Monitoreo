@@ -364,6 +364,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `POST /api/admin/usuarios/{id}/borrar` · `/reglas/{id}/borrar` · `/derivacion/{id}/borrar` · `POST /api/admin/catalogo-resolucion` con `{id, borrar: true}` | Eliminar (parche 75). Usuarios y reglas de alerta: solo Administrador; reglas de derivación: Administrador y Analista. Usuarios: 409 si tiene alertas abiertas asignadas, tareas abiertas en una sala o dirige una sala abierta; 400 si es uno mismo o el último administrador. Auditoría `BORRAR_*` |
 | `POST /api/admin/umbrales/disponibilidad` | Pesos de la disponibilidad (solo Administrador, parche 45): `{pesos_gravedad:{CRITICA,ALTA,MEDIA}` en fracciones de 0 a 1, `pesos_criticidad:{ALTA,MEDIA,BAJA}}` de 0,1 a 100. Valida el orden. 409 si falta el script 20. Auditoría `EDITAR_DISPONIBILIDAD` |
 | `GET /api/demo` · `POST /api/demo/preparar` · `POST /api/demo/siguiente` | Modo demo (`/?demo`) |
+| `GET /api/demo-oficial` · `POST /api/demo-oficial/preparar` · `POST /api/demo-oficial/siguiente` | Demo oficial (parche 82, `/?demo=oficial`): 14 escenas que dejan los incidentes abiertos; mismo permiso que la demo (Administrador y Analista) |
 
 Respuestas JSON con `{ok: true, ...}` o `{ok: false, error: "mensaje para mostrar"}`.
 
@@ -484,6 +485,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 ## 16. Cambios recientes
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
+
+**Demo oficial (25/11, parche 82; sin SQL, falta publicar)**
+
+- Segunda demo para presentarle Helios a un cliente: 14 escenas, un relato en tres actos (Gerente, Administrador, Analista) donde los incidentes clave **quedan abiertos** (el gateway de pagos, el rechazo de CLI_004, la latencia de CLI_003 y el silencio de CLI_007), con dos pre-alertas, una métrica en el borde para mostrar lo parametrizable y la sala de crisis. Convive con la de 22 escenas pero con endpoints propios (`/api/demo-oficial`, `/preparar`, `/siguiente`) y página propia (el tablero con `?demo=oficial`). Arranca el martes 27/10/2026 10:00 ARG. Guion y checklist en `05_Documentacion/Helios_demo_oficial_guion_y_checklist.docx`. Respaldo: `99_Archivo_viejo/worker_antes_parche82/`, ramas `respaldo-antes-parche-82` y `version-parche-82-demo-oficial`.
 
 **«Mis tareas» para el Analista y alertas / tareas bien separadas (24/11, parche 81; sin SQL, falta publicar)**
 

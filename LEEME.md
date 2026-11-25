@@ -67,13 +67,14 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 - `novedades_asistente_ia.md` — asistente de IA (13/11): cómo activarlo, qué responde a cada perfil, límites y problemas comunes.
 - `Helios_modelos_IA_propuesta_cliente.docx` — propuesta (20/11): alcance, cuatro integraciones, costo en plan pago y seguridad para revisar con informática. La integración en el servidor propio se desarrolla igual; la GPU no es obligatoria.
 - `Helios_modelos_IA_analisis_tecnico.docx` — análisis para ingeniería (20/11): seis opciones, precios sin cupo gratis, pros y contras, CPU o GPU, cómo se enchufa cada integración y qué tiene que validar seguridad.
+- `Helios_demo_oficial_guion_y_checklist.docx` — la **demo oficial** (25/11, parche 82): checklist previo, el relato de 14 escenas, qué decir y tocar con cada perfil (Gerente, Administrador, Analista, con Soporte de apoyo) y qué hacer si algo sale distinto. La arma `07_Codigo_fuente/word/demo_oficial_build.js`.
 - `demo_alertas.pptx`, `demo_alertas_paso_a_paso.pptx` — presentaciones de la demo.
 
 ## 06_Capturas
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58, 60 a 77 y 79 a 81 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58, 60 a 77 y 79 a 82 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `teams_app/` — paquete de la app de Helios para Teams (parche 76): `manifest.plantilla.json` y `armar_paquete.py <BOT_ID>` arman `salida/Helios_bot_teams.zip` (manifiesto e íconos) para que IT lo suba a Teams.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
