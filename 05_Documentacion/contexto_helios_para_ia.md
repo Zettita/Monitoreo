@@ -364,7 +364,7 @@ Todas exigen sesión salvo las públicas. Hoy **no existe token para máquinas**
 | `POST /api/admin/usuarios/{id}/borrar` · `/reglas/{id}/borrar` · `/derivacion/{id}/borrar` · `POST /api/admin/catalogo-resolucion` con `{id, borrar: true}` | Eliminar (parche 75). Usuarios y reglas de alerta: solo Administrador; reglas de derivación: Administrador y Analista. Usuarios: 409 si tiene alertas abiertas asignadas, tareas abiertas en una sala o dirige una sala abierta; 400 si es uno mismo o el último administrador. Auditoría `BORRAR_*` |
 | `POST /api/admin/umbrales/disponibilidad` | Pesos de la disponibilidad (solo Administrador, parche 45): `{pesos_gravedad:{CRITICA,ALTA,MEDIA}` en fracciones de 0 a 1, `pesos_criticidad:{ALTA,MEDIA,BAJA}}` de 0,1 a 100. Valida el orden. 409 si falta el script 20. Auditoría `EDITAR_DISPONIBILIDAD` |
 | `GET /api/demo` · `POST /api/demo/preparar` · `POST /api/demo/siguiente` | Modo demo (`/?demo`) |
-| `GET /api/demo-oficial` · `POST /api/demo-oficial/preparar` · `POST /api/demo-oficial/siguiente` | Demo oficial (parche 82, `/?demo=oficial`): 14 escenas que dejan los incidentes abiertos; mismo permiso que la demo (Administrador y Analista) |
+| `GET /api/demo-oficial` · `POST /api/demo-oficial/preparar` · `POST /api/demo-oficial/siguiente` | Demo oficial (parche 82, `/?demo=oficial`; desde el 83 es **una sola escena**: `/siguiente` carga 16 ventanas en pasos cortos y devuelve `listo: false` hasta el último); mismo permiso que la demo (Administrador y Analista) |
 
 Respuestas JSON con `{ok: true, ...}` o `{ok: false, error: "mensaje para mostrar"}`.
 
@@ -486,7 +486,11 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
-**Demo oficial (25/11, parche 82; sin SQL, falta publicar)**
+**Demo oficial en una sola escena (25/11, parche 83; sin SQL, falta publicar)**
+
+- La demo oficial pasa de 14 escenas a **una sola**: «Cargar escena» deja de una vez una mañana de operación (16 ventanas, martes 27/10/2026 de 10:00 a 14:00 ARG) con incidentes en todos los estados: sin asignar (el gateway de CLI_006), asignada sin tomar y demorada (rechazo de CLI_004), a un equipo, en curso (latencia de CLI_003), devuelta (silencio de CLI_007), dos resueltas a mano con causa, tres resueltas solas, tres pre-alertas cerradas (confirmadas y no cumplida) y una activa, y un cliente nuevo. La sala de crisis se abre en vivo. La carga se hace en 4 pasos cortos (6 + 6 + 4 ventanas y las asignaciones) para no pasar las 50 consultas por pedido de D1; la página los encadena sola. Las asignaciones usan a soporte1 y soporte2 (o las primeras personas de Soporte activas). Guion de 2 páginas por perfil y checklist en `05_Documentacion/`. Respaldo: `99_Archivo_viejo/worker_antes_parche83/`, ramas `respaldo-antes-parche-83` y `version-parche-83-demo-oficial-escena-unica`.
+
+**Demo oficial (25/11, parche 82; sin SQL, falta publicar; reemplazada por la escena única del 83)**
 
 - Segunda demo para presentarle Helios a un cliente: 14 escenas, un relato en tres actos (Gerente, Administrador, Analista) donde los incidentes clave **quedan abiertos** (el gateway de pagos, el rechazo de CLI_004, la latencia de CLI_003 y el silencio de CLI_007), con dos pre-alertas, una métrica en el borde para mostrar lo parametrizable y la sala de crisis. Convive con la de 22 escenas pero con endpoints propios (`/api/demo-oficial`, `/preparar`, `/siguiente`) y página propia (el tablero con `?demo=oficial`). Arranca el martes 27/10/2026 10:00 ARG. Guion y checklist en `05_Documentacion/Helios_demo_oficial_checklist.docx` (qué dejar listo) y `Helios_demo_oficial_guion.docx` (qué tocar y qué decir). Respaldo: `99_Archivo_viejo/worker_antes_parche82/`, ramas `respaldo-antes-parche-82` y `version-parche-82-demo-oficial`.
 
