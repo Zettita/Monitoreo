@@ -1,5 +1,5 @@
 // Arma los dos documentos de la DEMO OFICIAL (Word, estilo Helios):
-//   1) Helios_demo_oficial_checklist.docx  lo que hay que dejar listo antes (una página y media)
+//   1) Helios_demo_oficial_checklist.docx  lo que hay que dejar listo antes (cada punto dice dónde se hace)
 //   2) Helios_demo_oficial_guion.docx      el guion para presentar: qué tocar y qué decir, escena por escena
 // Lo que dicen coincide con demo_oficial_server.js (parche 82).
 // Uso: node demo_oficial_build.js <carpeta de salida>      (hace falta `npm install docx --no-save` en esta carpeta)
@@ -9,50 +9,63 @@ const H = require('./helios_docx.js');
 // ============================================================ 1 · CHECKLIST
 {
   const h = [];
-  const V = (t) => h.push(H.vineta(t));
   const T2 = (t) => h.push(H.titulo(2, t));
+  const A = [2300, 7780];
+  const ENC = ['Dónde', 'Qué hacer y cómo sé que está bien'];
   h.push(...H.cabecera('Demo oficial de Helios', 'Qué dejar listo antes de presentar', 'Checklist previo'));
-  h.push(H.P('La demo oficial se abre en `/?demo=oficial` (como **Analista** o **Administrador**) y tiene su propio botón, **Preparar demo oficial**. La de siempre (`/?demo`) no se toca. **Hacer una pasada completa el día anterior** con el guion (25 a 30 minutos).'));
+  h.push(H.P('Cada renglón dice **dónde** hay que hacerlo: **Cloudflare** (el panel donde vive el sistema), **Helios** (nuestra app, con el usuario que se indica), **Teams** (Microsoft Teams) o **el celular**. Hacer una pasada completa con el guion el día anterior (25 a 30 minutos).'));
 
-  T2('Cloudflare');
-  V('☐ Worker publicado con el parche 82 (pegado en «Edit code» y Deploy). Sin SQL.');
-  V('☐ Scripts 23, 24 y 25 corridos (correo de los usuarios, sala de crisis, memoria del bot de Teams).');
-  V('☐ El asistente responde: abrir «Asistente» como Analista y preguntar «Resumen del turno». Tope de 100 preguntas por día entre todos: no gastarlas en ensayos el mismo día.');
+  T2('1 · Cloudflare (panel de Cloudflare, con tu cuenta)');
+  h.push(...H.tabla(ENC, A, [
+    ['Cloudflare > Workers y Pages > `worker-alertas-cron` > **Edit code**', '☐ Pegar el código de `01_Worker/worker_alertas_cron.js` (parche 82) y tocar **Deploy**. No lleva SQL.'],
+    ['Cloudflare > Almacenamiento y bases de datos > D1 > `helios-monitoring-dev` > **Console**', '☐ Verificar los scripts 23, 24 y 25 con esta línea: `SELECT (SELECT COUNT(*) FROM sqlite_master WHERE name IN (\'incidentes_mayores\', \'teams_bot_memoria\')) AS tablas, (SELECT COUNT(*) FROM usuarios WHERE correo IS NOT NULL) AS con_correo;` Tiene que dar **tablas = 2** (y no dar error). Si da error o 1, falta correr el script de `02_Base_de_datos_D1` que corresponde.'],
+    ['Cloudflare > `worker-alertas-cron` > **Settings** > Variables y secretos', '☐ Mirar `TICKETS_JIRA`. Si vale `real`, «Generar ticket» crea un ticket verdadero en Jira (proyecto KAN). Si no existe o es otro valor, el ticket sale simulado (HEL-101). Elegir cuál se quiere mostrar.'],
+  ], true));
 
-  T2('Personas');
-  V('☐ Un Administrador, un Gerente, un Analista y dos de Soporte (Soporte1 y Soporte2), todos con el **correo cargado** (el mismo que en Teams) y la **contraseña ya cambiada**.');
-  V('☐ Un equipo (por ejemplo «Mesa de ayuda») con Soporte1 y Soporte2.');
+  T2('2 · Personas (Helios, entrando como Administrador)');
+  h.push(...H.tabla(ENC, A, [
+    ['Helios > menú de la foto de perfil > **Administración** > pestaña **Usuarios** > botón **Nuevo usuario**', '☐ Tienen que existir: un **Administrador**, un **Gerente**, un **Analista** y dos de **Soporte** (Soporte1 y Soporte2). Cada uno con el campo **Correo** cargado (el mismo que usa en Teams).\n☐ Al crear cada usuario, Helios muestra una **contraseña temporal**: entrar una vez con cada uno (en una ventana privada) y cambiarla, así no queda pendiente en plena demo.'],
+    ['Helios > **Administración** > pestaña **Equipos** > botón **Nuevo equipo**', '☐ Un equipo (por ejemplo «Mesa de ayuda») con **Soporte1** y **Soporte2** tildados como integrantes.'],
+  ], true));
 
-  T2('Push en el celular');
-  V('☐ Entrar en el celular como **Soporte1**, abrir la campanita y tocar **Activar** (en iPhone, con Helios agregado a la pantalla de inicio).');
-  V('☐ Probar derivándole una alerta y ver que el aviso llega con la pantalla bloqueada.');
+  T2('3 · Push en el celular');
+  h.push(...H.tabla(ENC, A, [
+    ['El celular, en el navegador (iPhone: en Safari > Compartir > **Agregar a pantalla de inicio** y abrir desde ese ícono)', '☐ Entrar a Helios como **Soporte1**. Tocar la **campanita** (arriba a la derecha) y después el botón **Activar**; aceptar el permiso de notificaciones del celular.'],
+    ['Helios, desde la compu', '☐ Probar: con el Analista, derivarle una alerta a Soporte1 (en la escena 5 del ensayo). Tiene que sonar el celular **con la pantalla bloqueada**.'],
+  ], true));
 
-  T2('Teams');
-  V('☐ Administración > Equipos > «Avisos en Teams» dice **Conectado** y «Mandar aviso de prueba» llega al canal. Dejar el canal abierto en otra ventana.');
-  V('☐ La app **Gemma** está instalada en un chat de prueba: `@Gemma hola` (elegida de la lista al escribir `@`) saluda una sola vez.');
+  T2('4 · Teams');
+  h.push(...H.tabla(ENC, A, [
+    ['Helios > **Administración** > pestaña **Equipos** > recuadro **«Avisos en Teams»** (hay que ser Administrador)', '☐ Tiene que decir **«Conectado: las novedades de las salas de crisis… llegan al canal de Teams»**. Si dice **«Sin conectar»**, falta cargar el secreto `TEAMS_WEBHOOK` en Cloudflare.\n☐ Tocar el botón **«Mandar aviso de prueba»**.'],
+    ['Teams, canal **«Plataforma Monitoreo»** (equipo «Plataforma Monitoreo»)', '☐ Tiene que aparecer una tarjeta **«Aviso de prueba»** con el botón «Abrir Helios». ☐ Dejar este canal abierto en otra ventana: en la demo (escenas 9 y 10) ahí se ven llegar las novedades de la sala de crisis.'],
+    ['Teams, en un chat de prueba (donde estén vos y alguien más)', '☐ Escribir `@Gemma hola`. Al escribir `@` elegir **Gemma** de la lista que aparece (si se escribe a mano, no le llega). Tiene que contestar con **un solo saludo**. Tu correo en Teams tiene que ser el mismo que el de tu usuario de Helios.'],
+  ], true));
 
-  T2('Dejar de fábrica');
-  V('☐ **CLI_001 · «Aprobaciones, rechazos y errores» en 100 %** (Administración > Umbrales). En la demo se sube a 140 % y ese cambio **queda guardado**: hay que volver a dejarlo en 100 % después de cada ensayo.');
-  V('☐ Las 6 plantillas de correo de fábrica (borrar las de ensayo).');
-  V('☐ Tickets: salen simulados (HEL-101 / INV-1001) salvo que Jira esté en real (`TICKETS_JIRA = real`): si lo está, «Generar ticket» crea uno de verdad en el proyecto KAN.');
+  T2('5 · Dejar de fábrica (Helios, como Administrador)');
+  h.push(...H.tabla(ENC, A, [
+    ['Helios > **Administración** > pestaña **Umbrales**', '☐ Si en **«Excepciones por cliente»** hay una de **CLI_001**, abrirla: en el grupo **«Ancho de la banda del modelo»**, el campo **«Aprobaciones, rechazos y errores»** tiene que estar en **100 %**. En la demo se sube a 140 % y ese cambio **queda guardado**: hay que volver a dejarlo en 100 % después de cada ensayo.'],
+    ['Helios > **Administración** > pestaña **Plantillas de correo**', '☐ Tienen que estar las 6 de fábrica (General, Aviso al cliente, Escalar a proveedor o gateway, Caída: escalar a Mesa de ayuda, Aviso a Comercial, Cierre del incidente). Borrar las de ensayo.'],
+  ], true));
 
-  T2('Justo antes de empezar');
-  V('☐ Ventana normal para quien maneja la demo (Analista) y una ventana privada para el resto de los perfiles (Gerente y Administrador).');
-  V('☐ Tocar **Preparar demo oficial**: deja alertas, avisos, salas, tickets, comunicados, memoria del bot y métricas en cero (no toca usuarios, equipos, plantillas ni umbrales). El cartel tiene que decir «Próxima: escena 1 de 14».');
-  V('☐ Cloudflare > Observability abierto en una pestaña, por si algo no responde.');
+  T2('6 · Justo antes de empezar');
+  h.push(...H.tabla(ENC, A, [
+    ['La compu (navegador)', '☐ **Analista** en una ventana normal, **Gerente** en una ventana privada y **Administrador** en otro navegador (o cerrando sesión y entrando cuando toque, en la escena 12). Una ventana privada no admite dos usuarios a la vez.'],
+    ['Helios, como **Analista**: dirección `https://worker-alertas-cron.developers-hs-842.workers.dev/?demo=oficial`', '☐ Tocar **Preparar demo oficial**: deja alertas, avisos, salas, tickets, comunicados, memoria del bot y métricas en cero (no toca usuarios, equipos, plantillas ni umbrales). Arriba tiene que decir **«Próxima: escena 1 de 14»**.'],
+    ['Cloudflare > `worker-alertas-cron` > **Observability**', '☐ Dejar esta pestaña abierta, por si algo no responde.'],
+  ], true));
 
-  h.push(...H.nota('regla', 'Después de la demo', 'Volver a dejar CLI_001 en 100 %, tocar «Preparar demo oficial» y cerrar sesión en el celular.'));
+  h.push(...H.nota('regla', 'Después de la demo', 'En Helios > Administración > Umbrales volver a dejar CLI_001 en 100 %, tocar «Preparar demo oficial» y, en el celular, cerrar sesión.'));
 
   T2('Si algo sale distinto');
   h.push(...H.tabla(['Qué pasa', 'Qué hacer'], [3400, 6680], [
     ['El cartel no dice la escena esperada', 'Muestra la **próxima** escena, no la actual. Para estar «en la 5» hay que haber tocado «Siguiente escena» cinco veces.'],
-    ['No aparece el panel de la demo', 'Abrir `/?demo=oficial` con un usuario Analista o Administrador (Gerente y Soporte no tienen demo). Si se ve la demo de siempre, falta el `=oficial`.'],
-    ['La alerta de CLI_001 no aparece en la escena 12', 'Quedó la banda en 140 % de un ensayo: volver a 100 % y repetir.'],
+    ['No aparece el panel de la demo', 'Abrir la dirección con `/?demo=oficial` con un usuario Analista o Administrador (Gerente y Soporte no tienen demo). Si se ve la demo de siempre, falta el `=oficial`.'],
+    ['La alerta de CLI_001 no aparece en la escena 12', 'Quedó la banda en 140 % de un ensayo: Helios > Administración > Umbrales, volver a 100 % y repetir con «Preparar demo oficial».'],
     ['La alerta de CLI_001 no se cierra al ajustar la banda', 'Falta tocar «Siguiente escena»: el cambio rige desde la próxima ventana.'],
-    ['No llega el push', 'Entrar al celular como esa persona y tocar «Activar». Plan B: mostrar la campanita dentro de Helios.'],
-    ['Gemma no contesta', 'Mencionarla eligiéndola de la lista y con el mismo correo en Teams y Helios. Plan B: el asistente del panel de Helios hace lo mismo.'],
+    ['No llega el push al celular', 'En el celular, entrar a Helios como esa persona, tocar la campanita y **Activar**. Plan B: mostrar la campanita dentro de Helios.'],
+    ['Gemma no contesta en Teams', 'Mencionarla eligiéndola de la lista al escribir `@` y con el mismo correo en Teams y en Helios. Plan B: el asistente del panel de Helios (botón «Asistente», abajo a la derecha) hace lo mismo.'],
     ['El asistente dice que no puede responder', 'Se acabó el cupo de la hora o del día. Probar con otra persona o seguir sin él.'],
-    ['Quedó algo de un ensayo', 'Tocar «Preparar demo oficial».'],
+    ['Quedó algo de un ensayo', 'En Helios, como Analista, tocar «Preparar demo oficial».'],
   ], true));
 
   const doc = H.documento({ titulo: 'Demo oficial de Helios: checklist', pie: 'Checklist de la demo oficial', hijos: h });
