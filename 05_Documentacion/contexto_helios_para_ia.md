@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Asistente: sigue hablando de la misma alerta y separa las horas (25/11, parche 85; sin SQL, falta publicar)**
+
+- Si se abre el asistente con «¿Qué está pasando?» de una alerta, las preguntas siguientes se siguen refiriendo a esa alerta (la página manda `alerta_contexto` y el servidor trae su detalle); antes pedía aclarar de qué alerta se hablaba. Además `alertas_abiertas` y `detalle_alerta` separan `empezo_el_problema`, `asignada_desde` y `tomada_desde` (antes solo había `desde`, que el modelo leía como «la tiene desde»): el asistente había dicho que Soporte 2 tenía la alerta desde las 12:30 cuando la derivaron a las 12:55 y la tomó a las 13:00. Respaldo: `99_Archivo_viejo/worker_antes_parche85/`, ramas `respaldo-antes-parche-85` y `version-parche-85-asistente-contexto-y-horas`.
+
 **Tarjetas de «Estado por cliente» con textos largos (25/11, parche 84; sin SQL, falta publicar)**
 
 - En cada línea de la tarjeta, si el detalle de la derecha tiene más de 14 caracteres (por ejemplo «Tendencia al alza en la tasa de rechazo»), la línea pasa a dos renglones: el nombre del servicio con todo el ancho y el detalle debajo. Antes el nombre se partía letra por letra. Solo la página del tablero. Respaldo: `99_Archivo_viejo/worker_antes_parche84/`, ramas `respaldo-antes-parche-84` y `version-parche-84-tarjetas-estado-por-cliente`.

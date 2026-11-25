@@ -196,8 +196,8 @@ def asistente(s):
              "      : b.sugerencia ? (ASIST_SUGERENCIAS[yo.perfil] || []).find((s) => s.id === String(b.sugerencia)) : null;\n")
     s = _rep(s, "(alertaId ? '[alerta ' + alertaId.slice(0, 8) + '] ' : '') + pregunta.slice(0, 300)),",
              "(alertaId ? '[alerta ' + alertaId.slice(0, 8) + '] ' : '') + (incidenteId ? '[' + imCodigo(incidenteId) + '] ' : '') + pregunta.slice(0, 300)),")
-    s = _rep(s, "{ pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId }",
-             "{ pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId, incidente_id: incidenteId }")
+    s = _rep(s, "{ pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId, alerta_contexto: alertaCtx }",
+             "{ pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId, alerta_contexto: alertaCtx, incidente_id: incidenteId }")
     return s
 
 

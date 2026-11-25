@@ -20,4 +20,7 @@ for (const t of ['>Operaciones<', 'Tendencia al alza en la tasa de rechazo', 'Si
 // Parche 84: en «Estado por cliente», el detalle largo pasa a un segundo renglón (el nombre del servicio no se parte letra por letra)
 ok('Estado por cliente: la línea con detalle largo lleva la clase «largo»', s.includes("(det.length > 14 ? ' largo' : '')"));
 ok('Estado por cliente: la clase «largo» pone el detalle bajo el nombre del servicio', s.includes('.pano-cli li.largo .pano-det { grid-column: 2; max-width: none; text-align: left; }'));
+// Parche 85: la conversación del asistente recuerda de qué alerta se habla
+ok('Asistente: la página manda la alerta de la conversación en las preguntas siguientes', s.includes('cuerpo.alerta_contexto = alertaCtx') && s.includes('alertaCtx = id;'));
+ok('Asistente: una pregunta sugerida deja de hablar de esa alerta', s.includes('alertaCtx = null;'));
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');

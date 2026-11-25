@@ -298,6 +298,49 @@ for (const q of ['hola, ¿cómo está CLI_004?','gracias, ¿y qué pasa con CLI_
 // los saludos de las preguntas sugeridas y de "¿Qué está pasando?" no se filtran
 pedidos.length=0; guion=[()=>texto('Respuesta del modelo.')];
 r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'}); ok('una pregunta sugerida sigue yendo al modelo', !r.j.sin_ia && pedidos.length>=1);
+// ---------- Parche 85: horas de asignación y de toma por separado, y la alerta de la conversación ----------
+// (Uriel vio que el asistente decía «Soporte 2 la tiene desde las 12:30», la hora en que empezó el problema, y que una pregunta de seguimiento perdía la alerta)
+{
+  const AL85=db.prepare("select alerta_id from alertas_historico where estado='ABIERTA' and asignado_usuario_id is null and asignado_equipo_id is null and severidad<>'BAJA' order by ventana_inicio limit 1").get().alerta_id;
+  const hh=(iso)=>{const d=new Date(Date.parse(iso)-3*3600e3);return String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');};
+  r=await call(ck.ana,'POST',`/api/alertas/${AL85}/derivar`,{usuario_id:id('pedro'),comentario:'Revisar'});
+  const tDer=db.prepare("select fecha from alerta_eventos where alerta_id=? and accion='DERIVAR' order by id desc").get(AL85).fecha;
+  db.exec("update alerta_parametros set ahora = strftime('%Y-%m-%dT%H:%M:%SZ', ahora, '+15 minutes') where id = 1");   // pasan 15 minutos (solo el reloj: así el problema no se normaliza)
+  r=await call(ck.pedro,'POST',`/api/alertas/${AL85}/tomar`,{});
+  const tTom=db.prepare("select fecha from alerta_eventos where alerta_id=? and accion='TOMAR' order by id desc").get(AL85).fecha;
+  const g85=db.prepare('select tipo_alerta t, cliente_id c, servicio_id s, canal_id k from alertas_historico where alerta_id=?').get(AL85);
+  const tIni=db.prepare("select min(ventana_inicio) v from alertas_historico where tipo_alerta=? and cliente_id=? and servicio_id=? and canal_id=? and estado<>'RESUELTA'").get(g85.t,g85.c,g85.s,g85.k).v;
+  ok('(preparación) la derivaron, 15 minutos después la tomó y el problema había empezado antes: tres horas distintas', hh(tDer)!==hh(tTom) && hh(tIni)!==hh(tDer) && hh(tIni)!==hh(tTom), [hh(tIni),hh(tDer),hh(tTom)]);
+  pedidos.length=0; guion=[()=>llamar('alertas_abiertas',{}), ()=>texto('ok')];
+  await call(ck.ana,'POST','/api/asistente',{pregunta:'¿qué hay abierto?'});
+  const lista=JSON.parse(pedidos[1].p.messages.filter(m=>m.role==='tool')[0].content);
+  const x85=lista.problemas.find(x=>/Pedro/.test(x.estado||''));   // la que tomó Pedro (el alerta_id del grupo es el de su última ventana, no el de la primera)
+  ok('alertas_abiertas: cuándo empezó el problema, cuándo la asignaron y cuándo la tomó, cada hora con su nombre', x85 && x85.empezo_el_problema===hh(tIni) && x85.asignada_desde===hh(tDer) && x85.tomada_desde===hh(tTom) && /^En curso/.test(x85.estado), x85);
+  ok('…y ya no hay un «desde» suelto que se pueda confundir con la asignación', x85 && x85.desde===undefined);
+  pedidos.length=0; guion=[()=>llamar('detalle_alerta',{alerta_id:AL85}), ()=>texto('ok')];
+  await call(ck.ana,'POST','/api/asistente',{pregunta:'contame'});
+  const d85=JSON.parse(pedidos[1].p.messages.filter(m=>m.role==='tool')[0].content);
+  ok('detalle_alerta: las mismas tres horas (con fecha) y cuántas ventanas lleva', d85.empezo_el_problema.endsWith(hh(tIni)) && d85.asignada_desde.endsWith(hh(tDer)) && d85.tomada_desde.endsWith(hh(tTom)) && d85.ventanas_con_problema>=1, [d85.empezo_el_problema,d85.asignada_desde,d85.tomada_desde]);
+  ok('el sistema le explica al modelo que «empezó el problema» no es «la tiene desde»', /empezo_el_problema es cuándo empezó el problema/.test(pedidos[0].p.messages[0].content) && /asignada_desde/.test(pedidos[0].p.messages[0].content));
+  // Pregunta de seguimiento de la conversación que se abrió con «¿Qué está pasando?»
+  const hist=[{rol:'usuario',texto:'¿Qué está pasando con esta alerta?'},{rol:'asistente',texto:'Suben los rechazos.'}];
+  pedidos.length=0; guion=[()=>texto('ok')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿alguien la está trabajando?',historia:hist,alerta_contexto:AL85});
+  const ult=pedidos[0].p.messages.at(-1).content;
+  ok('con la alerta de la conversación, sus datos llegan con la pregunta y no se le pide al usuario que aclare', r.s===200 && ult.includes('"detalle_alerta":{') && ult.includes(AL85) && /No le pidas que aclare/.test(ult) && r.j.herramientas.includes('detalle_alerta'), [r.j.herramientas, ult.slice(-300)]);
+  ok('…y la historia de la conversación sigue yendo', pedidos[0].p.messages.filter(m=>m.role==='assistant').length===1);
+  pedidos.length=0; guion=[()=>texto('ok')];
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿alguien la está trabajando?',historia:hist});
+  ok('sin la alerta de la conversación, la pregunta va sin esos datos (como antes)', r.s===200 && !pedidos[0].p.messages.at(-1).content.includes(AL85));
+  r=await call(ck.ana,'POST','/api/asistente',{pregunta:'¿y ahora?',alerta_contexto:'no-es-un-id'}); ok('una alerta de conversación inválida se rechaza (400)', r.s===400, r.j);
+  pedidos.length=0; guion=[()=>texto('ok')];
+  r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'resumen_turno',alerta_contexto:AL85});
+  ok('una pregunta sugerida es general: ignora la alerta de la conversación', r.s===200 && !pedidos[0].p.messages.at(-1).content.includes('"detalle_alerta":{'));
+  pedidos.length=0; guion=[()=>texto('ok')];
+  r=await call(ck.sol,'POST','/api/asistente',{pregunta:'¿alguien la está trabajando?',alerta_contexto:AL85});
+  const ultSol=pedidos[0].p.messages.at(-1).content;
+  ok('Soporte no recibe los datos de una alerta que no es suya aunque mande su id como contexto', r.s===200 && /no existe o no está disponible/.test(ultSol) && !ultSol.includes('Suben los rechazos'), ultSol.slice(-250));
+}
 // ni siquiera un perfil sin cupo recibe error por saludar
 env={DB,AI,ASISTENTE_POR_HORA:'1',ASISTENTE_POR_DIA:'1'};
 r=await call(ck.gero,'POST','/api/asistente',{pregunta:'gracias'}); ok('saludar no consume el cupo: con el cupo agotado igual contesta', r.s===200 && r.j.sin_ia===true);

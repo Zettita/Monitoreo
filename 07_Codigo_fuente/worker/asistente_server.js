@@ -110,7 +110,8 @@ function asistAgrupar(filas, umbrales, reglas, yoId, ahoraIso) {
     const tope = g.en_curso ? 120 : g.asig ? 30 : 15;
     return {
       alerta_id: g.alerta_id, prioridad: 'P' + p, gravedad: ASIST_SEV[g.sev], problema: asistProblema(r, reglas), donde: asistDonde(r),
-      desde: asistHora(g.desde), ventanas: g.filas.length, observado: asistValor(r.metrica, r.valor_observado), esperado: asistValor(r.metrica, r.valor_esperado),
+      empezo_el_problema: asistHora(g.desde), asignada_desde: g.asig && a.asignado_en ? asistHora(a.asignado_en) : undefined,
+      tomada_desde: g.en_curso && g.en_curso.fecha_reconocimiento ? asistHora(g.en_curso.fecha_reconocimiento) : undefined, ventanas: g.filas.length, observado: asistValor(r.metrica, r.valor_observado), esperado: asistValor(r.metrica, r.valor_esperado),
       estado: g.en_curso ? 'En curso' + (g.en_curso.reconocida_por ? ' (' + g.en_curso.reconocida_por + ')' : '') : g.asig ? 'Asignada sin tomar' : 'Sin asignar',
       asignada_a: a.asignado_nombre || a.equipo_nombre ? [a.asignado_nombre, a.equipo_nombre ? 'equipo ' + a.equipo_nombre : null].filter(Boolean).join(', ') : null,
       es_mia: yoId != null && a.asignado_usuario_id === yoId ? true : undefined,
@@ -245,6 +246,9 @@ const ASIST_HERRAMIENTAS = {
                           AND (?2 = 0 OR h.asignado_usuario_id = ?3
                                OR h.asignado_equipo_id IN (SELECT equipo_id FROM equipo_miembros WHERE usuario_id = ?3))
                         GROUP BY h.servicio_id, h.canal_id, h.fecha_resolucion ORDER BY h.fecha_resolucion DESC LIMIT 5`).bind(id, soporte ? 1 : 0, yo.id),
+        // Cuándo empezó el problema y cuándo se asignó y se tomó (de todas las ventanas del problema, no solo las últimas)
+        env.DB.prepare(`SELECT MIN(h.ventana_inicio) AS empezo, COUNT(*) AS ventanas, MAX(h.asignado_en) AS asignado_en, MAX(h.fecha_reconocimiento) AS reconocida_en
+                        FROM alertas_historico h WHERE ${grupo} AND COALESCE(h.fecha_resolucion, '') = (SELECT COALESCE(fecha_resolucion, '') FROM alertas_historico WHERE alerta_id = ?1)`).bind(id),
         // Otros problemas abiertos del mismo cliente (solo con el permiso de ver las alertas abiertas)
         env.DB.prepare(`SELECT DISTINCT tipo_alerta, servicio_id, canal_id, cliente_id, severidad FROM alertas_historico
                         WHERE estado IN ('ABIERTA', 'RECONOCIDA') AND severidad <> 'BAJA' AND ?2 = 1
@@ -260,13 +264,17 @@ const ASIST_HERRAMIENTAS = {
         prioridad: 'P' + asistPrioridad(sev, asistCriticidad(umb, ult.cliente_id, ult.servicio_id)),
         estado: ult.estado === 'RESUELTA' ? 'Resuelta' : ult.estado === 'RECONOCIDA' ? 'En curso' + (ult.reconocida_por ? ' (' + ult.reconocida_por + ')' : '') : ult.asignado_nombre || ult.equipo_nombre ? 'Asignada sin tomar' : 'Sin asignar',
         asignada_a: [ult.asignado_nombre, ult.equipo_nombre ? 'equipo ' + ult.equipo_nombre : null].filter(Boolean).join(', ') || null,
+        empezo_el_problema: r[4].results[0] && r[4].results[0].empezo ? asistFecha(r[4].results[0].empezo) : undefined,
+        ventanas_con_problema: r[4].results[0] ? r[4].results[0].ventanas : undefined,
+        asignada_desde: ult.estado !== 'RESUELTA' && r[4].results[0] && r[4].results[0].asignado_en && (ult.asignado_nombre || ult.equipo_nombre) ? asistFecha(r[4].results[0].asignado_en) : undefined,
+        tomada_desde: ult.estado === 'RECONOCIDA' && r[4].results[0] && r[4].results[0].reconocida_en ? asistFecha(r[4].results[0].reconocida_en) : undefined,
         ultimas_ventanas: filas.slice(0, 8).map((x) => ({ hora: asistHora(x.ventana_inicio), observado: asistValor(x.metrica, x.valor_observado),
           esperado: asistValor(x.metrica, x.valor_esperado), limite: asistValor(x.metrica, x.umbral), gravedad: ASIST_SEV[x.severidad] })),
         historial: hist.map((e) => ({ cuando: asistFecha(e.fecha), quien: e.usuario_nombre || 'Helios (automático)', hizo: ASIST_ACCION_EVENTO[e.accion] || e.accion,
           destino: [e.destino_nombre, e.equipo_destino_nombre].filter(Boolean).join(', ') || undefined, comentario: e.comentario || undefined })),
         casos_parecidos_resueltos: r[3].results.map((x) => ({ empezo: asistFecha(x.inicio), donde: (ASIST_SERVICIO[x.servicio_id] || x.servicio_id) + ' por ' + (ASIST_CANAL[x.canal_id] || x.canal_id),
           como_termino: x.motivo === 'MANUAL' ? 'Resuelta por ' + (x.resuelta_por || 'una persona') : 'Se normalizó sola', comentario: x.comentario || undefined })),
-        otros_problemas_del_cliente: r[4].results.filter((x) => !(x.tipo_alerta === ult.tipo_alerta && x.servicio_id === ult.servicio_id && x.canal_id === ult.canal_id))
+        otros_problemas_del_cliente: r[5].results.filter((x) => !(x.tipo_alerta === ult.tipo_alerta && x.servicio_id === ult.servicio_id && x.canal_id === ult.canal_id))
           .map((x) => asistProblema(x, reglas) + ' en ' + (ASIST_SERVICIO[x.servicio_id] || x.servicio_id) + ' por ' + (ASIST_CANAL[x.canal_id] || x.canal_id)),
       };
     },
@@ -477,6 +485,7 @@ function asistSistema(yo, ahora, nombresHerr) {
     '6. Solo hablás de Helios: la operación de los clientes, alertas, pre-alertas, incidentes, equipos y cómo usar la plataforma. Si la pregunta es de otro tema (deportes, famosos, política, noticias, cultura general, chistes), contestá solo: "Solo puedo ayudarte con la operación y las alertas de Helios." Nunca respondas de memoria cosas del mundo: tu conocimiento puede estar viejo o equivocado.',
     '7. Escribí para una persona, en frases cortas: no muestres alerta_id, códigos internos, nombres de campos (como "peor", "cantidad", "estado", "observado") ni etiquetas como <resumen>. Nombrá cada problema por cliente, servicio y canal, con su prioridad y desde qué hora, en una frase (por ejemplo: "CLI_004, Transferencias por API: suben los rechazos (P4), desde las 11:45; 7,7 % contra 4 % esperado").',
     '8. Formato: no uses títulos con # ni ###; si hace falta un título, una línea en **negrita**. Listas con "- ", como mucho un nivel de sangría. Tratá a la persona de vos: "tenés", "empezá", "podés", "revisá" (nunca "tienes", "empieza", "puedes"). No cierres con preguntas como "¿Querés que te ayude?".',
+    '9. Las horas de una alerta son tres cosas distintas: empezo_el_problema es cuándo empezó el problema (no cuándo lo tomó alguien); asignada_desde es cuándo la derivaron a esa persona o equipo; tomada_desde es cuándo la persona la tomó y la trabaja. Para "quién la tiene y desde cuándo" usá asignada_desde y tomada_desde, o el historial (quién la derivó y cuándo la tomó). Nunca digas que alguien la tiene "desde" la hora en que empezó el problema.',
   ].join('\n');
 }
 function asistSchemas(nombres, yo) {
@@ -726,6 +735,12 @@ async function asistResponder(env, yo, entrada) {
   // Pregunta sugerida o "¿Qué está pasando?" de una alerta: los datos se traen directo (una sola llamada al modelo)
   const directas = [];
   let datosDirectos = null;
+  // Pregunta libre dentro de la conversación de una alerta: los datos de esa alerta llegan siempre (y, según las palabras, hasta 2 datos más)
+  const alertaCtx = entrada.alerta_contexto && !entrada.alerta_id && !entrada.sugerencia && !entrada.incidente_id ? entrada.alerta_contexto : null;
+  if (alertaCtx) {
+    directas.push(['detalle_alerta', { alerta_id: alertaCtx }]);
+    for (const n of asistElegir(entrada.pregunta, yo.perfil, disponibles).filter((x) => x !== 'detalle_alerta').slice(0, 2)) directas.push([n, ASIST_ARGS[n] ? ASIST_ARGS[n](entrada.pregunta) : {}]);
+  }
   if (entrada.alerta_id) directas.push(['detalle_alerta', { alerta_id: entrada.alerta_id }]);
   if (entrada.sugerencia) for (const n of entrada.sugerencia.herramientas) directas.push([n, (entrada.sugerencia.args || {})[n] || {}]);
   if (!directas.length) for (const n of asistElegir(entrada.pregunta, yo.perfil, disponibles)) directas.push([n, ASIST_ARGS[n] ? ASIST_ARGS[n](entrada.pregunta) : {}]);
@@ -736,6 +751,7 @@ async function asistResponder(env, yo, entrada) {
     // Propuesta armada por el servidor (por ejemplo, "Tomar" la primera de Soporte): no depende de que el modelo la pida
     if (entrada.sugerencia && entrada.sugerencia.proponer) { const p = entrada.sugerencia.proponer(datos); for (const x of (Array.isArray(p) ? p : p ? [p] : [])) await correrHerramienta('sugerir_accion', x); }
     pregunta += '\n\nDatos de Helios para responder (JSON):\n' + JSON.stringify(datos);
+    if (alertaCtx) pregunta += '\n\nLa persona está mirando una alerta concreta (la de detalle_alerta) y su pregunta se refiere a ella, salvo que nombre otra. No le pidas que aclare de qué alerta habla.';
     if (entrada.sugerencia && entrada.sugerencia.guia) pregunta += '\n\nCómo responder: ' + entrada.sugerencia.guia + (acciones.length ? ' (Ya le dejamos a la persona el botón "Hacerlo" para: ' + acciones.map((x) => x.titulo.toLowerCase()).join(', ') + '.)' : '');
   }
   if (/qwen3/i.test(asistNombreModelo(env))) pregunta += ' /no_think';
@@ -827,6 +843,9 @@ async function rutasAsistente(env, request, ruta, yo) {
     if (b.sugerencia && !sugerencia) return jsonError('Esa pregunta no está disponible para tu perfil.', 400);
     const alertaId = b.alerta_id ? String(b.alerta_id).toLowerCase() : null;
     if (alertaId && !/^[0-9a-f]{32}$/.test(alertaId)) return jsonError('Alerta inválida.', 400);
+    // Preguntas siguientes de una conversación que se abrió con «¿Qué está pasando?» de una alerta: la página manda cuál es
+    const alertaCtx = !alertaId && !sugerencia && b.alerta_contexto ? String(b.alerta_contexto).toLowerCase() : null;
+    if (alertaCtx && !/^[0-9a-f]{32}$/.test(alertaCtx)) return jsonError('Alerta inválida.', 400);
     let pregunta = sugerencia ? sugerencia.texto : alertaId ? '¿Qué está pasando con esta alerta, qué revisaría primero y qué sugerís hacer?' : String(b.pregunta || '').trim();
     if (!pregunta) return jsonError('Escribí una pregunta.', 400);
     if (pregunta.length > ASIST_MAX_PREGUNTA) return jsonError('La pregunta es muy larga (máximo ' + ASIST_MAX_PREGUNTA + ' caracteres).', 400);
@@ -843,7 +862,7 @@ async function rutasAsistente(env, request, ruta, yo) {
       env.DB.prepare('INSERT INTO auditoria (usuario_id, accion, detalle) VALUES (?1, ?2, ?3)').bind(yo.id, 'ASISTENTE', (alertaId ? '[alerta ' + alertaId.slice(0, 8) + '] ' : '') + pregunta.slice(0, 300)),
     ]);
     try {
-      const r = await asistResponder(env, yo, { pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId });
+      const r = await asistResponder(env, yo, { pregunta, historia: sugerencia || alertaId ? [] : asistHistoria(b.historia), sugerencia, alerta_id: alertaId, alerta_contexto: alertaCtx });
       return okJson(Object.assign(r, { restantes: Math.max(0, uso.restantes - 1) }));
     } catch (e) {
       console.error('Asistente: ' + e.message);

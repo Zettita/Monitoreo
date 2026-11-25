@@ -59,7 +59,7 @@
 (function () {
   var $a = function (id) { return document.getElementById(id); };
   var escA = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-  var historia = [], info = null, ocupado = false;
+  var historia = [], info = null, ocupado = false, alertaCtx = null;   // alertaCtx: la alerta con la que se abrió la conversación
   function api(url, cuerpo) {
     return fetch(url, cuerpo === undefined ? undefined : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cuerpo) })
       .then(function (r) {
@@ -95,6 +95,7 @@
         var s = agregar('asis-sug', r.sugerencias.map(function (x) { return '<button type="button" data-asis-sug="' + escA(x.id) + '">' + escA(x.texto) + '</button>'; }).join(''));
         s.addEventListener('click', function (ev) {
           var b = ev.target.closest('[data-asis-sug]'); if (!b) return;
+          alertaCtx = null;   // una pregunta sugerida es general: ya no se habla de la alerta
           preguntar({ sugerencia: b.getAttribute('data-asis-sug') }, b.textContent);
         });
       }
@@ -107,6 +108,7 @@
     agregar('asis-m u', escA(mostrar));
     var espera = agregar('asis-m a pensando', 'Pensando…');
     if (!cuerpo.sugerencia && !cuerpo.alerta_id) cuerpo.historia = historia.slice(-6);
+    if (!cuerpo.sugerencia && !cuerpo.alerta_id && alertaCtx) cuerpo.alerta_contexto = alertaCtx;
     api('/api/asistente', cuerpo).then(function (r) {
       espera.remove();
       agregar('asis-m a', formato(r.respuesta));
@@ -167,6 +169,7 @@
     var b = ev.target.closest && ev.target.closest('[data-asis-alerta]'); if (!b) return;
     ev.preventDefault(); ev.stopPropagation();
     var id = b.getAttribute('data-asis-alerta');
+    alertaCtx = id;   // las preguntas que siguen se refieren a esta alerta
     abrir().then(function () { if (info && info.disponible) preguntar({ alerta_id: id }, '¿Qué está pasando con esta alerta?'); });
   }, true);
 })();
