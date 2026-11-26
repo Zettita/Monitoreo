@@ -367,6 +367,25 @@ r=await call(ck.ana,'POST','/api/asistente',{sugerencia:'sin_asignar'}); ok('una
   pedidos.length=0; guion=[()=>texto('Te dejo el botón para derivarla.')];
   r=await call(ck.ana,'POST','/api/asistente',{pregunta:'hola, ¿cómo está CLI_004?'});
   ok('si lo único que decía era lo del botón, no queda una respuesta vacía', r.s===200 && r.j.respuesta.length>0 && !/botón/i.test(r.j.respuesta), r.j.respuesta);
+
+  // Parche 91: el Gerente solo quiere estar al tanto: «¿Qué está pasando?» informa el estado y la línea de tiempo, sin sugerencias (Uriel, en Cloudflare)
+  db.exec('DELETE FROM asistente_uso');
+  pedidos.length=0; guion=[()=>texto('La alerta está abierta desde las 12:30 y la tiene Soporte 2.')];
+  r=await call(ck.gero,'POST','/api/asistente',{alerta_id:AL85});
+  const pg=pedidos[0].p.messages, pgSis=pg[0].content, pgUser=pg.at(-1).content;
+  ok('Gerente: la pregunta de la alerta pide estado y línea de tiempo, no «qué sugerís hacer»', r.s===200 && /Contame el estado y la línea de tiempo/.test(pgUser) && !/qué sugerís hacer|qué revisaría/.test(pgUser), pgUser.slice(0,160));
+  ok('Gerente: la regla 12 le prohíbe sugerencias y recomendaciones', /12\. Esta persona solo mira y quiere estar al tanto/.test(pgSis) && /Nunca des sugerencias/.test(pgSis));
+  ok('Gerente: los datos de la alerta llegan con la guía de «solo hechos»', /Cómo responder: contá el estado de la alerta y nada más que hechos/.test(pgUser) && /Sin sugerencias, consejos ni recomendaciones/.test(pgUser));
+  ok('Gerente: no tiene botón de propuestas', r.j.acciones.length===0 && !pedidos[0].p.tools.some((t)=>t.function.name==='sugerir_accion'));
+  pedidos.length=0; guion=[()=>texto('Abierta, sin responsable todavía.')];
+  r=await call(ck.gero,'POST','/api/asistente',{pregunta:'¿y quién la tiene?',historia:hist,alerta_contexto:AL85});
+  ok('Gerente: las preguntas siguientes sobre la misma alerta también traen la guía de solo hechos', /nada más que hechos/.test(pedidos[0].p.messages.at(-1).content));
+  pedidos.length=0; guion=[()=>texto('Es una alerta abierta.')];
+  r=await call(A,'POST','/api/asistente',{alerta_id:AL85});
+  ok('Administrador: ante una alerta tampoco se le sugiere qué hacer con ella', /Contame el estado y la línea de tiempo/.test(pedidos[0].p.messages.at(-1).content) && /12\. Esta persona no trabaja las alertas/.test(pedidos[0].p.messages[0].content));
+  pedidos.length=0; guion=[()=>texto('Tenés 1 para tomar.')];
+  r=await call(ck.ana,'POST','/api/asistente',{alerta_id:AL85});
+  ok('Analista: sigue con «qué revisaría primero y qué sugerís hacer», sin regla 12 ni guía de solo hechos', /qué sugerís hacer/.test(pedidos[0].p.messages.at(-1).content) && !/12\. Esta persona/.test(pedidos[0].p.messages[0].content) && !/nada más que hechos/.test(pedidos[0].p.messages.at(-1).content));
 }
 // ni siquiera un perfil sin cupo recibe error por saludar
 env={DB,AI,ASISTENTE_POR_HORA:'1',ASISTENTE_POR_DIA:'1'};

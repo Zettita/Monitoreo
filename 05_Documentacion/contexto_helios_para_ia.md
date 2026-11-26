@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Gerente sin sugerencias, sala con una sola forma de cerrar, correo y franjas del tablero (26/11, parche 91; sin SQL, falta publicar)**
+
+- «¿Qué está pasando?» para el Gerente (y el Administrador) solo informa el estado y la línea de tiempo: nada de sugerencias ni de pedirle cosas a otras personas (regla 12 del asistente). En la sala de crisis se sacaron los botones «Servicio restablecido (mitigado)» y «Marcar resuelto»: queda «Cerrar con causa raíz». En «Confirmar envío» del correo los botones son «Se envió», «Se envió con cambios» y «No se envió». «Urgente» y «Pre-alerta» arriba del tablero son franjas translúcidas con ícono y botón («Ver detalle», «Ver pre-alerta»). Respaldo: `99_Archivo_viejo/worker_antes_parche91/`, ramas `respaldo-antes-parche-91` y `version-parche-91-gerente-sala-correo-franjas`.
+
 **Un solo desplegable a la vez: campanita y menú del perfil (26/11, parche 90; sin SQL, falta publicar)**
 
 - Al abrir la campanita y tocar la foto de perfil (o al revés), el primer desplegable se cierra: antes los avisos quedaban tapando el menú del usuario. Solo páginas (`menu_comun.js`). Respaldo: `99_Archivo_viejo/worker_antes_parche90/`, ramas `respaldo-antes-parche-90` y `version-parche-90-desplegables`.

@@ -240,7 +240,7 @@ ESCENAS_SALA = """  { titulo: 'Cierre de la guardia', texto: 'Todo vuelve a la n
     eventos: [[CLI006_PAG_API, 'SIN_EXITOS'], [CLI002_PAG_WEB, 'ERROR_ALTO'], [CLI005_PAG_MOB, 'ERROR_ALTO']] },
   { titulo: 'La sala de crisis trabaja', texto: 'El gateway sigue caído. En la sala, preguntale al asistente «¿Qué reviso primero?»: propone las tareas con la guía de diagnóstico y el Analista las confirma; a Soporte le llega el aviso y las actualiza desde la sala.',
     eventos: [[CLI006_PAG_API, 'SIN_EXITOS'], [CLI002_PAG_WEB, 'ERROR_ALTO'], [CLI005_PAG_MOB, 'ERROR_ALTO']] },
-  { titulo: 'Servicio restablecido', texto: 'Los pagos vuelven a aprobarse y las alertas se cierran solas. En la sala: «Servicio restablecido (mitigado)», «Comunicar» a los equipos y «Cerrar con causa raíz» (queda como antecedente para la próxima).', eventos: [] },
+  { titulo: 'Servicio restablecido', texto: 'Los pagos vuelven a aprobarse y las alertas se cierran solas. En la sala: «Comunicar» a los equipos y «Cerrar con causa raíz» (queda como antecedente para la próxima).', eventos: [] },
 ];"""
 
 

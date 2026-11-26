@@ -474,7 +474,7 @@ const ASIST_PERFIL_TXT = { ADMIN: 'Administrador', GERENTE: 'Gerente', ANALISTA:
 const ASIST_ROL = {
   SOPORTE: 'Trabaja las alertas que le asignan (a él o a su equipo): las toma, las comenta, las devuelve o las resuelve. Ayudalo a entender qué está pasando, qué revisar primero, cómo se resolvieron casos parecidos y a redactar comentarios.',
   ANALISTA: 'Revisa el tablero y deriva las alertas a Soporte (no las toma). Ayudalo con el resumen del turno, a quién derivar, qué alertas están relacionadas y qué pre-alertas conviene avisar.',
-  GERENTE: 'Mira el negocio en modo lectura: estado por cliente, incidentes, tiempos de resolución. No ve la lista de alertas abiertas ni el seguimiento. Respondé con números y conclusiones simples.',
+  GERENTE: 'Mira el negocio en modo lectura: estado por cliente, incidentes, alertas abiertas y su detalle, tiempos de resolución. No trabaja las alertas: solo quiere saber y estar al tanto. Respondé con números y hechos simples, sin consejos.',
   ADMIN: 'Configura Helios (usuarios, equipos, reglas, umbrales) y ve el tablero en lectura; no trabaja alertas. Ayudalo a detectar ajustes de umbrales y a pensar reglas; los cambios los hace él desde Administración.',
 };
 function asistSistema(yo, ahora, nombresHerr) {
@@ -495,8 +495,16 @@ function asistSistema(yo, ahora, nombresHerr) {
     '9. Las horas de una alerta son tres cosas distintas: empezo_el_problema es cuándo empezó el problema (no cuándo lo tomó alguien); asignada_desde es cuándo la derivaron a esa persona o equipo; tomada_desde es cuándo la persona la tomó y la trabaja. Para "quién la tiene y desde cuándo" usá asignada_desde y tomada_desde, o el historial (quién la derivó y cuándo la tomó). Nunca digas que alguien la tiene "desde" la hora en que empezó el problema.',
     '10. Si te falta un dato, pedí vos la herramienta que lo trae (con una llamada). Nunca le pidas a la persona que te pida consultar algo, que te dé un dato que ya tiene Helios ni que repregunte con otras palabras.',
     '11. El botón "Hacerlo" solo existe si en esta respuesta llamaste a sugerir_accion. Si recomendás derivar, tomar, comentar, devolver o resolver, llamala (con el alerta_id de la alerta) para que aparezca la propuesta; si no la llamaste, no menciones ese botón ni digas que la persona lo confirma: decí qué haría y que se hace desde la alerta.',
-  ].join('\n');
+  ].concat(ASIST_SOLO_INFORMA[yo.perfil] ? ['12. ' + ASIST_SOLO_INFORMA[yo.perfil]] : []).join('\n');
 }
+// Parche 91: perfiles que no trabajan las alertas. Con una alerta solo se informa (estado, quién la tiene, línea de tiempo, cómo vienen los datos): nada de sugerencias.
+const ASIST_SOLO_INFORMA = {
+  GERENTE: 'Esta persona solo mira y quiere estar al tanto: no puede actuar sobre las alertas. Informá hechos (qué pasa, desde cuándo, quién la tiene y desde cuándo, línea de tiempo en orden, cómo vienen las últimas mediciones). Nunca des sugerencias, recomendaciones ni pasos a seguir; no digas "podés pedir", "te sugiero", "convendría" ni propongas pedirle algo a otra persona o al proveedor.',
+  ADMIN: 'Esta persona no trabaja las alertas: ante una alerta concreta solo informá hechos (qué pasa, desde cuándo, quién la tiene, línea de tiempo) y no sugieras qué hacer con ella. Los ajustes de configuración (umbrales, reglas) solo se mencionan si la pregunta es sobre eso.',
+};
+const asistGuiaSoloInforma = (yo) => ASIST_SOLO_INFORMA[yo.perfil]
+  ? 'Cómo responder: contá el estado de la alerta y nada más que hechos, en este orden: qué pasa (problema, cliente, servicio, gravedad y prioridad), desde cuándo empezó, en qué estado está y quién la tiene (asignada_desde y tomada_desde), la línea de tiempo en orden (derivaciones, comentarios, resolución, si hay) y cómo vienen las últimas mediciones. Sin sugerencias, consejos ni recomendaciones, y sin proponer acciones.'
+  : '';
 function asistSchemas(nombres, yo) {
   const out = nombres.map((n) => {
     const h = ASIST_HERRAMIENTAS[n];
@@ -767,6 +775,7 @@ async function asistResponder(env, yo, entrada) {
     if (entrada.sugerencia && entrada.sugerencia.proponer) { const p = entrada.sugerencia.proponer(datos); for (const x of (Array.isArray(p) ? p : p ? [p] : [])) await correrHerramienta('sugerir_accion', x); }
     pregunta += '\n\nDatos de Helios para responder (JSON):\n' + JSON.stringify(datos);
     if (alertaCtx) pregunta += '\n\nLa persona está mirando una alerta concreta (la de detalle_alerta) y su pregunta se refiere a ella, salvo que nombre otra. No le pidas que aclare de qué alerta habla.';
+    if ((entrada.alerta_id || alertaCtx) && asistGuiaSoloInforma(yo)) pregunta += '\n\n' + asistGuiaSoloInforma(yo);
     if (entrada.sugerencia && entrada.sugerencia.guia) pregunta += '\n\nCómo responder: ' + entrada.sugerencia.guia + (acciones.length ? ' (Ya le dejamos a la persona el botón "Hacerlo" para: ' + acciones.map((x) => x.titulo.toLowerCase()).join(', ') + '.)' : '');
   }
   if (/qwen3/i.test(asistNombreModelo(env))) pregunta += ' /no_think';
@@ -862,7 +871,7 @@ async function rutasAsistente(env, request, ruta, yo) {
     // Preguntas siguientes de una conversación que se abrió con «¿Qué está pasando?» de una alerta: la página manda cuál es
     const alertaCtx = !alertaId && !sugerencia && b.alerta_contexto ? String(b.alerta_contexto).toLowerCase() : null;
     if (alertaCtx && !/^[0-9a-f]{32}$/.test(alertaCtx)) return jsonError('Alerta inválida.', 400);
-    let pregunta = sugerencia ? sugerencia.texto : alertaId ? '¿Qué está pasando con esta alerta, qué revisaría primero y qué sugerís hacer?' : String(b.pregunta || '').trim();
+    let pregunta = sugerencia ? sugerencia.texto : alertaId ? (ASIST_SOLO_INFORMA[yo.perfil] ? '¿Qué está pasando con esta alerta? Contame el estado y la línea de tiempo.' : '¿Qué está pasando con esta alerta, qué revisaría primero y qué sugerís hacer?') : String(b.pregunta || '').trim();
     if (!pregunta) return jsonError('Escribí una pregunta.', 400);
     if (pregunta.length > ASIST_MAX_PREGUNTA) return jsonError('La pregunta es muy larga (máximo ' + ASIST_MAX_PREGUNTA + ' caracteres).', 400);
     // Saludos y agradecimientos sueltos: respuesta fija, sin modelo, sin gastar del límite y sin registro (parche 74)

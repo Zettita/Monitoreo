@@ -232,10 +232,9 @@
     // Acciones de quien dirige
     var p = d.puedo, acc = '';
     if (p.dirigir) {
-      if (i.estado === 'ABIERTO') acc += '<button class="btn primario" data-est="MITIGADO">Servicio restablecido (mitigado)</button>';
-      if (i.estado === 'ABIERTO' || i.estado === 'MITIGADO') acc += '<button class="btn" data-est="RESUELTO">Marcar resuelto</button>';
+      // Una sola forma de terminar la sala (parche 91): cerrar con la causa raíz. «Volver a abierto» solo queda para salas viejas en Mitigado o Resuelto
       if (i.estado !== 'ABIERTO') acc += '<button class="btn" data-est="ABIERTO">Volver a abierto</button>';
-      acc += '<button class="btn" data-est="CERRADO">Cerrar con causa raíz</button>';
+      acc += '<button class="btn primario" data-est="CERRADO">Cerrar con causa raíz</button>';
       acc += '<button class="btn" data-sc="escalar">Escalar</button><button class="btn" data-sc="sumar">Sumar alertas</button>';
       var principal = (d.alertas.filter(function (a) { return a.estado !== 'RESUELTA'; })[0] || d.alertas[0]);
       if (principal) acc += '<a class="btn" href="/alerta/' + esc(principal.alerta_id) + '?comunicar">Comunicar</a>';

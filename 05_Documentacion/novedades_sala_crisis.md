@@ -23,7 +23,7 @@ No hace falta tocar variables ni secretos. Si por error se publica el Worker ant
 |---|---|---|
 | 20 · Se cae el gateway de pagos | CLI_006 no aprueba pagos de servicios por API (3 alertas graves) y suben los errores en CLI_002 y CLI_005 | Abrir la alerta grave de CLI_006 → **Abrir sala de crisis**. En la sala, **Sumar alertas** → las de CLI_002 y CLI_005 |
 | 21 · La sala de crisis trabaja | Sigue caído | Asistente → **¿Qué reviso primero?** → confirmar las tareas que propone. Entrar como Soporte: llega el aviso, **Empezar** y **Marcar hecha** con lo que se encontró |
-| 22 · Servicio restablecido | Las alertas se cierran solas | **Servicio restablecido (mitigado)** → **Comunicar** → **Cerrar con causa raíz** (por ejemplo, componente "Gateway de pagos") |
+| 22 · Servicio restablecido | Las alertas se cierran solas | **Comunicar** → **Cerrar con causa raíz** (por ejemplo, componente "Gateway de pagos") |
 
 ## 3. Probar el asistente con el modelo real (Gemma)
 
