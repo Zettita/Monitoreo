@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Un solo desplegable a la vez: campanita y menú del perfil (26/11, parche 90; sin SQL, falta publicar)**
+
+- Al abrir la campanita y tocar la foto de perfil (o al revés), el primer desplegable se cierra: antes los avisos quedaban tapando el menú del usuario. Solo páginas (`menu_comun.js`). Respaldo: `99_Archivo_viejo/worker_antes_parche90/`, ramas `respaldo-antes-parche-90` y `version-parche-90-desplegables`.
+
 **Botones alineados y «¿Qué está pasando?» en todas las alertas (26/11, parche 89; sin SQL, falta publicar)**
 
 - En las listas de alertas abiertas del tablero y de Seguimiento, cada botón (Derivar, Tomar, Resolver, Detalle, Historial, «¿Qué está pasando?») tiene su columna fija: si una fila no lo tiene queda el hueco, así que ya no se corren según la alerta. «¿Qué está pasando?» aparece en todas las alertas con acciones (antes faltaba en las del Gerente sin historial). Solo páginas; en el celular los huecos se ocultan. Respaldo: `99_Archivo_viejo/worker_antes_parche89/`, ramas `respaldo-antes-parche-89` y `version-parche-89-botones-alineados`.

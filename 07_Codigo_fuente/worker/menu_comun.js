@@ -87,4 +87,13 @@
     if (!j || !j.permisos) return;
     ENTRADAS.forEach(function (e, i) { enlaces[i].hidden = j.permisos.indexOf(e.permiso) < 0; });
   }).catch(function () { /* sin red: quedan las que la página ya mostraba */ });
+
+  // Un solo desplegable a la vez (parche 90): el botón de la campanita y el del perfil frenan el clic (stopPropagation), así que cada uno no le avisaba al otro y
+  // los avisos quedaban tapando el menú. Se escucha en la fase de captura, antes de que el botón lo frene.
+  document.addEventListener('click', function (ev) {
+    var t = ev.target; if (!t || !t.closest) return;
+    var panel = document.getElementById('panel-avisos'), bc = document.getElementById('btn-campana'), av = document.getElementById('btn-avatar');
+    if (t.closest('#btn-avatar') && panel && !panel.hidden) { panel.hidden = true; if (bc) bc.setAttribute('aria-expanded', 'false'); }
+    if (t.closest('.campana') && !menu.hidden) { menu.hidden = true; if (av) av.setAttribute('aria-expanded', 'false'); }
+  }, true);
 })();

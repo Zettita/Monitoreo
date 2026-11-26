@@ -32,4 +32,6 @@ ok('Login: cada ingreso borra la pestaña y el período que recordaba el navegad
 ok('Alertas abiertas: cada botón tiene su lugar fijo (Detalle, Historial y «¿Qué está pasando?» en las mismas columnas)', s.includes('.sl-det { width: 58px; }') && s.includes("sl('det', '<a class=\\\"btn chico\\\"") && s.includes("sl('his', botonHistorial)"));
 ok('Alertas abiertas: «¿Qué está pasando?» se dibuja en todas las filas con acciones', s.includes("sl('exp', '<button type=\\\"button\\\" class=\\\"asis-explicar\\\" data-asis-alerta=\\\"'"));
 ok('Seguimiento: mismos lugares fijos para Ver detalle, Historial y «¿Qué está pasando?»', s.includes("sl('detl',") && s.includes("sl('exp',") && s.includes('<div class=\\"acc-fila\\">'));
+// Parche 90: un solo desplegable a la vez (campanita y menú del perfil)
+ok('Desplegables: el menú del usuario y la campanita se cierran entre sí (clic en la fase de captura) en las 8 páginas con menú', s.split('Un solo desplegable a la vez (parche 90)').length - 1 === 8 && s.includes("t.closest('#btn-avatar') && panel && !panel.hidden") && s.includes("t.closest('.campana') && !menu.hidden"));
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');
