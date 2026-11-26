@@ -156,7 +156,7 @@
   function marcar() {
     Array.prototype.forEach.call(document.querySelectorAll('[data-id]'), function (b) {
       var id = b.getAttribute('data-id'), cont = b.parentNode;
-      if (!/^[0-9a-f]{32}$/.test(id) || !cont || cont.querySelector('[data-asis-alerta]')) return;
+      if (!/^[0-9a-f]{32}$/.test(id) || !cont || (b.closest('td, .acc-fila') || cont).querySelector('[data-asis-alerta]')) return;   // si la lista ya dibujó el botón en su lugar (parche 89), no se duplica
       var x = document.createElement('button');
       x.type = 'button'; x.className = 'asis-explicar'; x.setAttribute('data-asis-alerta', id); x.textContent = '¿Qué está pasando?';
       cont.appendChild(x);

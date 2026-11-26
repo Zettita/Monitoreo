@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**Botones alineados y «¿Qué está pasando?» en todas las alertas (26/11, parche 89; sin SQL, falta publicar)**
+
+- En las listas de alertas abiertas del tablero y de Seguimiento, cada botón (Derivar, Tomar, Resolver, Detalle, Historial, «¿Qué está pasando?») tiene su columna fija: si una fila no lo tiene queda el hueco, así que ya no se corren según la alerta. «¿Qué está pasando?» aparece en todas las alertas con acciones (antes faltaba en las del Gerente sin historial). Solo páginas; en el celular los huecos se ocultan. Respaldo: `99_Archivo_viejo/worker_antes_parche89/`, ramas `respaldo-antes-parche-89` y `version-parche-89-botones-alineados`.
+
 **Asistente: no nombrar el botón «Hacerlo» si no dejó una propuesta (25/11, parche 88; sin SQL, falta publicar)**
 
 - Si el asistente no deja ninguna propuesta en el chat, ya no dice «confirmalo con el botón Hacerlo»: el servidor saca esas frases y deja el resto de la recomendación; y una regla nueva le pide llamar a `sugerir_accion` cuando recomienda derivar, tomar, comentar, devolver o resolver, para que la propuesta aparezca. No se agregó ningún botón nuevo. Respaldo: `99_Archivo_viejo/worker_antes_parche88/`, ramas `respaldo-antes-parche-88` y `version-parche-88-asistente-boton-hacerlo`.

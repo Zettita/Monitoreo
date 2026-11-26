@@ -28,4 +28,8 @@ ok('Menú del usuario: el script común está en las 8 páginas con menú (table
 ok('Menú del usuario: lleva las 7 entradas de navegación en el mismo orden', s.includes("{ href: '/', texto: 'Tablero', permiso: 'tablero' }") && s.includes("{ href: '/admin', texto: 'Administración', permiso: 'admin_panel' }") && s.includes("{ href: '/comunicados', texto: 'Comunicados', permiso: 'comunicados' }"));
 ok('Menú del usuario: «Cambiar contraseña» también en las páginas que no la tenían', s.includes("id=\"dlg-clave-comun\"") || s.includes("d.id = 'dlg-clave-comun'"));
 ok('Login: cada ingreso borra la pestaña y el período que recordaba el navegador (el Analista abre en Operaciones)', s.includes("sessionStorage.removeItem('helios_pestana'); sessionStorage.removeItem('helios_periodo');"));
+// Parche 89: botones de las listas de alertas en lugares fijos y «¿Qué está pasando?» en todas las filas
+ok('Alertas abiertas: cada botón tiene su lugar fijo (Detalle, Historial y «¿Qué está pasando?» en las mismas columnas)', s.includes('.sl-det { width: 58px; }') && s.includes("sl('det', '<a class=\\\"btn chico\\\"") && s.includes("sl('his', botonHistorial)"));
+ok('Alertas abiertas: «¿Qué está pasando?» se dibuja en todas las filas con acciones', s.includes("sl('exp', '<button type=\\\"button\\\" class=\\\"asis-explicar\\\" data-asis-alerta=\\\"'"));
+ok('Seguimiento: mismos lugares fijos para Ver detalle, Historial y «¿Qué está pasando?»', s.includes("sl('detl',") && s.includes("sl('exp',") && s.includes('<div class=\\"acc-fila\\">'));
 console.log(fallas ? 'FALLAS: ' + fallas : 'TODO OK');
