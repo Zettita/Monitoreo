@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**El ticket del correo se genera al abrirlo en Outlook (27/11, parche 93; sin SQL, falta publicar)**
+
+- Igual que en «Comunicar incidente» (parche 92): marcar la casilla «Generar ticket al abrir el correo en [InvGate / Jira]» ya no crea el ticket al instante. Se crea al tocar «Abrir en Outlook web» u «Outlook de escritorio», y su número entra en el asunto y en el texto; si no se puede crear, el correo no se abre. «Copiar texto» no genera nada. Respaldo: `99_Archivo_viejo/worker_antes_parche93/`, ramas `respaldo-antes-parche-93` y `version-parche-93-ticket-al-abrir-correo`.
+
 **El ticket de «Comunicar incidente» se genera al confirmar (27/11, parche 92; sin SQL, falta publicar)**
 
 - Marcar la casilla «Generar ticket al comunicar en [InvGate / Jira]» ya no crea el ticket al instante: se crea al tocar «Comunicar», en la herramienta elegida, y su número viaja en el mensaje del comunicado. Si no se puede crear el ticket, no se manda el comunicado. La casilla del correo y «Generar ticket» del detalle siguen como antes. Respaldo: `99_Archivo_viejo/worker_antes_parche92/`, ramas `respaldo-antes-parche-92` y `version-parche-92-ticket-al-comunicar`.
