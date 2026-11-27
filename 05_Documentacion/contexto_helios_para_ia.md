@@ -486,6 +486,10 @@ Preguntas abiertas: qué rol primero, quién lo usa, qué proveedor (o modelo lo
 
 Si tenés también un documento de contexto anterior, estas son las diferencias; vale lo de este archivo.
 
+**El ticket de «Comunicar incidente» se genera al confirmar (27/11, parche 92; sin SQL, falta publicar)**
+
+- Marcar la casilla «Generar ticket al comunicar en [InvGate / Jira]» ya no crea el ticket al instante: se crea al tocar «Comunicar», en la herramienta elegida, y su número viaja en el mensaje del comunicado. Si no se puede crear el ticket, no se manda el comunicado. La casilla del correo y «Generar ticket» del detalle siguen como antes. Respaldo: `99_Archivo_viejo/worker_antes_parche92/`, ramas `respaldo-antes-parche-92` y `version-parche-92-ticket-al-comunicar`.
+
 **Gerente sin sugerencias, sala con una sola forma de cerrar, correo y franjas del tablero (26/11, parche 91; sin SQL, falta publicar)**
 
 - «¿Qué está pasando?» para el Gerente (y el Administrador) solo informa el estado y la línea de tiempo: nada de sugerencias ni de pedirle cosas a otras personas (regla 12 del asistente). En la sala de crisis se sacaron los botones «Servicio restablecido (mitigado)» y «Marcar resuelto»: queda «Cerrar con causa raíz». En «Confirmar envío» del correo los botones son «Se envió», «Se envió con cambios» y «No se envió». «Urgente» y «Pre-alerta» arriba del tablero son franjas translúcidas con ícono y botón («Ver detalle», «Ver pre-alerta»). Respaldo: `99_Archivo_viejo/worker_antes_parche91/`, ramas `respaldo-antes-parche-91` y `version-parche-91-gerente-sala-correo-franjas`.

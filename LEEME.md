@@ -74,7 +74,7 @@ Desde el 11/11 el análisis es solo el tablero HTML. Las consultas, medidas, tem
 Capturas de pantalla de cada vista (tablero, Mis alertas, Seguimiento, Administración, umbrales, feriados, temas).
 
 ## 07_Codigo_fuente — para seguir desarrollando (Claude Code)
-- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58, 60 a 77 y 79 a 84, 86, 89 y 91 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
+- `worker/` — el Worker original, `build.py` y los parches 9 a 48, 50, 51, 52, 55 a 58, 60 a 77 y 79 a 84, 86, 89, 91 y 92 (y `fecha_ui.py`, el campo de fecha compartido) que generan `01_Worker/worker_alertas_cron.js`; páginas HTML, módulos de servidor y el SQL de cada etapa (`modelo_v2_sql.py` arma el script 09). `servidor_local.mjs` corre el sistema en la PC (http://localhost:8787) con una base SQLite de prueba, para verlo sin Cloudflare.
 - `pruebas/` — base de la demo (`base.sqlite`) y pruebas automáticas por módulo.
 - `teams_app/` — paquete de la app de Helios para Teams (parche 76): `manifest.plantilla.json` y `armar_paquete.py <BOT_ID>` arman `salida/Helios_bot_teams.zip` (manifiesto e íconos) para que IT lo suba a Teams.
 - `modelo_v2/` — scripts del perfil de comportamiento (generar historia, consulta Postgres, correrla en PGlite, armar el archivo para D1).
